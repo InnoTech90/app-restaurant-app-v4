@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "app-restaurant",
+    "slug": "app-restaurant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/img/avatar_app_rest.png",
+    "scheme": "apprestaurant",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "splash": {
+      "image": "./src/assets/img/avatar_app_rest.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.jorgeafd1.apprestaurant",
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/img/avatar_app_rest.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "./plugins/withAndroidPackage",
+      [
+        "expo-router",
+        {
+          "root": "src/screens"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/img/avatar_app_rest.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./src/assets/img/avatar_app_rest.png",
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": true,
+          "useSQLCipher": true,
+          "android": {
+            "enableFTS": false,
+            "useSQLCipher": false
+          },
+          "ios": {
+            "customBuildFlags": [
+              "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
+            ]
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
