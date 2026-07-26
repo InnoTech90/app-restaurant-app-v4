@@ -6,32 +6,32 @@ import { gb } from "../../../screens/globalStyles";
 import ButtonMesas from "../../atoms/ButtonMesas/ButtonMesas";
 import { s } from "./styles";
 
-
 const AuthHeader = ({ navigation, route, options }) => {
-    const pathname = usePathname()
-    console.log("pathname", pathname);
-    
-    return (
-        <LinearGradient
-            colors={gb.gradient_blue}
-            style={s.header}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-        >
-            <View style={s.containerHeader}>
-                {/* Botón abrir drawer */}
-                <DrawerButton onPress={() => navigation.openDrawer()} />
+  const pathname = usePathname();
 
-                {/* Título */}
-                <Text style={s.title}>
-                    {options?.title ? options.title.toUpperCase() : pathname.replace('/', '').toUpperCase() || "INICIO"}
-                </Text>
+  return (
+    <LinearGradient
+      colors={gb.gradient_blue}
+      style={s.header}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+    >
+      <View style={s.containerHeader}>
+        {/* Botón abrir drawer */}
+        <DrawerButton onPress={() => navigation.openDrawer()} />
 
-                {/* mesas */}
-                <ButtonMesas />
-            </View>
-        </LinearGradient>
-    );
-}
+        {/* Título */}
+        <Text style={s.title}>
+          {options?.title
+            ? options.title.toUpperCase()
+            : pathname.replace("/", "").toUpperCase() || "INICIO"}
+        </Text>
+
+        {/* mesas */}
+        <ButtonMesas />
+      </View>
+    </LinearGradient>
+  );
+};
 
 export default AuthHeader;
