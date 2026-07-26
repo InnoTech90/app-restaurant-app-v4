@@ -1,31 +1,4 @@
-// import * as SQLite from "expo-sqlite";
 
-// let _db = null;
-
-// export async function getDb() {
-//     if (!_db) _db = await SQLite.openDatabaseAsync("APP_RESTAURANT_DB.db");
-//     return _db;
-// }
-
-// /**
-//  * Ejecuta una operación sobre la BD con retry automático.
-//  * Si Android invalida el handle nativo (NullPointerException),
-//  * se descarta la conexión, se abre una nueva y se reintenta.
-//  */
-// export async function withDb(operation) {
-//     try {
-//         const db = await getDb();
-//         return await operation(db);
-//     } catch (error) {
-//         const msg = error?.message ?? "";
-//         if (msg.includes("NativeDatabase") || msg.includes("NullPointerException")) {
-//             _db = null;
-//             const db = await getDb();
-//             return await operation(db);
-//         }
-//         throw error;
-//     }
-// }
 import * as SQLite from "expo-sqlite";
 
 let _db = null;
