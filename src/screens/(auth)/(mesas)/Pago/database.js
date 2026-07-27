@@ -80,7 +80,6 @@ export default class Database {
   }
 
   static async getComanda(id) {
-    console.log("id_comanda", id);
     return withDb("Pago.getComanda", async (db) => {
       return await db.getFirstAsync(`SELECT * FROM COMANDA WHERE ID = ?`, [id]);
     });

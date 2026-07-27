@@ -1,17 +1,16 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useContext, useState } from "react";
-import { Alert } from "react-native";
-import { Image, Text, View } from "react-native";
+import { Alert, Image, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import Input from "../../../../components/atoms/Input/Input";
 import QrButton from "../../../../components/atoms/QrButton/QrButton";
 import { AuthContext } from "../../../../utils/AuthContext/AuthContext";
 import { gb } from "../../../globalStyles";
+import { ApiLogin } from "./integracion";
 import QrScanner from "./QrScanner";
 import { s } from "./style";
-import { ApiLogin } from "./integracion";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function Login() {
   const Router = useRouter();
@@ -35,7 +34,7 @@ function Login() {
     } catch (error) {
       Alert.alert("No se pudo iniciar sesión", error.message);
 
-    //   console.error("Error during login:", error);
+      //   console.error("Error during login:", error);
       // Aquí puedes manejar el error, por ejemplo, mostrar un mensaje al usuario
     }
   };
@@ -87,14 +86,11 @@ function Login() {
             </Text>
           </View>
           <View style={s.containerButtons}>
-            <Button
-              onPress={() => console.log("Contactando asesores personales")}
-              style={s.btnAyuda}
-            >
+            <Button onPress={() => {}} style={s.btnAyuda}>
               <Text style={s.btnAyudaText}>AYUDA</Text>
             </Button>
             <Button
-              onPress={() => console.log("Contactando asesores personales")}
+              onPress={() => {}}
               style={s.btnContacto}
               gradient={gb.gradient_blue}
             >

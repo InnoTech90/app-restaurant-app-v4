@@ -52,7 +52,6 @@ export class ApiLogin {
 
       for (const baseUrl of baseUrls) {
         try {
-          // console.log("Intentando asociar con:", baseUrl);
           const response = await axios.post(
             `${baseUrl}/devices/associate`,
             params,

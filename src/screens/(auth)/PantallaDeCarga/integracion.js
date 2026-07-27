@@ -6,7 +6,6 @@ export class integracionPantallaDeCarga {
     try {
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.get("/devices/general", { headers });
-      console.log("response general", JSON.stringify(response.data, null, 2));
 
       await Database.generalModel(response.data);
       return response.data;
@@ -32,9 +31,6 @@ export class integracionPantallaDeCarga {
     try {
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.get("/devices/diner", { headers });
-
-      // console.log("response clientes", JSON.stringify(response.data, null, 2));
-      // console.log("RESPONSE CRUDO", response.data);
 
       await Database.clientesModel(response.data);
       return response.data;
@@ -76,8 +72,6 @@ export class integracionPantallaDeCarga {
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.get("/devices/expensess", { headers });
 
-      console.log("response gastos", JSON.stringify(response.data, null, 2));
-
       return 0;
 
       const gastos = await Database.gastosModel(response.data);
@@ -86,12 +80,6 @@ export class integracionPantallaDeCarga {
       if (error.response?.status === 404) {
         return [];
       }
-
-      // console.log("status", error.response?.status);
-      // console.log("data", error.response?.data);
-      // console.log("headers", error.response?.headers);
-
-      // console.error("Error fetching gastos data:", error);
 
       throw error;
     }
@@ -124,16 +112,4 @@ export class integracionPantallaDeCarga {
       throw error;
     }
   };
-  // static paymentMethod = async () => {
-  //     try {
-  //         const headers = await getDeviceAuthHeaders();
-  //         const response = await deviceApi.get('/payment-methods/select-options', { headers });
-  //         console.log("response",response.data);
-
-  //     } catch (error) {
-  //         console.error("Error fetching payment method data:", error);
-
-  //         throw error;
-  // }
-  // }
 }

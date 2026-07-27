@@ -377,11 +377,6 @@ export class Database {
         }
       }
     }
-    // await db.getAllAsync(`SELECT * FROM MENU`).then(result => console.log("MENU", JSON.stringify(result,null,2)));
-    // await db.getAllAsync(`SELECT * FROM GRUPO_ARTICULOS`).then(result => console.log("GRUPO_ARTICULOS", JSON.stringify(result,null,2)));
-    // await db.getAllAsync(`SELECT * FROM ARTICULO`).then(result => console.log("ARTICULO", JSON.stringify(result,null,2)));
-    // await db.getAllAsync(`SELECT * FROM GRUPO_COMPLEMENTOS`).then(result => console.log("GRUPO_COMPLEMENTOS", JSON.stringify(result,null,2)));
-    // await db.getAllAsync(`SELECT * FROM COMPLEMENTO`).then(result => console.log("COMPLEMENTO", JSON.stringify(result,null,2)));
   }
 
   static async gastosModel(data) {
@@ -552,7 +547,6 @@ export class Database {
         `);
   }
 
-  
   static async clientesModel(data) {
     const qrData = await AsyncStorage.getItem("qrCode");
     const db = await getDb();

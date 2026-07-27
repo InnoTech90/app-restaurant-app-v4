@@ -96,7 +96,6 @@ export class integracionVentas {
       };
       return sale;
     });
-    console.log("Ventas a sincronizar:", JSON.stringify(sales, null, 2));
     // Llamada al endpoint
     await deviceApi.post(
       "/devices/synchronize-sale",

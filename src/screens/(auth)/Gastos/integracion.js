@@ -29,11 +29,6 @@ export class integracionGastos {
       description: r.NOTA ?? "",
       expenseDate: r.FECHA ?? new Date().toISOString(),
     }));
-    console.log(
-      "JSON.stringify(records)",
-      JSON.stringify({ records }, null, 2),
-    );
-    console.log(typeof records);
 
     await deviceApi.post(
       "/devices/synchronize-expenses",

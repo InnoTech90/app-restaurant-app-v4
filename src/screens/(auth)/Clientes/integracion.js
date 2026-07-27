@@ -50,7 +50,6 @@ export class integracionClientes {
       businessId,
       records,
     };
-    console.log("params", JSON.stringify(params, null, 2));
 
     await deviceApi.post(
       "/devices/synchronize-diners",
