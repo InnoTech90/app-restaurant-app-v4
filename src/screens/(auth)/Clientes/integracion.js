@@ -34,7 +34,7 @@ export class integracionClientes {
 
     const records = pendientes.map((c) => {
       const record = {
-        name: c.NOMBRE,
+        fullName: c.NOMBRE,
         address: c.DIRECCION ?? "",
         city: c.CIUDAD ?? "",
         state: c.ESTADO ?? "",
@@ -50,8 +50,7 @@ export class integracionClientes {
       businessId,
       records,
     };
-    // console.log("params", JSON.stringify(params, null, 2));
-    console.log("pendientes", JSON.stringify(pendientes, null, 2));
+    console.log("params", JSON.stringify(params, null, 2));
 
     await deviceApi.post(
       "/devices/synchronize-diners",

@@ -7,52 +7,32 @@ export default class VentasDatabase {
    * ESTATUS 1 = Pagado, 2 = Pendiente, 3 = Cancelado
    */
   static async getVentas() {
-    // return withDb(async (db) => {
-    //     const rows = await db.getAllAsync(
-    //         `SELECT
-    //             c.ID,
-    //             c.FICHA,
-    //             c.FECHA,
-    //             c.ESTATUS,
-    //             c.TOTAL,
-    //             c.SUBTOTAL,
-    //             c.DESCUENTO,
-    //             c.PROPINA,
-    //             c.COSTO_ENVIO,
-    //             c.FORMATO_PAGO,
-    //             c.NOTA,
-    //             c.SINCRONIZADO,
-    //             c.ID_CLIENTE,
-    //             c.ID_MESA,
-    //             m.NOMBRE AS MESA_NOMBRE,
-    //             cl.NOMBRE AS CLIENTE_NOMBRE,
-    //             (SELECT COUNT(*) FROM COMANDA_ARTICULO ca WHERE ca.ID_COMANDA = c.ID) AS NUM_ARTICULOS
-    //         FROM COMANDA c
-    //         LEFT JOIN MESA m ON c.ID_MESA = m.UUID
-    //         LEFT JOIN CLIENTES cl ON c.ID_CLIENTE = cl.ID
-    //         WHERE c.ACTIVO = 0 AND c.ESTATUS > 0
-    //         ORDER BY c.ID DESC`
-    //     );
-    //     return rows;
-    // });
-    return withDb(async (db) => {
-      console.log("🟡 TEST 1");
-
-      const test = await db.getFirstAsync("SELECT 1 AS prueba");
-
-      console.log("🟢 TEST 2", test);
-
+    return withDb("Ventas.getVentas", async (db) => {
       const rows = await db.getAllAsync(
-        `
-            SELECT
-                ID
-            FROM COMANDA
-            LIMIT 1
-            `,
+        `SELECT
+                c.ID,
+                c.FICHA,
+                c.FECHA,
+                c.ESTATUS,
+                c.TOTAL,
+                c.SUBTOTAL,
+                c.DESCUENTO,
+                c.PROPINA,
+                c.COSTO_ENVIO,
+                c.FORMATO_PAGO,
+                c.NOTA,
+                c.SINCRONIZADO,
+                c.ID_CLIENTE,
+                c.ID_MESA,
+                m.NOMBRE AS MESA_NOMBRE,
+                cl.NOMBRE AS CLIENTE_NOMBRE,
+                (SELECT COUNT(*) FROM COMANDA_ARTICULO ca WHERE ca.ID_COMANDA = c.ID) AS NUM_ARTICULOS
+            FROM COMANDA c
+            LEFT JOIN MESA m ON c.ID_MESA = m.UUID
+            LEFT JOIN CLIENTES cl ON c.ID_CLIENTE = cl.ID
+            WHERE c.ACTIVO = 0 AND c.ESTATUS > 0
+            ORDER BY c.ID DESC`,
       );
-
-      console.log("🟢 TEST 3", rows);
-
       return rows;
     });
   }
@@ -61,7 +41,7 @@ export default class VentasDatabase {
    * Datos completos de una venta específica, con sus artículos y complementos.
    */
   static async getDetalleVenta(idComanda) {
-    return withDb(async (db) => {
+    return withDb("Ventas.getDetalleVenta", async (db) => {
       const comanda = await db.getFirstAsync(
         `SELECT
                     c.*,
@@ -109,7 +89,7 @@ export default class VentasDatabase {
    * Solo incluye comandas ESTATUS = 1 (pagadas).
    */
   static async getDatosCorte() {
-    return withDb(async (db) => {
+    return withDb("Ventas.getDatosCorte", async (db) => {
       // Info de sucursal
       const sucursal = await db.getFirstAsync(`SELECT * FROM SUCURSAL LIMIT 1`);
 
@@ -193,7 +173,7 @@ export default class VentasDatabase {
    * Datos del dispositivo, negocio y sucursal activos (una sola fila de cada tabla).
    */
   static async getDatosDispositivo() {
-    return withDb(async (db) => {
+    return withDb("Ventas.getDatosDispositivo", async (db) => {
       const negocio = await db.getFirstAsync(
         `SELECT UUID FROM NEGOCIO LIMIT 1`,
       );
@@ -214,7 +194,7 @@ export default class VentasDatabase {
    * con todos sus artículos y complementos.
    */
   static async getVentasParaSincronizar() {
-    return withDb(async (db) => {
+    return withDb("Ventas.getVentasParaSincronizar", async (db) => {
       const comandas = await db.getAllAsync(
         `SELECT
                     c.*,
@@ -288,7 +268,7 @@ export default class VentasDatabase {
    */
   static async marcarComoSincronizadas(ids) {
     if (!ids || ids.length === 0) return;
-    return withDb(async (db) => {
+    return withDb("Ventas.marcarComoSincronizadas", async (db) => {
       const placeholders = ids.map(() => "?").join(",");
       await db.runAsync(
         `UPDATE COMANDA SET SINCRONIZADO = 1 WHERE ID IN (${placeholders})`,

@@ -33,6 +33,9 @@ export class integracionPantallaDeCarga {
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.get("/devices/diner", { headers });
 
+      // console.log("response clientes", JSON.stringify(response.data, null, 2));
+      // console.log("RESPONSE CRUDO", response.data);
+
       await Database.clientesModel(response.data);
       return response.data;
     } catch (error) {
@@ -84,11 +87,11 @@ export class integracionPantallaDeCarga {
         return [];
       }
 
-      console.log("status", error.response?.status);
-      console.log("data", error.response?.data);
-      console.log("headers", error.response?.headers);
+      // console.log("status", error.response?.status);
+      // console.log("data", error.response?.data);
+      // console.log("headers", error.response?.headers);
 
-      console.error("Error fetching gastos data:", error);
+      // console.error("Error fetching gastos data:", error);
 
       throw error;
     }

@@ -2,7 +2,8 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 // Usa localhost como fuente y se resuelve automáticamente según plataforma.
-const RAW_API_BASE_URL = "http://192.168.100.20:3000/v1";
+// const RAW_API_BASE_URL = "https://api.apprestaurants.com/v1";
+const RAW_API_BASE_URL = "http://192.168.100.20:3000/v1"; // ESTE ES PARA USO LOCAL (diego)
 // IP LAN actual de tu Mac para pruebas en dispositivo fisico.
 const MANUAL_LOCAL_HOST_IP = "192.168.100.20";
 

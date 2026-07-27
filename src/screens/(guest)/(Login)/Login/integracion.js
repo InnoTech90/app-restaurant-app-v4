@@ -38,21 +38,6 @@ export class ApiLogin {
         description: Device.modelName,
       };
 
-      // Bypass local para pruebas sin backend
-      if (codigoNormalizado === "123456") {
-        console.log("Bypass local activo para PIN 123456");
-        return {
-          device: {
-            deviceKey: id,
-          },
-        };
-      }
-
-      console.log("Params", params);
-      console.log("codigoSucursal", codigoNormalizado);
-
-      console.log("API_BASE_URL", API_BASE_URL);
-
       const headers = {
         "x-api-key": codigoNormalizado,
         "Content-Type": "application/json",
@@ -67,7 +52,7 @@ export class ApiLogin {
 
       for (const baseUrl of baseUrls) {
         try {
-          console.log("Intentando asociar con:", baseUrl);
+          // console.log("Intentando asociar con:", baseUrl);
           const response = await axios.post(
             `${baseUrl}/devices/associate`,
             params,
@@ -77,15 +62,29 @@ export class ApiLogin {
             },
           );
 
-          console.log("Response data", JSON.stringify(response.data, null, 2));
           return response.data;
         } catch (error) {
           if (error?.response) {
-            console.error("Error HTTP en asociación:", {
-              baseUrl,
-              status: error.response.status,
-              data: error.response.data,
-            });
+            const status = error.response?.status;
+            const message = error.response.data?.message;
+
+            if (status === 403) {
+              if (message?.includes("Device limit reached")) {
+                throw new Error(
+                  "Se alcanzó el límite de dispositivos permitidos para este plan. Desvincula un dispositivo existente o contacta a soporte.",
+                );
+              }
+
+              throw new Error(
+                "No tienes permisos para asociar este dispositivo.",
+              );
+            }
+
+            // console.error("Error HTTP en asociación:", {
+            //   baseUrl,
+            //   status: error.response.status,
+            //   data: error.response.data,
+            // });
             throw error;
           }
 

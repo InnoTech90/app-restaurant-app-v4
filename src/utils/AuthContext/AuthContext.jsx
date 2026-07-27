@@ -19,6 +19,10 @@ export const AuthProvider = ({ children }) => {
     
     const storageAuthState = async ({ autenticado, data }) => {
         try {
+
+            console.log("Almacenando estado de autenticación:", { autenticado, data });
+
+
             await AsyncStorage.setItem(dataAuthStorage, JSON.stringify({ autenticado, data }));
 
         } catch (error) {
