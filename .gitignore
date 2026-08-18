@@ -162,3 +162,5 @@ build/
 
 src/utils/scripts-bat/tools/android-sdk/
 src/utils/scripts-bat/tools/jdk/
+
+.DS_Store/
