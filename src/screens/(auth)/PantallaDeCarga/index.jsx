@@ -89,6 +89,9 @@ const PantallaDeCarga = () => {
   const getGastos = async () => {
     try {
       const res = await integracionPantallaDeCarga.gastos();
+
+      console.log("PantallaDeCarga gastos:", res); // ✅ Log para verificar la respuesta
+
       setEndpointsCargados((prev) => ({ ...prev, gastos: true }));
     } catch (err) {
       console.error("Error en la integración de PantallaDeCarga gastos:", err);
@@ -137,14 +140,14 @@ const PantallaDeCarga = () => {
     if (authContext.isReady) {
       const initialize = async () => {
         await getGeneral();
-        await getTables();
-        await getClientes();
-        await getInventory();
-        await getMenu();
-        await getGastos();
-        await getConfiguraciones();
-        await getHistorialCaja();
-        await createComandaTable();
+        // await getTables();
+        // await getClientes();
+        // await getInventory();
+        // await getMenu();
+        // await getGastos();
+        // await getConfiguraciones();
+        // await getHistorialCaja();
+        // await createComandaTable();
       };
       initialize();
     }
@@ -152,16 +155,16 @@ const PantallaDeCarga = () => {
   // cuando ya este todo cargado me va a redirigir al login
   useEffect(() => {
     if (
-      endpontsCargados.table &&
-      endpontsCargados.general &&
-      endpontsCargados.clientes &&
-      endpontsCargados.inventory &&
-      endpontsCargados.menu &&
-      endpontsCargados.gastos &&
-      endpontsCargados.configuraciones &&
-      endpontsCargados.historialCaja &&
-      endpontsCargados.comanda &&
-      endpontsCargados.metodo_pago
+      endpontsCargados.general
+      // endpontsCargados.table &&
+      // endpontsCargados.clientes &&
+      // endpontsCargados.inventory &&
+      // endpontsCargados.menu &&
+      // endpontsCargados.gastos &&
+      // endpontsCargados.configuraciones &&
+      // endpontsCargados.historialCaja &&
+      // endpontsCargados.comanda &&
+      // endpontsCargados.metodo_pago
     ) {
       reouter.replace("/Inicio");
     }
