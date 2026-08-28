@@ -139,33 +139,29 @@ const PantallaDeCarga = () => {
   useEffect(() => {
     if (authContext.isReady) {
       const initialize = async () => {
-        await getGeneral();
-        // await getTables();
-        // await getClientes();
-        // await getInventory();
-        // await getMenu();
-        // await getGastos();
-        // await getConfiguraciones();
-        // await getHistorialCaja();
-        // await createComandaTable();
+        try {
+          console.log("📱 Iniciando inicialización...");
+          await integracionPantallaDeCarga.initializeDatabase();
+          await getGeneral();
+          await getTables();
+          await getClientes();
+          await getInventory();
+          await getMenu();
+          await getGastos();
+          await getConfiguraciones();
+          await getHistorialCaja();
+          await createComandaTable();
+        } catch (error) {
+          console.error("❌ Error durante inicialización:", error);
+          setModalError(true);
+        }
       };
       initialize();
     }
   }, [authContext.isReady]);
-  // cuando ya este todo cargado me va a redirigir al login
+  // Solo permite continuar cuando todas las fuentes terminaron correctamente.
   useEffect(() => {
-    if (
-      endpontsCargados.general
-      // endpontsCargados.table &&
-      // endpontsCargados.clientes &&
-      // endpontsCargados.inventory &&
-      // endpontsCargados.menu &&
-      // endpontsCargados.gastos &&
-      // endpontsCargados.configuraciones &&
-      // endpontsCargados.historialCaja &&
-      // endpontsCargados.comanda &&
-      // endpontsCargados.metodo_pago
-    ) {
+    if (Object.values(endpontsCargados).every((cargado) => cargado === true)) {
       reouter.replace("/Inicio");
     }
   }, [endpontsCargados]);

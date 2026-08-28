@@ -4,7 +4,7 @@ export default class VentasDatabase {
   /**
    * Trae todas las comandas finalizadas (ESTATUS > 0, ACTIVO = 0).
    * Incluye nombre de mesa y cliente.
-   * ESTATUS 1 = Pagado, 2 = Pendiente, 3 = Cancelado
+   * ESTATUS 1 = Pagado, 2 = Cancelado, 3 = Pendiente
    */
   static async getVentas() {
     return withDb("Ventas.getVentas", async (db) => {
@@ -190,7 +190,7 @@ export default class VentasDatabase {
   }
 
   /**
-   * Comandas finalizadas (Pagadas = 1 o Canceladas = 3) que aún NO están sincronizadas,
+   * Comandas finalizadas (Pagadas = 1 o Canceladas = 2) que aún NO están sincronizadas,
    * con todos sus artículos y complementos.
    */
   static async getVentasParaSincronizar() {
@@ -204,7 +204,7 @@ export default class VentasDatabase {
                 LEFT JOIN MESA m    ON m.UUID  = c.ID_MESA
                 LEFT JOIN CLIENTES cl ON cl.ID = c.ID_CLIENTE
                 WHERE c.ACTIVO = 0
-                  AND (c.ESTATUS = 1 OR c.ESTATUS = 3)
+                  AND (c.ESTATUS = 1 OR c.ESTATUS = 2)
                   AND (c.SINCRONIZADO IS NULL OR c.SINCRONIZADO = 0)
                 ORDER BY c.ID ASC`,
       );

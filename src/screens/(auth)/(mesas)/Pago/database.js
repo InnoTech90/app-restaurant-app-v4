@@ -1,6 +1,21 @@
-﻿import { withDb } from "../../../../utils/db";
+﻿import AsyncStorage from "@react-native-async-storage/async-storage";
+import { withDb } from "../../../../utils/db";
 
 export default class Database {
+  static async validarCajaAbierta(db) {
+    const idSucursal = await AsyncStorage.getItem("qrCode");
+    const caja = await db.getFirstAsync(
+      `SELECT ID
+       FROM HISTORIAL_CAJA
+       WHERE ID_SUCURSAL = ? AND ESTATUS = 1
+       ORDER BY FECHA DESC
+       LIMIT 1`,
+      [idSucursal],
+    );
+
+    return Boolean(caja);
+  }
+
   // estatus
   // 0: abierta
   // 1: pagada
@@ -156,6 +171,9 @@ export default class Database {
 
   static async pagarComanda(idComanda, pagos) {
     return withDb("Pago.pagarComanda", async (db) => {
+      if (!(await Database.validarCajaAbierta(db))) {
+        return { ok: false, code: "CAJA_CERRADA" };
+      }
       await db.runAsync(
         `UPDATE COMANDA SET
                     ESTATUS         = 1,
@@ -185,6 +203,7 @@ export default class Database {
         `UPDATE MESA SET ESTATUS = 0, ID_COMANDA = NULL WHERE ID_COMANDA = ?`,
         [idComanda],
       );
+      return { ok: true };
     });
   }
 
@@ -248,19 +267,15 @@ export default class Database {
     });
   }
 
-  /**
-   * Finaliza la comanda (pago o pendiente), libera la mesa.
-   * ESTATUS = 1 → Pagado  (formatoPago != null)
-   * ESTATUS = 2 → Pendiente (sin método de pago)
-   */
+  /** Finaliza la comanda con un cobro y libera la mesa. */
   static async finalizarComanda(idComanda, datos) {
-    const esPendiente =
-      !datos.formatoPago || datos.formatoPago.toLowerCase() === "pendiente";
-    const estatus = esPendiente ? 3 : 1;
     return withDb("Pago.finalizarComanda", async (db) => {
+      if (!(await Database.validarCajaAbierta(db))) {
+        return { ok: false, code: "CAJA_CERRADA" };
+      }
       await db.runAsync(
         `UPDATE COMANDA SET
-                    ESTATUS      = ?,
+                    ESTATUS      = 1,
                     ACTIVO       = 0,
                     FORMATO_PAGO = ?,
                     SUBTOTAL     = ?,
@@ -270,7 +285,6 @@ export default class Database {
                     TOTAL        = ?
                  WHERE ID = ?`,
         [
-          estatus,
           datos.formatoPago ?? null,
           datos.subtotal,
           datos.descuento,
@@ -290,6 +304,7 @@ export default class Database {
         `UPDATE MESA SET ESTATUS = 0, ID_COMANDA = NULL WHERE ID_COMANDA = ?`,
         [idComanda],
       );
+      return { ok: true };
     });
   }
 }

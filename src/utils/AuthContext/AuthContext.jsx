@@ -1,8 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SplashScreen, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { createContext, useEffect, useState } from "react";
 
-SplashScreen.preventAutoHideAsync();
 export const AuthContext = createContext({
   autenticado: false,
   isReady: false,
@@ -28,30 +27,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
   useEffect(() => {
-    const getAuthSorage = async () => {
-      await new Promise((resolve) => setTimeout(() => resolve(null), 1000));
+    const loadLocalSession = async () => {
       try {
         const value = await AsyncStorage.getItem(dataAuthStorage);
         if (value !== null) {
           const parsedValue = JSON.parse(value);
-
-          setAutenticado(parsedValue.autenticado);
+          setAutenticado(parsedValue.autenticado === true);
         }
       } catch (error) {
-        console.error("Error al obtener el estado de autenticación:", error);
+        console.error("Error recuperando la sesión local:", error);
+      } finally {
+        setIsReady(true);
       }
-      setIsReady(true);
     };
-    getAuthSorage();
+    loadLocalSession();
   }, []);
-  useEffect(() => {
-    if (isReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [isReady]);
 
-  const autenticar = () => {
-    storageAuthState({ autenticado: true, data: [] });
+  const autenticar = async () => {
+    await storageAuthState({ autenticado: true, data: [] });
     setAutenticado(true);
     router.replace("/PantallaDeCarga");
   };

@@ -4,10 +4,10 @@ import VentasDatabase from "./database";
 /**
  * Mapea el ESTATUS numérico de la BD al string que espera la API.
  *  1 = Pagado   → "paid"
- *  3 = Cancelado → "cancelled"
+ *  2 = Cancelado → "cancelled"
  */
 const mapEstatus = (estatus) => {
-  if (estatus === 3) return "cancelled";
+  if (estatus === 2) return "cancelled";
   return "paid";
 };
 

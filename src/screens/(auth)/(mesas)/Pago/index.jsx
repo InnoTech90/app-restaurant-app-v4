@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
+import GeneralModal from "../../../../components/atoms/GeneralModal/GeneralModal";
 import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverButton";
 import ModalDividirCuenta from "../../../../components/Molecules/ModalDividirCuenta/ModalDividirCuenta";
 import ModalSeleccionCliente from "../../../../components/Molecules/ModalSeleccionCliente/ModalSeleccionCliente";
@@ -58,6 +59,7 @@ const Pago = () => {
   const [imprimiendo, setImprimiendo] = useState(false);
   const [cuentaImpresa, setCuentaImpresa] = useState(false);
   const [openNipEditarModal, setOpenNipEditarModal] = useState(false);
+  const [mostrarCajaCerrada, setMostrarCajaCerrada] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const router = useRouter();
 
@@ -139,10 +141,14 @@ const Pago = () => {
   const total =
     subtotal + montoImpuestos - montoDescuento + montoPropina + montoCostoEnvio;
   const cambio = Math.max(0, (parseFloat(montoRecibido) || 0) - total);
-  const canPrint = (parseFloat(montoRecibido) || 0) >= total && total > 0;
+  const tieneMetodoPago = formatosPago.some(
+    (formato) => formato.ID === metodoPagoId,
+  );
+  const canPrint =
+    tieneMetodoPago && (parseFloat(montoRecibido) || 0) >= total && total > 0;
 
   const ejecutarImpresion = async () => {
-    if (!comanda) return;
+    if (!comanda || !tieneMetodoPago) return;
     setImprimiendo(true);
     try {
       const metodoPagoNombre =
@@ -179,12 +185,12 @@ const Pago = () => {
   };
 
   const finalizarVenta = async () => {
-    if (!comanda?.ID || finalizando) return;
+    if (!comanda?.ID || finalizando || !tieneMetodoPago) return;
     setFinalizando(true);
     try {
       const metodoPagoNombre =
         formatosPago.find((f) => f.ID === metodoPagoId)?.NOMBRE ?? null;
-      await Database.finalizarComanda(comanda.ID, {
+      const resultado = await Database.finalizarComanda(comanda.ID, {
         formatoPago: metodoPagoNombre,
         subtotal,
         descuento: montoDescuento,
@@ -194,6 +200,10 @@ const Pago = () => {
         montoRecibido: parseFloat(montoRecibido) || 0,
         idMetodoPago: metodoPagoId,
       });
+      if (resultado?.code === "CAJA_CERRADA") {
+        setMostrarCajaCerrada(true);
+        return;
+      }
       await AsyncStorage.removeItem(`pago_monto_${comanda.ID}`);
       router.replace("/Inicio");
     } catch (e) {
@@ -204,7 +214,7 @@ const Pago = () => {
   };
 
   const handleImprimirCuenta = () => {
-    if (imprimiendo) return;
+    if (imprimiendo || !canPrint) return;
     if (configuraciones?.NIP_FINALIZAR_TICKET) {
       setOpenNipModal(true);
     } else {
@@ -441,7 +451,7 @@ const Pago = () => {
               style={s.btnImprimir}
               gradient={["#388E3C", "#4CAF50"]}
               onPress={finalizarVenta}
-              disabled={finalizando}
+              disabled={finalizando || !tieneMetodoPago}
             >
               <Ionicons
                 name="checkmark-circle-outline"
@@ -556,6 +566,30 @@ const Pago = () => {
           }
         }}
       />
+
+      <GeneralModal
+        visible={mostrarCajaCerrada}
+        onRequestClose={() => setMostrarCajaCerrada(false)}
+        headerColorGrandien={[gb.red600, gb.red400]}
+        iconCloseColor={gb.gray50}
+        headerColorText={gb.gray50}
+        headerTitle="Caja cerrada"
+        scrollable={false}
+      >
+        <View style={{ alignItems: "center", padding: normalize(12) }}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={normalize(42)}
+            color={gb.red600}
+          />
+          <Text style={{ textAlign: "center", marginVertical: normalize(14) }}>
+            No hay una caja abierta. Abre la caja para poder cobrar.
+          </Text>
+          <Button onPress={() => setMostrarCajaCerrada(false)}>
+            <Text style={{ color: gb.gray50 }}>Cerrar</Text>
+          </Button>
+        </View>
+      </GeneralModal>
     </SafeAreaView>
   );
 };

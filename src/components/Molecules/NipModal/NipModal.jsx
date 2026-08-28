@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -13,6 +13,9 @@ import { s } from "./styles";
 const NipModal = ({ visible, onClose, onSubmit, titulo }) => {
     const [nip, setNip] = useState("")
 
+    useEffect(() => {
+        if (!visible) setNip("");
+    }, [visible]);
 
     const verificarNip = async () => {
         const configuraciones = await dataBase.getConfiguracionesModel();
@@ -35,6 +38,7 @@ const NipModal = ({ visible, onClose, onSubmit, titulo }) => {
                 <Text style={s.titleModal}>{titulo}</Text>
                 <Text style={s.subTitleModal}>Ingresa tu NIP para continuar</Text>
                 <Input placeholder="NIP" secureTextEntry={true} style={s.input} icon='apps' iconColor={gb.purple500}
+                    value={nip}
                     onChange={(text) => setNip(text)}
                     keyboardType="numeric"
                     maxLength={4}

@@ -2,25 +2,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { withDb } from "../../../utils/db";
 
 export class Database {
-  /** Migración defensiva de columnas nuevas */
+  /**
+   * DEPRECATED: Migraciones ahora son manejadas por DatabaseInitializer.
+   * Este método se mantiene solo por compatibilidad.
+   */
   static async _migrate() {
-    return withDb("Clientes._migrate", async (db) => {
-      for (const col of [
-        "CIUDAD NVARCHAR",
-        "ESTADO NVARCHAR",
-        "WHATSAPP NVARCHAR",
-      ]) {
-        try {
-          await db.runAsync(`ALTER TABLE CLIENTES ADD COLUMN ${col}`);
-        } catch {
-          /* ya existe */
-        }
-      }
-    });
+    console.log("ℹ️  Migraciones ahora manejadas por DatabaseInitializer");
+    // Las columnas CIUDAD, ESTADO, WHATSAPP son agregadas por DatabaseInitializer en v1
+    return Promise.resolve();
   }
 
   static async getClientes() {
-    await Database._migrate();
+    // Ya no necesita migración - DatabaseInitializer se encarga
     const qrData = await AsyncStorage.getItem("qrCode");
     return withDb("Clientes.getClientes", (db) =>
       db.getAllAsync(
@@ -55,22 +48,42 @@ export class Database {
   }
 
   static async updateCliente(id, cliente) {
+    const data = {
+      nombre: cliente.nombre,
+      telefono: cliente.telefono ?? null,
+      correo: cliente.correo ?? null,
+      direccion: cliente.direccion ?? null,
+      estado: cliente.estado ?? null,
+      whatsapp: cliente.whatsapp ?? null,
+      notas: cliente.notas ?? null,
+      descripcion: cliente.descripcion ?? null,
+    };
+
     return withDb("Clientes.updateCliente", (db) =>
       db.runAsync(
-        `UPDATE CLIENTES
-                 SET NOMBRE=?, TELEFONO=?, CORREO=?, DIRECCION=?, CIUDAD=?, ESTADO=?, WHATSAPP=?,
-                     NOTAS=?, DESCRIPCION=?, SINCRONIZADO=0
-                 WHERE ID = ?`,
+        `
+        UPDATE CLIENTES
+        SET
+          NOMBRE = ?,
+          TELEFONO = ?,
+          CORREO = ?,
+          DIRECCION = ?,
+          ESTADO = ?,
+          WHATSAPP = ?,
+          NOTAS = ?,
+          DESCRIPCION = ?,
+          SINCRONIZADO = 0
+        WHERE ID = ?
+      `,
         [
-          cliente.nombre,
-          cliente.telefono ?? null,
-          cliente.correo ?? null,
-          cliente.direccion ?? null,
-          cliente.ciudad ?? null,
-          cliente.estado ?? null,
-          cliente.whatsapp ?? null,
-          cliente.notas ?? null,
-          cliente.descripcion ?? null,
+          data.nombre,
+          data.telefono,
+          data.correo,
+          data.direccion,
+          data.estado,
+          data.whatsapp,
+          data.notas,
+          data.descripcion,
           id,
         ],
       ),
@@ -82,7 +95,7 @@ export class Database {
     return withDb("Clientes.getClientesPendientes", (db) =>
       db.getAllAsync(
         `SELECT ID, UUID, NOMBRE, TELEFONO, CORREO, DIRECCION,
-                        CIUDAD, ESTADO, WHATSAPP, NOTAS
+                        CIUDAD, ESTADO, WHATSAPP, DESCRIPCION, SUCURSAL
                  FROM CLIENTES WHERE SINCRONIZADO = 0`,
       ),
     );
@@ -92,6 +105,21 @@ export class Database {
   static async getBusinessId() {
     return withDb("Clientes.getBusinessId", async (db) => {
       const row = await db.getFirstAsync(`SELECT UUID FROM NEGOCIO LIMIT 1`);
+      return row?.UUID ?? null;
+    });
+  }
+
+  /** UUID real de la sucursal asociado al código QR de la sesión actual. */
+  static async getSucursalId() {
+    const qrCode = await AsyncStorage.getItem("qrCode");
+
+    if (!qrCode) return null;
+
+    return withDb("Clientes.getSucursalId", async (db) => {
+      const row = await db.getFirstAsync(
+        `SELECT UUID FROM SUCURSAL WHERE CODIGO_QR = ? LIMIT 1`,
+        [qrCode],
+      );
       return row?.UUID ?? null;
     });
   }

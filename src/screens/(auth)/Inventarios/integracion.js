@@ -25,6 +25,22 @@ export class integracionInventarios {
    */
   static sincronizar = async () => {
     const pendientes = await InventariosDatabase.getPendientesSincronizar();
+
+    // const data = [
+    //   {
+    //     rawMaterialBranchId: "de916b56-70f5-432e-985a-bf27b518f3a1",
+    //     stockActual: 1,
+    //     stockAnterior: 0,
+    //   },
+    //   {
+    //     rawMaterialBranchId: "9eb8363b-ab44-4d67-a259-a5ec11f94542",
+    //     stockActual: 1,
+    //     stockAnterior: 0,
+    //   },
+    // ];
+
+    console.log("Pendientes de sincronización:", pendientes);
+
     if (!pendientes?.length) return { sincronizados: 0 };
 
     // Obtener UUIDs de los tipos de movimiento de app

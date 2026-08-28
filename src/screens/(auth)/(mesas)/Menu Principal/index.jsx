@@ -76,6 +76,11 @@ const MenuPrincipal = () => {
   const cargarMenu = async () => {
     try {
       const { grupos, articulos } = await Database.getMenu();
+
+      console.log(
+        `✅ Menú cargado: ${grupos.length} grupos, ${articulos.length} artículos`,
+      );
+
       setGrupos(grupos);
       setArticulos(articulos);
     } catch (e) {
@@ -172,10 +177,7 @@ const MenuPrincipal = () => {
     });
   };
   return (
-    <SafeAreaView
-      edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
-    >
+    <SafeAreaView edges={["bottom"]} style={s.pantalla}>
       {/* Header */}
       <View style={{ backgroundColor: gb.gray50 }}>
         <LinearGradient
@@ -251,7 +253,10 @@ const MenuPrincipal = () => {
       </View>
 
       {/* Lista de grupos con artículos */}
-      <ScrollView contentContainerStyle={s.listaContainer}>
+      <ScrollView
+        style={s.listaScroll}
+        contentContainerStyle={s.listaContainer}
+      >
         {datosFiltrados.length === 0 ? (
           <Text style={s.textoVacio}>No se encontraron artículos</Text>
         ) : (

@@ -1,4 +1,9 @@
 import { withDb } from "../../../../utils/db";
+import {
+  deviceApi,
+  getDeviceAuthHeaders,
+} from "../../../../utils/http/deviceApi";
+import { Database as PantallaDeCargaDatabase } from "../../PantallaDeCarga/database";
 
 export class Database {
   // estatus
@@ -33,5 +38,28 @@ export class Database {
       );
       return comanda;
     });
+  }
+
+  /**
+   * Obtiene mesas desde la API y las guarda en la BD.
+   * Luego retorna todas las mesas actualizadas desde la BD local.
+   */
+  static async actualizarMesasDesdeAPI() {
+    try {
+      console.log("🔄 Obteniendo mesas desde API...");
+      const headers = await getDeviceAuthHeaders();
+      const response = await deviceApi.get("/devices/table", { headers });
+
+      // Guardar las nuevas mesas en la BD
+      await PantallaDeCargaDatabase.mesasModel(response.data);
+      console.log("✅ Mesas actualizadas desde API");
+
+      // Retornar todas las mesas desde la BD local
+      return await this.getMesas();
+    } catch (error) {
+      console.error("⚠️ Error actualizando mesas desde API:", error);
+      // Si hay error en la API, retornar mesas del cache local
+      return await this.getMesas();
+    }
   }
 }

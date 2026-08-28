@@ -131,11 +131,8 @@ const Caja = () => {
       </View>
 
       {/* Historial */}
-      {historial.length > 0 && (
-        <ScrollView
-          style={{ flex: 1, backgroundColor: gb.gray50 }}
-          contentContainerStyle={s.scroll}
-        >
+      <ScrollView style={s.historialScroll} contentContainerStyle={s.scroll}>
+        {historial.length > 0 ? (
           <View style={s.historialContainer}>
             <Text style={s.historialTitle}>Historial</Text>
             {historial.map((item) => (
@@ -169,8 +166,19 @@ const Caja = () => {
               </View>
             ))}
           </View>
-        </ScrollView>
-      )}
+        ) : (
+          <View style={s.historialVacio}>
+            <Ionicons
+              name="receipt-outline"
+              size={normalize(42)}
+              color={gb.gray300}
+            />
+            <Text style={s.historialVacioTexto}>
+              Aún no hay movimientos de caja.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
 
       {/* Modal apertura */}
       <GeneralModal

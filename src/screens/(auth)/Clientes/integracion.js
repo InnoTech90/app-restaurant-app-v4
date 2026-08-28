@@ -29,7 +29,17 @@ export class integracionClientes {
     const pendientes = await Database.getClientesPendientes();
     if (!pendientes?.length) return { sincronizados: 0 };
 
-    const businessId = await Database.getBusinessId();
+    const [businessId, sucursalId] = await Promise.all([
+      Database.getBusinessId(),
+      Database.getSucursalId(),
+    ]);
+
+    if (!sucursalId) {
+      throw new Error(
+        "No se encontró la sucursal actual. Actualiza los datos de la aplicación e inténtalo de nuevo.",
+      );
+    }
+
     const headers = await getDeviceAuthHeaders();
 
     const records = pendientes.map((c) => {
@@ -38,9 +48,10 @@ export class integracionClientes {
         address: c.DIRECCION ?? "",
         city: c.CIUDAD ?? "",
         state: c.ESTADO ?? "",
-        whatsapp: c.WHATSAPP ?? "",
+        whatsapp: c.TELEFONO ?? "",
         email: c.CORREO ?? "",
-        note: c.NOTAS ?? "",
+        description: c.DESCRIPCION ?? "",
+        // branchesIds: [sucursalId],
       };
       // dinerId solo para clientes que ya existen en el servidor
       if (c.UUID) record.dinerId = c.UUID;
@@ -51,22 +62,31 @@ export class integracionClientes {
       records,
     };
 
-    await deviceApi.post(
-      "/devices/synchronize-diners",
-      JSON.stringify(params, null, 2),
-      { headers },
-    );
+    console.log("Sincronizando clientes con payload:", params);
 
-    // Marcar editados como sincronizados
-    const uuidsExistentes = pendientes.filter((c) => c.UUID).map((c) => c.UUID);
-    await Database.marcarSincronizadosPorUUID(uuidsExistentes);
+    try {
+      await deviceApi.post(
+        "/devices/synchronize-diners",
+        JSON.stringify(params, null, 2),
+        { headers },
+      );
 
-    // Eliminar los creados localmente (sin UUID); el servidor los devolverá con UUID
-    await Database.eliminarClientesSinUUID();
+      // Marcar editados como sincronizados
+      const uuidsExistentes = pendientes
+        .filter((c) => c.UUID)
+        .map((c) => c.UUID);
+      await Database.marcarSincronizadosPorUUID(uuidsExistentes);
 
-    // Traer datos frescos del servidor
-    await integracionClientes.actualizar();
+      // Eliminar los creados localmente (sin UUID); el servidor los devolverá con UUID
+      await Database.eliminarClientesSinUUID();
 
-    return { sincronizados: pendientes.length };
+      // Traer datos frescos del servidor
+      await integracionClientes.actualizar();
+
+      return { sincronizados: pendientes.length };
+    } catch (error) {
+      console.error("Error sincronizando clientes:", error);
+      throw error;
+    }
   };
 }

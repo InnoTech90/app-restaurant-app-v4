@@ -1,50 +1,89 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Mesa from "../../../../components/Molecules/Mesa/Mesa";
+import { initializeSchema } from "../../../../utils/db";
 import { gb } from "../../../globalStyles";
 import { Database } from "./database";
 import { s } from "./styles";
 
 const Inicio = () => {
-    const router = useRouter();
-    const [mesas, setMesas] = useState([]);
+  const router = useRouter();
+  const [mesas, setMesas] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-    useEffect(() => {
-        getMesas();
-    }, []);
+  useEffect(() => {
+    getMesas();
+  }, []);
 
-    const getMesas = async () => {
-        const mesasdb = await Database.getMesas();
-        setMesas(mesasdb);
-    };
+  const getMesas = async () => {
+    try {
+      await initializeSchema();
+      const mesasdb = await Database.getMesas();
+      setMesas(mesasdb);
+    } catch (error) {
+      console.error("❌ Error obteniendo mesas:", error);
+    }
+  };
 
-    const seleccionarMesa = async (mesa) => {
-        await AsyncStorage.setItem("MesaSeleccionada", mesa.UUID);
-        router.push(`/Menu Principal?id_mesa=${mesa.UUID}`);
-    };
+  /**
+   * Manejador del pull-to-refresh
+   * Obtiene mesas actualizadas desde la API y las guarda en la BD
+   */
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      console.log("🔄 Actualizando mesas...");
+      const mesasActualizadas = await Database.actualizarMesasDesdeAPI();
+      setMesas(mesasActualizadas);
+      console.log(`✅ Mesas actualizadas: ${mesasActualizadas.length} mesas`);
+    } catch (error) {
+      console.error("❌ Error durante refresh:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
-    return (
-        <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: "black" }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, backgroundColor: gb.gray50 }}>
-                <View style={s.mesasContainer}>
-                    {mesas.map((mesa, index) => (
-                        <Mesa
-                            key={mesa.ID}
-                            id={mesa.ID}
-                            nombre={mesa.NOMBRE}
-                            descripcion={mesa.DESCRIPCION}
-                            status={mesa.TIENE_COMANDA_ACTIVA === 1}
-                            onPress={() => seleccionarMesa(mesa)}
-                            index={index + 1}
-                            mesas={mesas}
-                        />
-                    ))}
-                </View>
-            </ScrollView>
-        </SafeAreaView>
-    );
+  const seleccionarMesa = async (mesa) => {
+    await AsyncStorage.setItem("MesaSeleccionada", mesa.UUID);
+    router.push(`/Menu Principal?id_mesa=${mesa.UUID}`);
+  };
+
+  return (
+    <SafeAreaView
+      edges={["bottom"]}
+      style={{ flex: 1, backgroundColor: "black" }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, backgroundColor: gb.gray50 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[gb.blue550]}
+            progressBackgroundColor={gb.gray50}
+            tintColor={gb.blue550}
+          />
+        }
+      >
+        <View style={s.mesasContainer}>
+          {mesas.map((mesa, index) => (
+            <Mesa
+              key={mesa.ID}
+              id={mesa.ID}
+              nombre={mesa.NOMBRE}
+              descripcion={mesa.DESCRIPCION}
+              status={mesa.TIENE_COMANDA_ACTIVA === 1}
+              onPress={() => seleccionarMesa(mesa)}
+              index={index + 1}
+              mesas={mesas}
+            />
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 };
 export default Inicio;

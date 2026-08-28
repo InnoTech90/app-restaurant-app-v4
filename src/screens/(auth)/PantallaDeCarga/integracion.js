@@ -1,7 +1,24 @@
+import { initializeSchema } from "../../../utils/db";
 import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
 import { Database } from "./database";
 
 export class integracionPantallaDeCarga {
+  /**
+   * Inicializa el esquema de base de datos antes de cargar datos.
+   * Debe llamarse antes que cualquier otro método.
+   */
+  static initializeDatabase = async () => {
+    try {
+      console.log("📱 Inicializando esquema de base de datos...");
+      const result = await initializeSchema();
+      console.log("✅ Esquema de base de datos inicializado", result);
+      return result;
+    } catch (error) {
+      console.error("❌ Error inicializando esquema:", error);
+      throw error;
+    }
+  };
+
   static general = async () => {
     try {
       const headers = await getDeviceAuthHeaders();
@@ -70,12 +87,9 @@ export class integracionPantallaDeCarga {
   static gastos = async () => {
     try {
       const headers = await getDeviceAuthHeaders();
-      const response = await deviceApi.get("/devices/expensess", { headers });
+      await deviceApi.get("/devices/expensess", { headers });
 
       return 0;
-
-      const gastos = await Database.gastosModel(response.data);
-      return gastos;
     } catch (error) {
       if (error.response?.status === 404) {
         return [];

@@ -37,16 +37,37 @@ export default class InventariosDatabase {
   /** Actualiza el stock guardando el anterior para determinar incremento/decremento */
   static async actualizarStock(uuidSucursal, nuevoStock) {
     return withDb("Inventarios.actualizarStock", async (db) => {
+      if (!uuidSucursal) {
+        throw new Error("No se encontró el identificador de la materia prima.");
+      }
+
+      if (!Number.isFinite(nuevoStock) || nuevoStock < 0) {
+        throw new Error("El stock debe ser un número mayor o igual a cero.");
+      }
+
       const row = await db.getFirstAsync(
         `SELECT STOCK_ACTUAL FROM MATERIA_PRIMA_SUCURSAL WHERE UUID = ?`,
         [uuidSucursal],
       );
-      const stockAnterior = row?.STOCK_ACTUAL ?? nuevoStock;
+
+      if (!row) {
+        throw new Error(
+          "La materia prima no existe en la base de datos local.",
+        );
+      }
+
       await db.runAsync(
         `UPDATE MATERIA_PRIMA_SUCURSAL
                  SET STOCK_ACTUAL = ?, STOCK_ANTERIOR = ?, SINCRONIZADO = 0
                  WHERE UUID = ?`,
-        [nuevoStock, stockAnterior, uuidSucursal],
+        [nuevoStock, row.STOCK_ACTUAL, uuidSucursal],
+      );
+
+      return db.getFirstAsync(
+        `SELECT UUID, STOCK_ACTUAL, STOCK_ANTERIOR, SINCRONIZADO
+         FROM MATERIA_PRIMA_SUCURSAL
+         WHERE UUID = ?`,
+        [uuidSucursal],
       );
     });
   }
@@ -65,19 +86,24 @@ export default class InventariosDatabase {
     });
   }
 
+  /** Cantidad de movimientos locales que todavía no se han enviado a la API. */
+  static async getCantidadPendientes() {
+    return withDb("Inventarios.getCantidadPendientes", async (db) => {
+      const row = await db.getFirstAsync(
+        `SELECT COUNT(*) AS cantidad
+         FROM MATERIA_PRIMA_SUCURSAL
+         WHERE SINCRONIZADO = 0`,
+      );
+
+      return Number(row?.cantidad ?? 0);
+    });
+  }
+
   /** UUID del tipo de movimiento por code (ej. "IN-APP" o "OUT-APP") */
   static async getTipoMovimientoByCode(code) {
     return withDb("Inventarios.getTipoMovimientoByCode", async (db) => {
-      // Crea la tabla si aún no existe (dispositivos que no han pasado por PantallaDeCarga)
-      await db.runAsync(`
-                CREATE TABLE IF NOT EXISTS TIPO_MOVIMIENTO_INVENTARIO (
-                    ID     INTEGER PRIMARY KEY AUTOINCREMENT,
-                    UUID   NVARCHAR UNIQUE,
-                    NOMBRE NVARCHAR,
-                    CODE   NVARCHAR UNIQUE,
-                    FACTOR INTEGER
-                )
-            `);
+      // La tabla TIPO_MOVIMIENTO_INVENTARIO es creada por DatabaseInitializer
+      // No crear tabla aquí para evitar duplicación
       return db.getFirstAsync(
         `SELECT UUID FROM TIPO_MOVIMIENTO_INVENTARIO WHERE CODE = ?`,
         [code],
