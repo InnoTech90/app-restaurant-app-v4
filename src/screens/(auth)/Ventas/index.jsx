@@ -14,7 +14,7 @@ import SincronizadoFooter from "../../../components/Molecules/SincronizadoFooter
 import {
   autorizarVentas,
   tieneAccesoVentas,
-} from "../../../utils/ventasAccess";
+} from "../../../utils/sectionAccess";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import VentasDatabase from "./database";

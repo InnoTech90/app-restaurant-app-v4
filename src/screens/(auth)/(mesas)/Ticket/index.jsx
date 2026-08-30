@@ -7,7 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import InputCantidad from "../../../../components/atoms/InputCantidad/InputCantidad";
 import ModalSinImpresora from "../../../../components/atoms/ModalSinImpresora/ModalSinImpresora";
+import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverButton";
+import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 import Database from "./database";
@@ -26,11 +28,25 @@ const Ticket = () => {
   const [imprimiendo, setImprimiendo] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [modalSinImpresora, setModalSinImpresora] = useState(false);
+  const [config, setConfig] = useState(null);
 
   const comanda = comandaData?.comanda;
   const bloqueada = comanda?.ESTATUS === 4;
 
+  const {
+    puedeEditar,
+    requiereNipEdicion,
+    modalNipEdicion,
+    cerrarNipEdicion,
+    solicitarEdicion,
+    confirmarNipEdicion,
+    desbloquearEdicion,
+  } = useEdicionTicket(config);
+
+  const edicionBloqueada = bloqueada || !puedeEditar;
+
   useEffect(() => {
+    Database.getConfiguraciones().then(setConfig).catch(console.error);
     if (idMesa) Database.getMesa(idMesa).then(setMesa).catch(console.error);
     if (comanda?.ID_CLIENTE)
       Database.getCliente(comanda.ID_CLIENTE)
@@ -79,97 +95,113 @@ const Ticket = () => {
   const { fecha, hora } = formatearFecha(comanda?.FECHA);
 
   const handleCancelar = () => {
-    Alert.alert(
-      "Cancelar comanda",
-      "¿Estás seguro de que deseas cancelar esta comanda? Esta acción no se puede deshacer.",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Sí, cancelar",
-          style: "destructive",
-          onPress: async () => {
-            if (cancelando || !comanda) return;
-            setCancelando(true);
-            try {
-              await Database.cancelarComanda(comanda.ID);
-              router.replace("/Inicio");
-            } catch (e) {
-              console.error("Error cancelando comanda:", e);
-              setCancelando(false);
-            }
+    solicitarEdicion(() => {
+      Alert.alert(
+        "Cancelar comanda",
+        "¿Estás seguro de que deseas cancelar esta comanda? Esta acción no se puede deshacer.",
+        [
+          { text: "No", style: "cancel" },
+          {
+            text: "Sí, cancelar",
+            style: "destructive",
+            onPress: async () => {
+              if (cancelando || !comanda) return;
+              setCancelando(true);
+              try {
+                await Database.cancelarComanda(comanda.ID);
+                router.replace("/Inicio");
+              } catch (e) {
+                console.error("Error cancelando comanda:", e);
+                setCancelando(false);
+              }
+            },
           },
-        },
-      ],
-    );
+        ],
+      );
+    });
   };
 
-  const handleCambiarCantidad = async (renglon, nuevaCantidad) => {
-    try {
-      const tipo =
-        nuevaCantidad > renglon.CANTIDAD
-          ? "INCREMENTAR_ARTICULO"
-          : "DISMINUIR_ARTICULO";
-      await Database.actualizarCantidadArticulo(
-        renglon.ID,
-        nuevaCantidad,
-        renglon.PRECIO_VENTA,
-      );
-      await Database.registrarMovimiento(
-        renglon.ID_COMANDA,
-        renglon.ID_ARTICULO,
-        tipo,
-      );
-      setArticulos((prev) =>
-        prev.map((r) =>
-          r.ID === renglon.ID
-            ? {
-                ...r,
-                CANTIDAD: nuevaCantidad,
-                SUBTOTAL: nuevaCantidad * renglon.PRECIO_VENTA,
-                TOTAL: nuevaCantidad * renglon.PRECIO_VENTA,
-              }
-            : r,
-        ),
-      );
-    } catch (e) {
-      console.error("Error actualizando cantidad:", e);
-    }
+  const handleCambiarCantidad = (renglon, nuevaCantidad) => {
+    solicitarEdicion(async () => {
+      try {
+        const tipo =
+          nuevaCantidad > renglon.CANTIDAD
+            ? "INCREMENTAR_ARTICULO"
+            : "DISMINUIR_ARTICULO";
+        await Database.actualizarCantidadArticulo(
+          renglon.ID,
+          nuevaCantidad,
+          renglon.PRECIO_VENTA,
+        );
+        await Database.registrarMovimiento(
+          renglon.ID_COMANDA,
+          renglon.ID_ARTICULO,
+          tipo,
+        );
+        setArticulos((prev) =>
+          prev.map((r) =>
+            r.ID === renglon.ID
+              ? {
+                  ...r,
+                  CANTIDAD: nuevaCantidad,
+                  SUBTOTAL: nuevaCantidad * renglon.PRECIO_VENTA,
+                  TOTAL: nuevaCantidad * renglon.PRECIO_VENTA,
+                }
+              : r,
+          ),
+        );
+      } catch (e) {
+        console.error("Error actualizando cantidad:", e);
+      }
+    });
   };
 
   const handleEliminarArticulo = (renglon) => {
-    Alert.alert(
-      "Eliminar artículo",
-      `¿Eliminar "${renglon.articulo?.NOMBRE ?? "este artículo"}" de la comanda?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await Database.registrarMovimiento(
-                renglon.ID_COMANDA,
-                renglon.ID_ARTICULO,
-                "ELIMINACION_ARTICULO",
-              );
-              await Database.eliminarArticulo(renglon.ID);
-              setArticulos((prev) => prev.filter((r) => r.ID !== renglon.ID));
-            } catch (e) {
-              console.error("Error eliminando artículo:", e);
-            }
+    solicitarEdicion(() => {
+      Alert.alert(
+        "Eliminar artículo",
+        `¿Eliminar "${renglon.articulo?.NOMBRE ?? "este artículo"}" de la comanda?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await Database.registrarMovimiento(
+                  renglon.ID_COMANDA,
+                  renglon.ID_ARTICULO,
+                  "ELIMINACION_ARTICULO",
+                );
+                await Database.eliminarArticulo(renglon.ID);
+                setArticulos((prev) => prev.filter((r) => r.ID !== renglon.ID));
+              } catch (e) {
+                console.error("Error eliminando artículo:", e);
+              }
+            },
           },
-        },
-      ],
-    );
+        ],
+      );
+    });
   };
 
-  const handleNotaBlur = async () => {
+  const handleNotaBlur = () => {
     if (!comanda) return;
-    try {
-      await Database.actualizarNota(comanda.ID, nota);
-    } catch (e) {
-      console.error("Error guardando nota:", e);
+    solicitarEdicion(async () => {
+      try {
+        await Database.actualizarNota(comanda.ID, nota);
+      } catch (e) {
+        console.error("Error guardando nota:", e);
+      }
+    });
+  };
+
+  const handleNotaChange = (texto) => {
+    if (edicionBloqueada) {
+      if (requiereNipEdicion && !bloqueada) desbloquearEdicion();
+      return;
     }
+    setNota(texto);
   };
 
   const handleImprimir = async () => {
@@ -215,7 +247,7 @@ const Ticket = () => {
         onChange={(val) => handleCambiarCantidad(renglon, val)}
         min={1}
         small
-        disabled={bloqueada}
+        disabled={edicionBloqueada}
         style={s.inputCantidad}
       />
       {/* Total */}
@@ -225,12 +257,12 @@ const Ticket = () => {
         style={s.btnEliminar}
         styleContainer={s.btnEliminarContainer}
         onPress={() => handleEliminarArticulo(renglon)}
-        disabled={bloqueada}
+        disabled={edicionBloqueada}
       >
         <Ionicons
           name="trash-outline"
           size={normalize(14)}
-          color={bloqueada ? gb.gray400 : gb.red600}
+          color={edicionBloqueada ? gb.gray400 : gb.red600}
         />
       </Button>
     </View>
@@ -318,6 +350,43 @@ const Ticket = () => {
         </View>
       )}
 
+      {!bloqueada && requiereNipEdicion && !puedeEditar && (
+        <View
+          style={{
+            backgroundColor: gb.red100 ?? "#FDECEC",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: normalize(14),
+            paddingVertical: normalize(8),
+            gap: normalize(8),
+          }}
+        >
+          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: normalize(8) }}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={normalize(16)}
+              color={gb.red600}
+            />
+            <Text
+              style={{
+                flex: 1,
+                fontSize: normalize(12),
+                color: gb.red600,
+                fontWeight: "600",
+              }}
+            >
+              Edición protegida — ingresa tu NIP para modificar el ticket
+            </Text>
+          </View>
+          <Button onPress={desbloquearEdicion} style={{ paddingHorizontal: normalize(10), paddingVertical: normalize(6) }}>
+            <Text style={{ color: gb.gray50, fontSize: normalize(11), fontWeight: "700" }}>
+              Desbloquear
+            </Text>
+          </Button>
+        </View>
+      )}
+
       {/* ── LISTA ARTÍCULOS (único scroll) ── */}
       <FlatList
         data={articulos}
@@ -348,10 +417,10 @@ const Ticket = () => {
           placeholder="Nota de la mesa..."
           placeholderTextColor={gb.gray400}
           value={nota}
-          onChangeText={setNota}
+          onChangeText={handleNotaChange}
           onBlur={handleNotaBlur}
           textAlignVertical="top"
-          editable={!bloqueada}
+          editable={!edicionBloqueada}
         />
 
         {/* Totales */}
@@ -382,6 +451,13 @@ const Ticket = () => {
           </Text>
         </Button>
       </View>
+
+      <NipModal
+        visible={modalNipEdicion}
+        titulo="Editar ticket"
+        onSubmit={confirmarNipEdicion}
+        onClose={cerrarNipEdicion}
+      />
     </SafeAreaView>
   );
 };

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useContext, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Alert, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
@@ -11,6 +11,10 @@ import Select from "../../../components/atoms/Select/Select";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import { AuthContext } from "../../../utils/AuthContext/AuthContext";
 import { resetLocalData } from "../../../utils/db";
+import {
+  autorizarSeccion,
+  tieneAccesoSeccion,
+} from "../../../utils/sectionAccess";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
@@ -55,6 +59,7 @@ export default function Configuraciones() {
     titulo: "",
     accion: null,
   });
+  const [finanzasDesbloqueada, setFinanzasDesbloqueada] = useState(false);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useFocusEffect(
@@ -92,11 +97,36 @@ export default function Configuraciones() {
     if (accion) await accion();
   };
 
+  useEffect(() => {
+    if (!config) return;
+
+    if (!config.MODO_RESTRICTIVO || tieneAccesoSeccion("finanzas")) {
+      setFinanzasDesbloqueada(true);
+    } else {
+      setFinanzasDesbloqueada(false);
+    }
+  }, [config?.MODO_RESTRICTIVO, config]);
+
+  const desbloquearFinanzas = () => {
+    pedirNip("Finanzas", () => {
+      autorizarSeccion("finanzas");
+      setFinanzasDesbloqueada(true);
+    });
+  };
+
   const CAMPOS_PROTEGIDOS = new Set([
     "PROTEGER_VENTAS",
     "NIP_FINALIZAR_TICKET",
     "MODO_RESTRICTIVO",
+    "HABILITAR_EDICION_TICKET",
   ]);
+
+  const TITULOS_NIP = {
+    PROTEGER_VENTAS: "Proteger acceso a ventas",
+    NIP_FINALIZAR_TICKET: "NIP para finalizar ticket",
+    MODO_RESTRICTIVO: "Modo restrictivo",
+    HABILITAR_EDICION_TICKET: "Habilitar edición de ticket",
+  };
 
   // ── Guardar inmediato (Switch, Select) ────────────────────────────────────
   const guardar = useCallback((campo, valor) => {
@@ -110,7 +140,7 @@ export default function Configuraciones() {
     };
 
     if (CAMPOS_PROTEGIDOS.has(campo)) {
-      pedirNip(campo, actualizar);
+      pedirNip(TITULOS_NIP[campo] ?? campo, actualizar);
       return;
     }
 
@@ -308,68 +338,90 @@ export default function Configuraciones() {
             color={gb.green600}
           />
 
-          <ConfigItem
-            icon="car-outline"
-            iconColor={gb.green600}
-            titulo="Costo de envío"
-            subtitulo="Se aplica al total de la comanda"
-          >
-            <InputToggle
-              value={String(config.COSTO_ENVIO ?? "0")}
-              esPct={!!config.COSTO_ENVIO_ES_PCT}
-              onChangeValue={(v) => guardarDebounce("COSTO_ENVIO", v)}
-              onToggle={() =>
-                guardar("COSTO_ENVIO_ES_PCT", config.COSTO_ENVIO_ES_PCT ? 0 : 1)
-              }
-            />
-          </ConfigItem>
+          {config.MODO_RESTRICTIVO && !finanzasDesbloqueada ? (
+            <ConfigItem
+              icon="lock-closed-outline"
+              iconColor={gb.green600}
+              titulo="Sección protegida"
+              subtitulo="Ingresa tu NIP para ver y editar la configuración de finanzas"
+              border={false}
+            >
+              <Button onPress={desbloquearFinanzas} style={s.syncButton}>
+                <Text style={s.syncButtonText}>Desbloquear</Text>
+              </Button>
+            </ConfigItem>
+          ) : (
+            <>
+              <ConfigItem
+                icon="car-outline"
+                iconColor={gb.green600}
+                titulo="Costo de envío"
+                subtitulo="Se aplica al total de la comanda"
+              >
+                <InputToggle
+                  value={String(config.COSTO_ENVIO ?? "0")}
+                  esPct={!!config.COSTO_ENVIO_ES_PCT}
+                  onChangeValue={(v) => guardarDebounce("COSTO_ENVIO", v)}
+                  onToggle={() =>
+                    guardar(
+                      "COSTO_ENVIO_ES_PCT",
+                      config.COSTO_ENVIO_ES_PCT ? 0 : 1,
+                    )
+                  }
+                />
+              </ConfigItem>
 
-          <ConfigItem
-            icon="pie-chart-outline"
-            iconColor={gb.green600}
-            titulo="Impuestos"
-            subtitulo="Porcentaje o monto fijo por comanda"
-          >
-            <InputToggle
-              value={String(config.IMPUESTOS ?? "0")}
-              esPct={!!config.IMPUESTOS_ES_PCT}
-              onChangeValue={(v) => guardarDebounce("IMPUESTOS", v)}
-              onToggle={() =>
-                guardar("IMPUESTOS_ES_PCT", config.IMPUESTOS_ES_PCT ? 0 : 1)
-              }
-            />
-          </ConfigItem>
+              <ConfigItem
+                icon="pie-chart-outline"
+                iconColor={gb.green600}
+                titulo="Impuestos"
+                subtitulo="Porcentaje o monto fijo por comanda"
+              >
+                <InputToggle
+                  value={String(config.IMPUESTOS ?? "0")}
+                  esPct={!!config.IMPUESTOS_ES_PCT}
+                  onChangeValue={(v) => guardarDebounce("IMPUESTOS", v)}
+                  onToggle={() =>
+                    guardar("IMPUESTOS_ES_PCT", config.IMPUESTOS_ES_PCT ? 0 : 1)
+                  }
+                />
+              </ConfigItem>
 
-          <ConfigItem
-            icon="pricetag-outline"
-            iconColor={gb.green600}
-            titulo="Descuentos"
-            subtitulo="Descuento predeterminado al crear una comanda"
-          >
-            <InputToggle
-              value={String(config.DESCUENTOS ?? "0")}
-              esPct={!!config.DESCUENTOS_ES_PCT}
-              onChangeValue={(v) => guardarDebounce("DESCUENTOS", v)}
-              onToggle={() =>
-                guardar("DESCUENTOS_ES_PCT", config.DESCUENTOS_ES_PCT ? 0 : 1)
-              }
-            />
-          </ConfigItem>
+              <ConfigItem
+                icon="pricetag-outline"
+                iconColor={gb.green600}
+                titulo="Descuentos"
+                subtitulo="Descuento predeterminado al crear una comanda"
+              >
+                <InputToggle
+                  value={String(config.DESCUENTOS ?? "0")}
+                  esPct={!!config.DESCUENTOS_ES_PCT}
+                  onChangeValue={(v) => guardarDebounce("DESCUENTOS", v)}
+                  onToggle={() =>
+                    guardar(
+                      "DESCUENTOS_ES_PCT",
+                      config.DESCUENTOS_ES_PCT ? 0 : 1,
+                    )
+                  }
+                />
+              </ConfigItem>
 
-          <ConfigItem
-            icon="card-outline"
-            iconColor={gb.green600}
-            titulo="Forma de pago predeterminada"
-            subtitulo="Método de cobro sugerido al cerrar comanda"
-            border={false}
-          >
-            <Select
-              options={formatosPago}
-              value={config.ID_FORMATO_PAGO}
-              onChange={(v) => guardar("ID_FORMATO_PAGO", v)}
-              style={s.selectInline}
-            />
-          </ConfigItem>
+              <ConfigItem
+                icon="card-outline"
+                iconColor={gb.green600}
+                titulo="Forma de pago predeterminada"
+                subtitulo="Método de cobro sugerido al cerrar comanda"
+                border={false}
+              >
+                <Select
+                  options={formatosPago}
+                  value={config.ID_FORMATO_PAGO}
+                  onChange={(v) => guardar("ID_FORMATO_PAGO", v)}
+                  style={s.selectInline}
+                />
+              </ConfigItem>
+            </>
+          )}
         </View>
 
         {/* ── Seguridad ─────────────────────────────────────────────── */}
@@ -403,6 +455,22 @@ export default function Configuraciones() {
             <Switch
               value={!!config.NIP_FINALIZAR_TICKET}
               onValueChange={(v) => guardar("NIP_FINALIZAR_TICKET", v ? 1 : 0)}
+              trackColor={{ false: gb.gray200, true: gb.red600 }}
+              thumbColor={gb.gray50}
+            />
+          </ConfigItem>
+
+          <ConfigItem
+            icon="create-outline"
+            iconColor={gb.red600}
+            titulo="Habilitar edición de ticket"
+            subtitulo="Permite modificar la comanda sin solicitar NIP"
+          >
+            <Switch
+              value={!!config.HABILITAR_EDICION_TICKET}
+              onValueChange={(v) =>
+                guardar("HABILITAR_EDICION_TICKET", v ? 1 : 0)
+              }
               trackColor={{ false: gb.gray200, true: gb.red600 }}
               thumbColor={gb.gray50}
             />

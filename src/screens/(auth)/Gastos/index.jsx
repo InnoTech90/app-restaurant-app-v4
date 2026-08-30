@@ -18,7 +18,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
+import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./database";
@@ -248,6 +250,18 @@ const ModalRegistro = ({
 /* ─── Pantalla principal ───────────────────────────────────────── */
 const Gastos = () => {
   const router = useRouter();
+  const {
+    accesoPermitido,
+    modalAcceso,
+    onAccesoCorrecto,
+    onAccesoCancelado,
+    tituloModal,
+  } = useProteccionConfig({
+    seccion: "gastos",
+    configFlag: "MODO_RESTRICTIVO",
+    tituloModal: "Gastos",
+  });
+
   const [categorias, setCategorias] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
 
@@ -271,8 +285,9 @@ const Gastos = () => {
 
   useFocusEffect(
     useCallback(() => {
+      if (!accesoPermitido) return;
       cargar();
-    }, []),
+    }, [accesoPermitido]),
   );
 
   const onRefresh = async () => {
@@ -433,6 +448,13 @@ const Gastos = () => {
         onCancel={() => setModalVisible(false)}
         onGuardar={guardarRegistro}
         guardando={guardando}
+      />
+
+      <NipModal
+        visible={modalAcceso}
+        titulo={tituloModal}
+        onSubmit={onAccesoCorrecto}
+        onClose={onAccesoCancelado}
       />
     </SafeAreaView>
   );

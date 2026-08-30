@@ -276,4 +276,28 @@ export default class VentasDatabase {
       );
     });
   }
+
+  /** Cuenta ventas que impiden cerrar sesión. */
+  static async getBloqueosCierreSesion() {
+    return withDb("Ventas.getBloqueosCierreSesion", async (db) => {
+      const pendientes = await db.getFirstAsync(
+        `SELECT COUNT(*) AS total
+         FROM COMANDA
+         WHERE ACTIVO = 0 AND ESTATUS = 3`,
+      );
+
+      const sinSincronizar = await db.getFirstAsync(
+        `SELECT COUNT(*) AS total
+         FROM COMANDA
+         WHERE ACTIVO = 0
+           AND (ESTATUS = 1 OR ESTATUS = 2)
+           AND (SINCRONIZADO IS NULL OR SINCRONIZADO = 0)`,
+      );
+
+      return {
+        pendientes: pendientes?.total ?? 0,
+        sinSincronizar: sinSincronizar?.total ?? 0,
+      };
+    });
+  }
 }

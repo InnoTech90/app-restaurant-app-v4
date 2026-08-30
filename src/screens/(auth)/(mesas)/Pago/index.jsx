@@ -24,6 +24,7 @@ import PagoInfoComanda from "../../../../components/Molecules/PagoInfoComanda/Pa
 import PagoMetodosPago from "../../../../components/Molecules/PagoMetodosPago/PagoMetodosPago";
 import PagoMontoRecibido from "../../../../components/Molecules/PagoMontoRecibido/PagoMontoRecibido";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
+import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { gb } from "../../../globalStyles";
 import Database from "./database";
 import { s } from "./styles";
@@ -62,6 +63,26 @@ const Pago = () => {
   const [mostrarCajaCerrada, setMostrarCajaCerrada] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const router = useRouter();
+
+  const {
+    puedeEditar,
+    requiereNipEdicion,
+    modalNipEdicion,
+    cerrarNipEdicion,
+    solicitarEdicion,
+    confirmarNipEdicion,
+    desbloquearEdicion,
+  } = useEdicionTicket(configuraciones);
+
+  const edicionBloqueada = cuentaImpresa || !puedeEditar;
+
+  const desbloquearComanda = async () => {
+    if (!comanda?.ID) return;
+    await Database.setComandaAbierta(comanda.ID);
+    await AsyncStorage.removeItem(`pago_monto_${comanda.ID}`);
+    setCuentaImpresa(false);
+    setComanda((prev) => (prev ? { ...prev, ESTATUS: 0 } : prev));
+  };
 
   const obtenerCamposDefault = async () => {
     const mesaDb = await Database.getMesa(idMesa);
@@ -222,54 +243,62 @@ const Pago = () => {
     }
   };
 
-  const cambiarCantidad = async (renglon, nuevaCantidad) => {
-    if (nuevaCantidad < 1) return;
-    try {
-      const tipo =
-        nuevaCantidad > renglon.CANTIDAD
-          ? "INCREMENTAR_ARTICULO"
-          : "DISMINUIR_ARTICULO";
-      await Database.actualizarCantidadArticulo(
-        renglon.ID,
-        nuevaCantidad,
-        renglon.PRECIO_VENTA,
-      );
-      await Database.registrarMovimiento(
-        renglon.ID_COMANDA,
-        renglon.ID_ARTICULO,
-        tipo,
-      );
-      setArticulosComanda((prev) =>
-        prev.map((a) =>
-          a.ID === renglon.ID
-            ? {
-                ...a,
-                CANTIDAD: nuevaCantidad,
-                TOTAL: nuevaCantidad * (renglon.PRECIO_VENTA ?? 0),
-              }
-            : a,
-        ),
-      );
-    } catch (error) {
-      console.error("Error actualizando cantidad:", error);
-    }
+  const cambiarCantidad = (renglon, nuevaCantidad) => {
+    solicitarEdicion(async () => {
+      if (nuevaCantidad < 1) return;
+      try {
+        const tipo =
+          nuevaCantidad > renglon.CANTIDAD
+            ? "INCREMENTAR_ARTICULO"
+            : "DISMINUIR_ARTICULO";
+        await Database.actualizarCantidadArticulo(
+          renglon.ID,
+          nuevaCantidad,
+          renglon.PRECIO_VENTA,
+        );
+        await Database.registrarMovimiento(
+          renglon.ID_COMANDA,
+          renglon.ID_ARTICULO,
+          tipo,
+        );
+        setArticulosComanda((prev) =>
+          prev.map((a) =>
+            a.ID === renglon.ID
+              ? {
+                  ...a,
+                  CANTIDAD: nuevaCantidad,
+                  TOTAL: nuevaCantidad * (renglon.PRECIO_VENTA ?? 0),
+                }
+              : a,
+          ),
+        );
+      } catch (error) {
+        console.error("Error actualizando cantidad:", error);
+      }
+    });
   };
 
-  const eliminarArticulo = async (renglon) => {
-    try {
-      await Database.registrarMovimiento(
-        renglon.ID_COMANDA,
-        renglon.ID_ARTICULO,
-        "ELIMINACION_ARTICULO",
-      );
-      await Database.eliminarArticulo(renglon.ID);
-      setArticulosComanda((prev) => prev.filter((a) => a.ID !== renglon.ID));
-    } catch (error) {
-      console.error("Error eliminando artículo:", error);
-    }
+  const eliminarArticulo = (renglon) => {
+    solicitarEdicion(async () => {
+      try {
+        await Database.registrarMovimiento(
+          renglon.ID_COMANDA,
+          renglon.ID_ARTICULO,
+          "ELIMINACION_ARTICULO",
+        );
+        await Database.eliminarArticulo(renglon.ID);
+        setArticulosComanda((prev) => prev.filter((a) => a.ID !== renglon.ID));
+      } catch (error) {
+        console.error("Error eliminando artículo:", error);
+      }
+    });
   };
 
   const cambiarNota = (texto) => {
+    if (edicionBloqueada) {
+      if (requiereNipEdicion && !cuentaImpresa) desbloquearEdicion();
+      return;
+    }
     setNota(texto);
     if (notaDebounceRef.current) clearTimeout(notaDebounceRef.current);
     notaDebounceRef.current = setTimeout(async () => {
@@ -316,6 +345,59 @@ const Pago = () => {
         </View>
       </LinearGradient>
 
+      {!cuentaImpresa && requiereNipEdicion && !puedeEditar && (
+        <View
+          style={{
+            backgroundColor: gb.red100 ?? "#FDECEC",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: normalize(14),
+            paddingVertical: normalize(8),
+            gap: normalize(8),
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: normalize(8),
+            }}
+          >
+            <Ionicons
+              name="lock-closed-outline"
+              size={normalize(16)}
+              color={gb.red600}
+            />
+            <Text
+              style={{
+                flex: 1,
+                fontSize: normalize(12),
+                color: gb.red600,
+                fontWeight: "600",
+              }}
+            >
+              Edición protegida — ingresa tu NIP para modificar la comanda
+            </Text>
+          </View>
+          <Button
+            onPress={desbloquearEdicion}
+            style={{ paddingHorizontal: normalize(10), paddingVertical: normalize(6) }}
+          >
+            <Text
+              style={{
+                color: gb.gray50,
+                fontSize: normalize(11),
+                fontWeight: "700",
+              }}
+            >
+              Desbloquear
+            </Text>
+          </Button>
+        </View>
+      )}
+
       {/* ── SCROLL PRINCIPAL ──────────────────────────────── */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -335,57 +417,61 @@ const Pago = () => {
             fecha={fecha}
             hora={hora}
             onAbrirModalCliente={
-              cuentaImpresa ? undefined : () => setOpenModalCliente(true)
+              edicionBloqueada ? undefined : () => setOpenModalCliente(true)
             }
             onQuitarCliente={() => {}}
-            disabled={cuentaImpresa}
+            disabled={edicionBloqueada}
           />
           <PagoArticulos
             articulos={articulos}
             nota={nota}
-            onCambiarCantidad={cuentaImpresa ? undefined : cambiarCantidad}
-            onEliminarArticulo={cuentaImpresa ? undefined : eliminarArticulo}
-            onNotaChange={cuentaImpresa ? undefined : cambiarNota}
+            onCambiarCantidad={edicionBloqueada ? undefined : cambiarCantidad}
+            onEliminarArticulo={edicionBloqueada ? undefined : eliminarArticulo}
+            onNotaChange={edicionBloqueada ? undefined : cambiarNota}
             onNotaBlur={() => {}}
-            disabled={cuentaImpresa}
+            disabled={edicionBloqueada}
           />
 
           <PagoMetodosPago
             formatosPago={formatosPago}
             metodoPagoId={metodoPagoId}
             onSeleccionar={
-              cuentaImpresa ? undefined : (id) => setMetodoPagoId(id)
+              edicionBloqueada ? undefined : (id) => setMetodoPagoId(id)
             }
-            disabled={cuentaImpresa}
+            disabled={edicionBloqueada}
           />
           <PagoAdicionales
             impuestosPct={impuestosPct}
-            onImpuestosChange={cuentaImpresa ? undefined : setImpuestosPct}
+            onImpuestosChange={edicionBloqueada ? undefined : setImpuestosPct}
             desglosarImpuestos={desglosarImpuestos}
             onToggleDesglosar={
-              cuentaImpresa
+              edicionBloqueada
                 ? undefined
                 : () => setDesglosarImpuestos((prev) => !prev)
             }
             propina={propina}
             propinaEsPct={propinaEsPct}
-            onPropinaChange={cuentaImpresa ? undefined : setPropina}
+            onPropinaChange={edicionBloqueada ? undefined : setPropina}
             onPropinaToggle={
-              cuentaImpresa ? undefined : (esPct) => setPropinaEsPct(esPct)
+              edicionBloqueada ? undefined : (esPct) => setPropinaEsPct(esPct)
             }
             descuento={descuento}
             descuentoEsPct={descuentoEsPct}
-            onDescuentoChange={cuentaImpresa ? undefined : setDescuento}
+            onDescuentoChange={edicionBloqueada ? undefined : setDescuento}
             onDescuentoToggle={
-              cuentaImpresa ? undefined : (esPct) => setDescuentoEsPct(esPct)
+              edicionBloqueada
+                ? undefined
+                : (esPct) => setDescuentoEsPct(esPct)
             }
             costoEnvio={costoEnvio}
             costoEnvioEsPct={costoEnvioEsPct}
-            onCostoEnvioChange={cuentaImpresa ? undefined : setCostoEnvio}
+            onCostoEnvioChange={edicionBloqueada ? undefined : setCostoEnvio}
             onCostoEnvioToggle={
-              cuentaImpresa ? undefined : (esPct) => setCostoEnvioEsPct(esPct)
+              edicionBloqueada
+                ? undefined
+                : (esPct) => setCostoEnvioEsPct(esPct)
             }
-            disabled={cuentaImpresa}
+            disabled={edicionBloqueada}
           />
           <PagoDesglose
             subtotal={subtotal}
@@ -401,7 +487,9 @@ const Pago = () => {
             costoEnvioEsPct={costoEnvioEsPct}
             montoCostoEnvio={montoCostoEnvio}
             total={total}
-            onDividirCuenta={() => setOpenModalDividir(true)}
+            onDividirCuenta={
+              edicionBloqueada ? undefined : () => setOpenModalDividir(true)
+            }
           />
           <PagoMontoRecibido
             total={total}
@@ -414,7 +502,7 @@ const Pago = () => {
                 100,
               )
             }
-            disabled={cuentaImpresa}
+            disabled={edicionBloqueada}
           />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -431,7 +519,13 @@ const Pago = () => {
               }}
               style={s.btnImprimir}
               gradient={[gb.gray300, gb.gray200]}
-              onPress={() => setOpenNipEditarModal(true)}
+              onPress={() => {
+                if (configuraciones?.HABILITAR_EDICION_TICKET) {
+                  desbloquearComanda();
+                } else {
+                  setOpenNipEditarModal(true);
+                }
+              }}
             >
               <Ionicons
                 name="create-outline"
@@ -532,11 +626,15 @@ const Pago = () => {
         titulo="Editar comanda"
         onSubmit={async () => {
           setOpenNipEditarModal(false);
-          await Database.setComandaAbierta(comanda.ID);
-          await AsyncStorage.removeItem(`pago_monto_${comanda.ID}`);
-          setCuentaImpresa(false);
-          setComanda((prev) => (prev ? { ...prev, ESTATUS: 0 } : prev));
+          await desbloquearComanda();
         }}
+      />
+
+      <NipModal
+        visible={modalNipEdicion}
+        titulo="Editar ticket"
+        onSubmit={confirmarNipEdicion}
+        onClose={cerrarNipEdicion}
       />
 
       {/* ── MODAL CLIENTE ─────────────────────────────────── */}

@@ -350,6 +350,7 @@ export const DatabaseSchema = {
           PROTEGER_VENTAS INTEGER,
           NIP_FINALIZAR_TICKET INTEGER,
           MODO_RESTRICTIVO INTEGER,
+          HABILITAR_EDICION_TICKET INTEGER,
           NIP INTEGER
         )
       `,

@@ -38,6 +38,11 @@ export default class Database {
           `ALTER TABLE CONFIGURACIONES ADD COLUMN DESCUENTOS_ES_PCT INTEGER DEFAULT 0`,
         );
       }
+      if (!nombres.includes("HABILITAR_EDICION_TICKET")) {
+        await db.runAsync(
+          `ALTER TABLE CONFIGURACIONES ADD COLUMN HABILITAR_EDICION_TICKET INTEGER DEFAULT 1`,
+        );
+      }
     });
   }
 

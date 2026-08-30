@@ -349,8 +349,8 @@ export class Database {
         ID_SUCURSAL, NOMBRE_DISPOCITIVO, ABIERTO_PEDIDOS, IMPRIMIR_FICHA,
         SOLO_PRODUCTOS_NUEVOS, ID_TAMAÑO_FUENTE, COSTO_ENVIO, IMPUESTOS,
         DESCUENTOS, ID_FORMATO_PAGO, PROTEGER_VENTAS, NIP_FINALIZAR_TICKET,
-        MODO_RESTRICTIVO, NIP
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        MODO_RESTRICTIVO, HABILITAR_EDICION_TICKET, NIP
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         qrData,
         "Dispositivo de prueba",
@@ -365,6 +365,7 @@ export class Database {
         1,
         1,
         0,
+        1,
         1234,
       ],
     );

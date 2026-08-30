@@ -13,7 +13,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import MateriaPrimaCard from "../../../components/Molecules/MateriaPrimaCard/MateriaPrimaCard";
 import ModalAjustarInventario from "../../../components/Molecules/ModalAjustarInventario/ModalAjustarInventario";
+import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import InventariosDatabase from "./database";
@@ -21,6 +23,18 @@ import { integracionInventarios } from "./integracion";
 import { s } from "./styles";
 
 const Inventarios = () => {
+  const {
+    accesoPermitido,
+    modalAcceso,
+    onAccesoCorrecto,
+    onAccesoCancelado,
+    tituloModal,
+  } = useProteccionConfig({
+    seccion: "inventarios",
+    configFlag: "MODO_RESTRICTIVO",
+    tituloModal: "Inventarios",
+  });
+
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [actualizando, setActualizando] = useState(false);
@@ -38,6 +52,8 @@ const Inventarios = () => {
   // ── Carga ──────────────────────────────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
+      if (!accesoPermitido) return;
+
       let activo = true;
       const cargar = async () => {
         try {
@@ -61,7 +77,7 @@ const Inventarios = () => {
       return () => {
         activo = false;
       };
-    }, []),
+    }, [accesoPermitido]),
   );
 
   const actualizar = async () => {
@@ -254,6 +270,13 @@ const Inventarios = () => {
           </Text>
         </Pressable>
       </LinearGradient>
+
+      <NipModal
+        visible={modalAcceso}
+        titulo={tituloModal}
+        onSubmit={onAccesoCorrecto}
+        onClose={onAccesoCancelado}
+      />
     </SafeAreaView>
   );
 };

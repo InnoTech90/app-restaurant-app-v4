@@ -6,15 +6,18 @@ import {
 import { Redirect } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useContext, useState } from "react";
+import { Alert } from "react-native";
 import AuthHeader from "../../components/Molecules/AuthHeader/AuthHeader";
 import NipModal from "../../components/Molecules/NipModal/NipModal";
 import { dataBase } from "../../components/Molecules/NipModal/database";
 import { AuthContext } from "../../utils/AuthContext/AuthContext";
 import {
-  autorizarVentas,
-  revocarAccesoVentas,
-  tieneAccesoVentas,
-} from "../../utils/ventasAccess";
+  autorizarSeccion,
+  revocarOtrasSecciones,
+  revocarTodasLasSecciones,
+  tieneAccesoSeccion,
+} from "../../utils/sectionAccess";
+import VentasDatabase from "./Ventas/database";
 
 function CustomDrawerContent({ onCerrarSesion, ...props }) {
   return (
@@ -47,6 +50,40 @@ export default function AuthLayout() {
     if (accion) await accion();
   };
 
+  const intentarCerrarSesion = async () => {
+    try {
+      const { pendientes, sinSincronizar } =
+        await VentasDatabase.getBloqueosCierreSesion();
+
+      const mensajes = [];
+      if (pendientes > 0) {
+        mensajes.push(
+          `Tienes ${pendientes} venta${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} por resolver.`,
+        );
+      }
+      if (sinSincronizar > 0) {
+        mensajes.push(
+          `Tienes ${sinSincronizar} venta${sinSincronizar === 1 ? "" : "s"} sin sincronizar.`,
+        );
+      }
+
+      if (mensajes.length > 0) {
+        Alert.alert("No se puede cerrar sesión", mensajes.join("\n\n"));
+        return;
+      }
+
+      pedirNip("Cerrar sesión", () => {
+        contextoAutenticacion.desautenticar();
+      });
+    } catch (error) {
+      console.error("Error verificando ventas antes de cerrar sesión:", error);
+      Alert.alert(
+        "Error",
+        "No se pudo verificar el estado de las ventas. Intenta nuevamente.",
+      );
+    }
+  };
+
   if (!contextoAutenticacion.isReady) {
     return null;
   }
@@ -65,6 +102,7 @@ export default function AuthLayout() {
       label: "Ventas",
       title: "Ventas",
       requiereNipSi: "PROTEGER_VENTAS",
+      seccionAcceso: "ventas",
     },
     {
       name: "Caja/index",
@@ -86,11 +124,15 @@ export default function AuthLayout() {
       name: "Gastos/index",
       label: "Gastos",
       title: "Gastos",
+      requiereNipSi: "MODO_RESTRICTIVO",
+      seccionAcceso: "gastos",
     },
     {
       name: "Inventarios/index",
       label: "Inventarios",
       title: "Inventarios",
+      requiereNipSi: "MODO_RESTRICTIVO",
+      seccionAcceso: "inventarios",
     },
     {
       name: "Impresoras/index",
@@ -154,10 +196,8 @@ export default function AuthLayout() {
             {...props}
             onCerrarSesion={() => {
               props.navigation.closeDrawer();
-              revocarAccesoVentas();
-              pedirNip("Cerrar sesión", () => {
-                contextoAutenticacion.desautenticar();
-              });
+              revocarTodasLasSecciones();
+              intentarCerrarSesion();
             }}
           />
         )}
@@ -186,9 +226,7 @@ export default function AuthLayout() {
                       e.preventDefault();
                       navigation.closeDrawer();
 
-                      if (screen.name !== "Ventas/index") {
-                        revocarAccesoVentas();
-                      }
+                      revocarOtrasSecciones(screen.seccionAcceso ?? null);
 
                       if (navigation.isFocused()) return;
 
@@ -199,23 +237,29 @@ export default function AuthLayout() {
                           await dataBase.getConfiguracionesModel();
                         const config = configuraciones?.[0];
                         if (config?.[screen.requiereNipSi]) {
-                          necesitaNip = !tieneAccesoVentas();
+                          necesitaNip = !tieneAccesoSeccion(
+                            screen.seccionAcceso,
+                          );
                         }
                       }
 
+                      const navegar = () => navigation.navigate(screen.name);
+
                       if (necesitaNip) {
                         pedirNip(screen.title, () => {
-                          if (screen.requiereNipSi) autorizarVentas();
-                          navigation.navigate(screen.name);
+                          if (screen.seccionAcceso) {
+                            autorizarSeccion(screen.seccionAcceso);
+                          }
+                          navegar();
                         });
                       } else {
-                        navigation.navigate(screen.name);
+                        navegar();
                       }
                     },
                   })
-                : ({ navigation }) => ({
-                    drawerItemPress: (e) => {
-                      revocarAccesoVentas();
+                : () => ({
+                    drawerItemPress: () => {
+                      revocarTodasLasSecciones();
                     },
                   })
             }
