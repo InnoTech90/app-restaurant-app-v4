@@ -96,12 +96,19 @@ export class integracionVentas {
       };
       return sale;
     });
+
     // Llamada al endpoint
-    await deviceApi.post(
+    const response = await deviceApi.post(
       "/devices/synchronize-sale",
-      JSON.stringify(sales, null, 2),
+      sales,
       { headers },
     );
+
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(
+        `Error del servidor al sincronizar ventas (${response.status})`,
+      );
+    }
 
     // Marcar como sincronizadas en la BD local
     const ids = ventasSeleccionadas.map((v) => v.ID);

@@ -1,10 +1,6 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { LogBox } from "react-native";
 import { AuthProvider } from "../utils/AuthContext/AuthContext";
-
-// Suprime el warning de keep-awake que genera expo-camera
-LogBox.ignoreLogs(["Unable to activate keep awake"]);
 
 export default function AppLayout() {
 

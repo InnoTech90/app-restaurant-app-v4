@@ -282,6 +282,7 @@ export default class Database {
                     DESCUENTO    = ?,
                     PROPINA      = ?,
                     COSTO_ENVIO  = ?,
+                    IMPUESTOS    = ?,
                     TOTAL        = ?
                  WHERE ID = ?`,
         [
@@ -290,16 +291,35 @@ export default class Database {
           datos.descuento,
           datos.propina,
           datos.costoEnvio,
+          datos.impuestos ?? 0,
           datos.total,
           idComanda,
         ],
       );
-      if (datos.idMetodoPago && datos.montoRecibido) {
+
+      await db.runAsync(`DELETE FROM COMANDA_PAGOS WHERE ID_COMANDA = ?`, [
+        idComanda,
+      ]);
+
+      const pagosDivididos = await db.getAllAsync(
+        `SELECT * FROM COMANDA_PAGO_CUENTA_DIVIDIDA WHERE ID_COMANDA = ? ORDER BY ID ASC`,
+        [idComanda],
+      );
+
+      if (pagosDivididos.length > 0) {
+        for (const pago of pagosDivididos) {
+          await db.runAsync(
+            `INSERT INTO COMANDA_PAGOS (ID_COMANDA, ID_METODO_PAGO, CANTIDAD) VALUES (?, ?, ?)`,
+            [idComanda, pago.FORMA_PAGO, pago.TOTAL],
+          );
+        }
+      } else if (datos.idMetodoPago && datos.montoRecibido) {
         await db.runAsync(
           `INSERT INTO COMANDA_PAGOS (ID_COMANDA, ID_METODO_PAGO, CANTIDAD) VALUES (?, ?, ?)`,
           [idComanda, datos.idMetodoPago, datos.montoRecibido],
         );
       }
+
       await db.runAsync(
         `UPDATE MESA SET ESTATUS = 0, ID_COMANDA = NULL WHERE ID_COMANDA = ?`,
         [idComanda],

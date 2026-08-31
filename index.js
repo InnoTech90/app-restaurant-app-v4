@@ -1,3 +1,4 @@
+import "./src/utils/suppressKeepAwakeError";
 import "expo-router/entry";
 
 

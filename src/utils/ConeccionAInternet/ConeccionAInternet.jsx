@@ -1,6 +1,20 @@
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 
+export const verificarConexionInternet = async () => {
+    const state = await NetInfo.fetch();
+    return state.isConnected === true && state.isInternetReachable !== false;
+};
+
+export const esErrorDeConexion = (error) => {
+    const mensaje = String(error?.message ?? '').toLowerCase();
+    return (
+        mensaje.includes('network error') ||
+        error?.code === 'ERR_NETWORK' ||
+        error?.code === 'ECONNABORTED'
+    );
+};
+
 /**
  * Hook para detectar el estado de conexión a internet.
  *

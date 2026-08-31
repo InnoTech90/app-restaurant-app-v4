@@ -15,6 +15,10 @@ import {
   autorizarVentas,
   tieneAccesoVentas,
 } from "../../../utils/sectionAccess";
+import {
+  esErrorDeConexion,
+  verificarConexionInternet,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import VentasDatabase from "./database";
@@ -214,7 +218,7 @@ const Ventas = () => {
   };
 
   // ── Limpiar ventas ────────────────────────────────────────────────────
-  const limpiarVentas = () => {
+  const limpiarVentas = async () => {
     // Solo se eliminan las seleccionadas que además estén sincronizadas y no sean pendientes.
     // Las seleccionadas no sincronizadas simplemente se ignoran (no se eliminan).
     const hayElegibles = ventasFiltradasState.some(
@@ -225,13 +229,22 @@ const Ventas = () => {
       setModalNip(false);
       return;
     }
-    const idsAEliminar = new Set(
-      ventasFiltradasState
-        .filter((v) => v.seleccionado && !!v.SINCRONIZADO && v.ESTATUS !== 3)
-        .map((v) => v.ID),
-    );
-    setVentas((prev) => prev.filter((v) => !idsAEliminar.has(v.ID)));
-    setModalNip(false);
+    const idsAEliminar = ventasFiltradasState
+      .filter((v) => v.seleccionado && !!v.SINCRONIZADO && v.ESTATUS !== 3)
+      .map((v) => v.ID);
+
+    try {
+      await VentasDatabase.eliminarVentas(idsAEliminar);
+      setVentas((prev) => prev.filter((v) => !idsAEliminar.includes(v.ID)));
+    } catch (e) {
+      console.error("Error eliminando ventas:", e);
+      Alert.alert(
+        "Error",
+        "No se pudieron eliminar las ventas seleccionadas. Intenta de nuevo.",
+      );
+    } finally {
+      setModalNip(false);
+    }
   };
 
   return (
@@ -476,6 +489,15 @@ const Ventas = () => {
             return;
           }
 
+          const hayInternet = await verificarConexionInternet();
+          if (!hayInternet) {
+            Alert.alert(
+              "Sin conexión",
+              "No hay internet disponible. Conéctate a una red e intenta sincronizar de nuevo.",
+            );
+            return;
+          }
+
           setSincronizando(true);
           try {
             const { sincronizadas, ventas: ventasActualizadas } =
@@ -488,13 +510,27 @@ const Ventas = () => {
                 "Sincronización",
                 "Las ventas seleccionadas no están pendientes de sincronizar.",
               );
+            } else {
+              Alert.alert(
+                "Sincronización exitosa",
+                sincronizadas === 1
+                  ? "La venta se sincronizó correctamente."
+                  : `${sincronizadas} ventas se sincronizaron correctamente.`,
+              );
             }
           } catch (e) {
-            console.error("Error sincronizando ventas:", e);
-            Alert.alert(
-              "Error",
-              "No se pudieron sincronizar las ventas. Intenta de nuevo.",
-            );
+            if (esErrorDeConexion(e)) {
+              Alert.alert(
+                "Sin conexión",
+                "No se pudo conectar con el servidor. Verifica tu internet e intenta de nuevo.",
+              );
+            } else {
+              console.error("Error sincronizando ventas:", e);
+              Alert.alert(
+                "Error",
+                "No se pudieron sincronizar las ventas. Intenta de nuevo.",
+              );
+            }
           } finally {
             setSincronizando(false);
           }

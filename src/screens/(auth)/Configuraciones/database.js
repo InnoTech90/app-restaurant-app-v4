@@ -43,6 +43,14 @@ export default class Database {
           `ALTER TABLE CONFIGURACIONES ADD COLUMN HABILITAR_EDICION_TICKET INTEGER DEFAULT 1`,
         );
       }
+
+      const colsComanda = await db.getAllAsync(`PRAGMA table_info(COMANDA)`);
+      const nombresComanda = colsComanda.map((c) => c.name);
+      if (!nombresComanda.includes("IMPUESTOS")) {
+        await db.runAsync(
+          `ALTER TABLE COMANDA ADD COLUMN IMPUESTOS REAL DEFAULT 0`,
+        );
+      }
     });
   }
 

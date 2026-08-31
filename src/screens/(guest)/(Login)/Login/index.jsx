@@ -71,7 +71,11 @@ function Login() {
               />
             </View>
             <View style={s.infoContainer}>
-              <Text style={s.subtitle}>Código de demostración: 123456</Text>
+              {__DEV__ && (
+                <Text style={s.subtitle}>
+                  Modo desarrollo: usa el código de tu sucursal
+                </Text>
+              )}
             </View>
           </View>
           <View style={s.asociarContainer}>

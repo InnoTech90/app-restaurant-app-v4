@@ -1,4 +1,4 @@
-import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { BluetoothEscposPrinter, BluetoothManager } from 'react-native-bluetooth-escpos-printer';
 import Database from './database';
 
@@ -17,6 +17,21 @@ const padLine = (left, right) => {
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const conectarImpresora = async (mac) => {
+    try {
+        await BluetoothManager.connect(mac);
+        return true;
+    } catch (_) {
+        await sleep(1000);
+        try {
+            await BluetoothManager.connect(mac);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+};
 
 // Desconecta liberando la conexión para otros dispositivos
 const desconectarImpresora = async () => {
@@ -51,7 +66,6 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
                 PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
             );
             if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-                Alert.alert('Permiso requerido', 'Se necesita acceso a Bluetooth para imprimir.');
                 return false;
             }
         }
@@ -65,26 +79,22 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
         // Solo imprime en PRIMER_PUNTO (caja)
         const puntosCaja = puntosRaw.filter(p => p.UUID === 'PRIMER_PUNTO');
         if (puntosCaja.length === 0) {
-            Alert.alert('Sin punto de caja', 'No se encontró un punto de impresión de caja configurado.');
             return false;
         }
 
         const puntoCaja = puntosCaja[0];
         if (!puntoCaja.ID_IMPRESORA) {
-            Alert.alert('Sin impresora', 'El punto de caja no tiene impresora vinculada.');
             return false;
         }
 
         const ALIGN = BluetoothEscposPrinter.ALIGN;
 
-        // Conectar + imprimir en try/finally para liberar la conexión BT siempre
+        const conectado = await conectarImpresora(puntoCaja.ID_IMPRESORA);
+        if (!conectado) {
+            return false;
+        }
+
         try {
-            try {
-                await BluetoothManager.connect(puntoCaja.ID_IMPRESORA);
-            } catch (e) {
-                await sleep(1000);
-                await BluetoothManager.connect(puntoCaja.ID_IMPRESORA);
-            }
             await BluetoothEscposPrinter.printerInit();
 
             // ── ENCABEZADO ────────────────────────────────────────────────────────
@@ -202,8 +212,7 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
             await desconectarImpresora();
         }
     } catch (e) {
-        console.error('Error en imprimirCuenta:', e);
-        Alert.alert('Error', 'Ocurrió un error al intentar imprimir la cuenta.');
+        console.warn('Error inesperado en imprimirCuenta:', e?.message ?? e);
         return false;
     }
 };

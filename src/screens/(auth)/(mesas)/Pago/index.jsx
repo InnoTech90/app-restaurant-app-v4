@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -25,7 +26,10 @@ import PagoMetodosPago from "../../../../components/Molecules/PagoMetodosPago/Pa
 import PagoMontoRecibido from "../../../../components/Molecules/PagoMontoRecibido/PagoMontoRecibido";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
+import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { gb } from "../../../globalStyles";
+import { integracionVentas } from "../../Ventas/integracion";
+import ConfiguracionesDatabase from "../../Configuraciones/database";
 import Database from "./database";
 import { s } from "./styles";
 import { imprimirCuenta } from "./ticket";
@@ -85,6 +89,7 @@ const Pago = () => {
   };
 
   const obtenerCamposDefault = async () => {
+    await ConfiguracionesDatabase.runMigraciones();
     const mesaDb = await Database.getMesa(idMesa);
     const comandaData = idMesa
       ? await Database.getComandaActivaPorMesa(idMesa)
@@ -174,7 +179,7 @@ const Pago = () => {
     try {
       const metodoPagoNombre =
         formatosPago.find((f) => f.ID === metodoPagoId)?.NOMBRE ?? "-";
-      await imprimirCuenta(
+      const impresionOk = await imprimirCuenta(
         comanda,
         articulosComanda,
         mesa,
@@ -193,13 +198,36 @@ const Pago = () => {
         filasGuardadas,
         formatosPago,
       );
-      // Bloquear la comanda tras imprimir
+
       await Database.setComandaImpresa(comanda.ID);
       await AsyncStorage.setItem(`pago_monto_${comanda.ID}`, montoRecibido);
       setCuentaImpresa(true);
       setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
+
+      if (!impresionOk) {
+        Alert.alert(
+          "No se pudo imprimir",
+          "No pudimos conectar con la impresora. Verifica que esté encendida y cerca del dispositivo. Puedes continuar y finalizar la venta.",
+        );
+      }
     } catch (e) {
-      console.error("Error imprimiendo cuenta:", e);
+      console.warn("Error inesperado al imprimir cuenta:", e?.message ?? e);
+      try {
+        await Database.setComandaImpresa(comanda.ID);
+        await AsyncStorage.setItem(`pago_monto_${comanda.ID}`, montoRecibido);
+        setCuentaImpresa(true);
+        setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
+        Alert.alert(
+          "No se pudo imprimir",
+          "Ocurrió un problema al imprimir la cuenta, pero puedes continuar y finalizar la venta.",
+        );
+      } catch (errorGuardado) {
+        console.error("Error guardando estado de cuenta:", errorGuardado);
+        Alert.alert(
+          "Error",
+          "No se pudo guardar el estado de la cuenta. Intenta nuevamente.",
+        );
+      }
     } finally {
       setImprimiendo(false);
     }
@@ -207,16 +235,18 @@ const Pago = () => {
 
   const finalizarVenta = async () => {
     if (!comanda?.ID || finalizando || !tieneMetodoPago) return;
+    const comandaId = comanda.ID;
     setFinalizando(true);
     try {
       const metodoPagoNombre =
         formatosPago.find((f) => f.ID === metodoPagoId)?.NOMBRE ?? null;
-      const resultado = await Database.finalizarComanda(comanda.ID, {
+      const resultado = await Database.finalizarComanda(comandaId, {
         formatoPago: metodoPagoNombre,
         subtotal,
         descuento: montoDescuento,
         propina: montoPropina,
         costoEnvio: montoCostoEnvio,
+        impuestos: montoImpuestos,
         total,
         montoRecibido: parseFloat(montoRecibido) || 0,
         idMetodoPago: metodoPagoId,
@@ -225,13 +255,48 @@ const Pago = () => {
         setMostrarCajaCerrada(true);
         return;
       }
-      await AsyncStorage.removeItem(`pago_monto_${comanda.ID}`);
+      await AsyncStorage.removeItem(`pago_monto_${comandaId}`);
+
+      const hayInternet = await verificarConexionInternet();
+      if (hayInternet) {
+        try {
+          await integracionVentas.sincronizarVentas([comandaId]);
+        } catch (syncError) {
+          console.warn(
+            "No se pudo sincronizar la venta automáticamente:",
+            syncError,
+          );
+        }
+      }
+
       router.replace("/Inicio");
     } catch (e) {
       console.error("Error finalizando venta:", e);
+      Alert.alert(
+        "Error",
+        "No se pudo finalizar la venta. Verifica que la caja esté abierta e intenta de nuevo.",
+      );
     } finally {
       setFinalizando(false);
     }
+  };
+
+  const solicitarFinalizarVenta = () => {
+    if (!comanda?.ID_CLIENTE && !cliente) {
+      Alert.alert(
+        "Cliente no asignado",
+        "Asigna un cliente a esta comanda antes de finalizar la venta.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Asignar cliente",
+            onPress: () => setOpenModalCliente(true),
+          },
+        ],
+      );
+      return;
+    }
+    finalizarVenta();
   };
 
   const handleImprimirCuenta = () => {
@@ -544,7 +609,7 @@ const Pago = () => {
               }}
               style={s.btnImprimir}
               gradient={["#388E3C", "#4CAF50"]}
-              onPress={finalizarVenta}
+              onPress={solicitarFinalizarVenta}
               disabled={finalizando || !tieneMetodoPago}
             >
               <Ionicons

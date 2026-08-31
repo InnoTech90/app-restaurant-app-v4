@@ -277,6 +277,42 @@ export default class VentasDatabase {
     });
   }
 
+  /** Elimina ventas finalizadas y sus registros relacionados. */
+  static async eliminarVentas(ids) {
+    if (!ids?.length) return;
+    return withDb("Ventas.eliminarVentas", async (db) => {
+      const placeholders = ids.map(() => "?").join(",");
+
+      await db.runAsync(
+        `DELETE FROM COMANDA_COMPLEMENTO
+         WHERE ID_COMANDA_ARTICULO IN (
+           SELECT ID FROM COMANDA_ARTICULO WHERE ID_COMANDA IN (${placeholders})
+         )`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM COMANDA_ARTICULO WHERE ID_COMANDA IN (${placeholders})`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM COMANDA_PAGOS WHERE ID_COMANDA IN (${placeholders})`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM COMANDA_PAGO_CUENTA_DIVIDIDA WHERE ID_COMANDA IN (${placeholders})`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM COMANDA_MOVIMIENTOS WHERE ID_COMANDA IN (${placeholders})`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM COMANDA WHERE ID IN (${placeholders})`,
+        ids,
+      );
+    });
+  }
+
   /** Cuenta ventas que impiden cerrar sesión. */
   static async getBloqueosCierreSesion() {
     return withDb("Ventas.getBloqueosCierreSesion", async (db) => {

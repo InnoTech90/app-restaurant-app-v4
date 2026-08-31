@@ -1,11 +1,29 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-// Usa localhost como fuente y se resuelve automáticamente según plataforma.
-// const RAW_API_BASE_URL = "https://api.apprestaurants.com/v1";
-const RAW_API_BASE_URL = "http://192.168.100.20:3000/v1"; // ESTE ES PARA USO LOCAL (diego)
-// IP LAN actual de tu Mac para pruebas en dispositivo fisico.
-const MANUAL_LOCAL_HOST_IP = "192.168.100.20"; // ESTE ES PARA USO LOCAL (diego)
+const PRODUCTION_API_URL = "https://api.apprestaurants.com/v1";
+
+const normalizeUrl = (url) => String(url || "").replace(/\/$/, "");
+
+const resolveApiBaseUrl = () => {
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL;
+  if (fromEnv) {
+    return normalizeUrl(fromEnv);
+  }
+
+  const fromExtra = Constants.expoConfig?.extra?.apiBaseUrl;
+  if (fromExtra) {
+    return normalizeUrl(fromExtra);
+  }
+
+  return PRODUCTION_API_URL;
+};
+
+const RAW_API_BASE_URL = resolveApiBaseUrl();
+
+// Solo para desarrollo local: IP LAN opcional cuando la API apunta a localhost.
+const MANUAL_LOCAL_HOST_IP =
+  process.env.EXPO_PUBLIC_LOCAL_API_HOST || "192.168.100.20";
 
 function getExpoHostIp() {
   const hostUri =
@@ -13,6 +31,18 @@ function getExpoHostIp() {
 
   const [host] = hostUri.split(":");
   return host || null;
+}
+
+function isLocalApiUrl(url) {
+  try {
+    const { hostname, protocol } = new URL(url);
+    if (protocol !== "http:") return false;
+    return ["localhost", "127.0.0.1", "0.0.0.0", "10.0.2.2", "10.0.3.2"].includes(
+      hostname,
+    );
+  } catch {
+    return false;
+  }
 }
 
 function buildApiBaseUrlCandidates(rawUrl) {
@@ -34,22 +64,18 @@ function buildApiBaseUrlCandidates(rawUrl) {
       candidates.push(url.toString().replace(/\/$/, ""));
     };
 
-    // Si usas dispositivo físico en LAN, esta IP suele ser la correcta.
     addCandidate(MANUAL_LOCAL_HOST_IP);
     addCandidate(getExpoHostIp());
 
     if (Platform.OS === "android") {
-      // Android Emulator (AVD) y Genymotion.
       addCandidate("10.0.2.2");
       addCandidate("10.0.3.2");
     }
 
     if (Platform.OS === "ios") {
-      // iOS Simulator usa el loopback de macOS.
       addCandidate("127.0.0.1");
     }
 
-    // Fallback final literal.
     addCandidate("localhost");
 
     return [...new Set(candidates)];
@@ -58,6 +84,7 @@ function buildApiBaseUrlCandidates(rawUrl) {
   }
 }
 
-export const API_BASE_URL_CANDIDATES =
-  buildApiBaseUrlCandidates(RAW_API_BASE_URL);
-export const API_BASE_URL = API_BASE_URL_CANDIDATES[0];
+export const API_BASE_URL = RAW_API_BASE_URL;
+export const API_BASE_URL_CANDIDATES = isLocalApiUrl(RAW_API_BASE_URL)
+  ? buildApiBaseUrlCandidates(RAW_API_BASE_URL)
+  : [RAW_API_BASE_URL];

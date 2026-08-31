@@ -463,6 +463,7 @@ export const DatabaseSchema = {
           FORMATO_PAGO NVARCHAR,
           DESCUENTO REAL,
           SUBTOTAL REAL,
+          IMPUESTOS REAL DEFAULT 0,
           TOTAL REAL,
           ACTIVO INTEGER DEFAULT 1
         )

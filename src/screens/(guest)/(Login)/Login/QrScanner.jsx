@@ -1,91 +1,126 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { s } from './style';
-import GeneralModal from '../../../../components/atoms/GeneralModal/GeneralModal';
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { Image } from "expo-image";
+import { useKeepAwake } from "expo-keep-awake";
+import { useCallback, useEffect, useState } from "react";
+import { AppState, StyleSheet, Text, View } from "react-native";
 import Button from "../../../../components/atoms/Button/Button";
-import { Image } from 'expo-image';
+import GeneralModal from "../../../../components/atoms/GeneralModal/GeneralModal";
+import { s } from "./style";
 
-export default function QrScanner({ visible, onClose , onScanned}) {
-    const [facing, setFacing] = useState('back');
-    const [permission, requestPermission] = useCameraPermissions();
+function ActiveQrCamera({ facing, onBarcodeScanned }) {
+  useKeepAwake("qr-scanner");
 
-    if (!visible) {
-        return null;
-    }
-    if (!permission) {
-        // Camera permissions are still loading.
-        return <View />;
-    }
-    if (!permission.granted) {
-        // Camera permissions are not granted yet.
-        return (
-            <GeneralModal visible={visible} animationType="slide" onRequestClose={onClose} >
-                <View style={s.containerPermisosCamara}>
-                    <View style={{ alignItems: "center" }}>
-                        <Image source={require("../../../../assets/icons/camara.png")} style={s.imgPermisoCamara} />
-                        <Text style={s.titlePermisoCamara}>Apunta tu cámara</Text>
-                        <Image source={require("../../../../assets/img/qrMano.png")} style={s.imagenRq} />
-                        <Text style={s.subTitleModal}>Dirige el visor al código QR de la sucursal para escanear.</Text>
-                    </View>
-                    <Button onPress={requestPermission} style={s.btnAceptarPermisos} ><Text style={s.btnAceptarPermisosText}>Habilitar Cámara</Text></Button>
+  return (
+    <CameraView
+      style={styles.camera}
+      facing={facing}
+      active
+      barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+      onBarcodeScanned={onBarcodeScanned}
+    />
+  );
+}
 
-                </View>
-            </GeneralModal>
-        );
-    }
-    const handleScanned = ({ data }) => {
-        onScanned(data);
-        onClose();
-    }
+export default function QrScanner({ visible, onClose, onScanned }) {
+  const [facing] = useState("back");
+  const [permission, requestPermission] = useCameraPermissions();
+  const [appIsActive, setAppIsActive] = useState(
+    AppState.currentState === "active",
+  );
+  const [scanned, setScanned] = useState(false);
 
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      setAppIsActive(nextState === "active");
+    });
+    return () => sub.remove();
+  }, []);
 
+  useEffect(() => {
+    if (!visible) setScanned(false);
+  }, [visible]);
+
+  const handleScanned = useCallback(
+    ({ data }) => {
+      if (scanned) return;
+      setScanned(true);
+      onScanned(data);
+      onClose();
+    },
+    [scanned, onScanned, onClose],
+  );
+
+  if (!visible) {
+    return null;
+  }
+
+  if (!permission) {
+    return <View />;
+  }
+
+  if (!permission.granted) {
     return (
-        <View style={styles.container}>
-            <CameraView
-                style={styles.camera}
-                facing={facing}
-                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                onBarcodeScanned={handleScanned}
+      <GeneralModal
+        visible={visible}
+        animationType="slide"
+        onRequestClose={onClose}
+      >
+        <View style={s.containerPermisosCamara}>
+          <View style={{ alignItems: "center" }}>
+            <Image
+              source={require("../../../../assets/icons/camara.png")}
+              style={s.imgPermisoCamara}
             />
-            <View style={styles.buttonContainer}>
-            </View>
+            <Text style={s.titlePermisoCamara}>Apunta tu cámara</Text>
+            <Image
+              source={require("../../../../assets/img/qrMano.png")}
+              style={s.imagenRq}
+            />
+            <Text style={s.subTitleModal}>
+              Dirige el visor al código QR de la sucursal para escanear.
+            </Text>
+          </View>
+          <Button onPress={requestPermission} style={s.btnAceptarPermisos}>
+            <Text style={s.btnAceptarPermisosText}>Habilitar Cámara</Text>
+          </Button>
         </View>
+      </GeneralModal>
     );
+  }
+
+  const canShowCamera = appIsActive;
+
+  return (
+    <View style={styles.container}>
+      {canShowCamera ? (
+        <ActiveQrCamera facing={facing} onBarcodeScanned={handleScanned} />
+      ) : (
+        <View style={styles.camera} />
+      )}
+      <View style={styles.buttonContainer} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        zIndex: 999,
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
-    message: {
-        textAlign: 'center',
-        paddingBottom: 10,
-    },
-    camera: {
-        flex: 1,
-    },
-    buttonContainer: {
-        position: 'absolute',
-        bottom: 64,
-        flexDirection: 'row',
-        backgroundColor: 'transparent',
-        width: '100%',
-        paddingHorizontal: 64,
-    },
-    button: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    text: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: 'white',
-    },
+  container: {
+    flex: 1,
+    zIndex: 999,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  camera: {
+    flex: 1,
+  },
+  buttonContainer: {
+    position: "absolute",
+    bottom: 64,
+    flexDirection: "row",
+    backgroundColor: "transparent",
+    width: "100%",
+    paddingHorizontal: 64,
+  },
 });

@@ -353,7 +353,7 @@ export class Database {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         qrData,
-        "Dispositivo de prueba",
+        "Dispositivo",
         1,
         1,
         0,
@@ -362,11 +362,11 @@ export class Database {
         0.0,
         0.0,
         1,
-        1,
-        1,
+        0,
+        0,
         0,
         1,
-        1234,
+        null,
       ],
     );
 
