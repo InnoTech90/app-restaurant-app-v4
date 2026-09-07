@@ -1,12 +1,93 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDb } from "../../../utils/db";
 
+const normalizeNip = (value) => {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const CONFIGURACIONES_DEFAULTS = {
+  nombreDispositivo: "Dispositivo",
+  abiertoPedidos: 1,
+  imprimirFicha: 1,
+  soloProductosNuevos: 0,
+  idTamanoFuente: 2,
+  costoEnvio: 0,
+  impuestos: 0,
+  descuentos: 0,
+  idFormatoPago: 1,
+  protegerVentas: 0,
+  nipFinalizarTicket: 0,
+  modoRestrictivo: 0,
+  habilitarEdicionTicket: 1,
+};
+
 /**
  * Database
  * IMPORTANTE: No crea tablas aquí. Las tablas son creadas por DatabaseInitializer.
  * Este archivo solo se encarga de INSERTAR/ACTUALIZAR datos desde la API.
  */
 export class Database {
+  static getConfigContextFromGeneral(data) {
+    const { branch, business } = data ?? {};
+    return {
+      idSucursal: branch?.qrCode ?? null,
+      nip: normalizeNip(business?.nip ?? business?.NIP),
+    };
+  }
+
+  /**
+   * Asegura fila en CONFIGURACIONES para la sucursal.
+   * Siempre crea la fila (aunque el NIP aún no venga); actualiza NIP cuando sí llega.
+   */
+  static async persistNipConfiguracion(db, { idSucursal, nip }) {
+    if (!idSucursal) return;
+
+    const nipValor = normalizeNip(nip);
+    const existing = await db.getFirstAsync(
+      `SELECT ID_SUCURSAL FROM CONFIGURACIONES WHERE ID_SUCURSAL = ?`,
+      [idSucursal],
+    );
+
+    if (existing) {
+      if (nipValor != null) {
+        await db.runAsync(
+          `UPDATE CONFIGURACIONES SET NIP = ? WHERE ID_SUCURSAL = ?`,
+          [nipValor, idSucursal],
+        );
+      }
+      return;
+    }
+
+    const d = CONFIGURACIONES_DEFAULTS;
+    await db.runAsync(
+      `INSERT OR IGNORE INTO CONFIGURACIONES (
+        ID_SUCURSAL, NOMBRE_DISPOCITIVO, ABIERTO_PEDIDOS, IMPRIMIR_FICHA,
+        SOLO_PRODUCTOS_NUEVOS, ID_TAMAÑO_FUENTE, COSTO_ENVIO, IMPUESTOS,
+        DESCUENTOS, ID_FORMATO_PAGO, PROTEGER_VENTAS, NIP_FINALIZAR_TICKET,
+        MODO_RESTRICTIVO, HABILITAR_EDICION_TICKET, NIP
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        idSucursal,
+        d.nombreDispositivo,
+        d.abiertoPedidos,
+        d.imprimirFicha,
+        d.soloProductosNuevos,
+        d.idTamanoFuente,
+        d.costoEnvio,
+        d.impuestos,
+        d.descuentos,
+        d.idFormatoPago,
+        d.protegerVentas,
+        d.nipFinalizarTicket,
+        d.modoRestrictivo,
+        d.habilitarEdicionTicket,
+        nipValor,
+      ],
+    );
+  }
+
   /**
    * Inserta datos generales (dispositivo, sucursal, negocio, plan, etc.)
    * Sin crear tablas - asume que ya existen
@@ -15,10 +96,21 @@ export class Database {
     const db = await getDb();
 
     const { device, branch, business, plan, printPoints } = data;
+    const idSucursal = branch?.qrCode ?? (await AsyncStorage.getItem("qrCode"));
+    const nipNegocio = normalizeNip(business?.nip ?? business?.NIP);
+
+    // Mantener AsyncStorage alineado con el QR de la API (NipModal filtra por este valor).
+    if (branch?.qrCode) {
+      await AsyncStorage.setItem("qrCode", String(branch.qrCode));
+    }
 
     // Insertar punto de impresión por defecto si no existe
     await db.runAsync(
-      `INSERT OR IGNORE INTO PUNTOS_IMPRESION (UUID, NOMBRE, ID_SUCURSAL) VALUES (?, ?, ?)`,
+      `INSERT INTO PUNTOS_IMPRESION (UUID, NOMBRE, ID_SUCURSAL)
+       VALUES (?, ?, ?)
+       ON CONFLICT(UUID) DO UPDATE SET
+         NOMBRE = excluded.NOMBRE,
+         ID_SUCURSAL = excluded.ID_SUCURSAL`,
       ["PRIMER_PUNTO", "Caja", branch.id],
     );
 
@@ -26,7 +118,11 @@ export class Database {
     if (Array.isArray(printPoints) && printPoints.length > 0) {
       for (const pp of printPoints) {
         await db.runAsync(
-          `INSERT OR IGNORE INTO PUNTOS_IMPRESION (UUID, NOMBRE, ID_SUCURSAL) VALUES (?, ?, ?)`,
+          `INSERT INTO PUNTOS_IMPRESION (UUID, NOMBRE, ID_SUCURSAL)
+           VALUES (?, ?, ?)
+           ON CONFLICT(UUID) DO UPDATE SET
+             NOMBRE = excluded.NOMBRE,
+             ID_SUCURSAL = excluded.ID_SUCURSAL`,
           [pp.id, pp.name, branch.id],
         );
       }
@@ -126,7 +222,64 @@ export class Database {
       }
     }
 
+    await Database.managersModel(db, data?.managers);
+
+    await Database.persistNipConfiguracion(db, {
+      idSucursal,
+      nip: nipNegocio,
+    });
+
     console.log("✅ Datos generales insertados correctamente");
+  }
+
+  /**
+   * Sincroniza gerentes y sus permisos desde /devices/general.
+   * Reemplaza el snapshot local para reflejar altas/bajas del API.
+   */
+  static async managersModel(db, managers) {
+    if (!Array.isArray(managers)) {
+      console.log("⚠️  No hay managers en la respuesta general");
+      return;
+    }
+
+    await db.runAsync(`DELETE FROM GERENTE_PERMISOS`);
+    await db.runAsync(`DELETE FROM GERENTES`);
+
+    let gerentesCount = 0;
+    let permisosCount = 0;
+
+    for (const manager of managers) {
+      if (!manager?.id) continue;
+
+      const nip =
+        manager.nip != null && manager.nip !== "" ? String(manager.nip) : null;
+
+      await db.runAsync(
+        `INSERT INTO GERENTES (UUID, NAME, NIP, ACTIVO) VALUES (?, ?, ?, 1)`,
+        [manager.id, manager.name ?? null, nip],
+      );
+      gerentesCount++;
+
+      const permisos = Array.isArray(manager.permissions)
+        ? manager.permissions
+        : [];
+
+      for (const permiso of permisos) {
+        const keyword = permiso?.keyWord ?? permiso?.keyword ?? null;
+        if (!keyword) continue;
+
+        await db.runAsync(
+          `INSERT OR IGNORE INTO GERENTE_PERMISOS (ID_GERENTE, NOMBRE, KEYWORD)
+           VALUES (?, ?, ?)`,
+          [manager.id, permiso.name ?? null, String(keyword)],
+        );
+        permisosCount++;
+      }
+    }
+
+    console.log(
+      `✅ Gerentes sincronizados: ${gerentesCount} gerentes, ${permisosCount} permisos`,
+    );
   }
 
   /**
@@ -325,52 +478,19 @@ export class Database {
   }
 
   /**
-   * Inserta configuraciones iniciales
-   * Sin crear tablas - asume que TAMAÑO_FUENTES, FORMATO_PAGO, CONFIGURACIONES ya existen
+   * Asegura fila de CONFIGURACIONES con NIP del negocio.
+   * Recibe contexto explícito de general() para evitar estado global entre llamadas.
    */
-  static async configuracionesModel() {
-    const qrData = await AsyncStorage.getItem("qrCode");
+  static async configuracionesModel({ idSucursal, nip } = {}) {
+    const qrData = idSucursal ?? (await AsyncStorage.getItem("qrCode"));
     const db = await getDb();
 
-    // Verificar si ya existe configuración para esta sucursal
-    const existingConfig = await db.getFirstAsync(
-      `SELECT * FROM CONFIGURACIONES WHERE ID_SUCURSAL = ?`,
-      [qrData],
-    );
+    await Database.persistNipConfiguracion(db, {
+      idSucursal: qrData,
+      nip,
+    });
 
-    if (existingConfig) {
-      console.log("⚠️  Configuración ya existe para esta sucursal");
-      return;
-    }
-
-    // Insertar configuración inicial
-    await db.runAsync(
-      `INSERT OR IGNORE INTO CONFIGURACIONES (
-        ID_SUCURSAL, NOMBRE_DISPOCITIVO, ABIERTO_PEDIDOS, IMPRIMIR_FICHA,
-        SOLO_PRODUCTOS_NUEVOS, ID_TAMAÑO_FUENTE, COSTO_ENVIO, IMPUESTOS,
-        DESCUENTOS, ID_FORMATO_PAGO, PROTEGER_VENTAS, NIP_FINALIZAR_TICKET,
-        MODO_RESTRICTIVO, HABILITAR_EDICION_TICKET, NIP
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        qrData,
-        "Dispositivo",
-        1,
-        1,
-        0,
-        2,
-        0.0,
-        0.0,
-        0.0,
-        1,
-        0,
-        0,
-        0,
-        1,
-        null,
-      ],
-    );
-
-    console.log("✅ Configuraciones insertadas correctamente");
+    console.log("✅ Configuraciones sincronizadas correctamente");
   }
 
   /**

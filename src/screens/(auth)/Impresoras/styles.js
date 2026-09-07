@@ -50,8 +50,7 @@ const s = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: normalize(6),
         elevation: 3,
-        // En tablet 2 columnas
-        ...(isTablet && { flex: 1 }),
+        width: "100%",
     },
     iconBox: {
         width: normalize(46),

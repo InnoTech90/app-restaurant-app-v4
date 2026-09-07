@@ -2,6 +2,7 @@ import axios from "axios";
 // import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
+import { asegurarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
 import {
   API_BASE_URL,
   API_BASE_URL_CANDIDATES,
@@ -12,6 +13,7 @@ const REQUEST_TIMEOUT_MS = 8000;
 export class ApiLogin {
   static async login(codigoSucursal) {
     try {
+      await asegurarConexionInternet();
       const codigoNormalizado = String(codigoSucursal || "").trim();
 
       let id;

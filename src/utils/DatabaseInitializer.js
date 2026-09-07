@@ -8,6 +8,7 @@
  */
 
 import { DatabaseSchema } from "./DatabaseSchema";
+import { runDatabaseMigrations } from "./databaseMigrations";
 
 let initializationPromise = null;
 let isInitialized = false;
@@ -85,6 +86,9 @@ export class DatabaseInitializer {
           throw error;
         }
       }
+
+      // Columnas nuevas en tablas ya existentes (siempre, no depende de versión)
+      await runDatabaseMigrations(db);
 
       // Ejecutar migraciones si es necesario
       if (currentVersion < DatabaseSchema.version) {

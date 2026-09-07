@@ -9,6 +9,11 @@ import ConfigItem from "../../../components/atoms/ConfigItem/ConfigItem";
 import InputToggle from "../../../components/atoms/InputToggle/InputToggle";
 import Select from "../../../components/atoms/Select/Select";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
+import {
+  MENSAJE_SIN_INTERNET,
+  obtenerMensajeErrorRed,
+  verificarConexionInternet,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { AuthContext } from "../../../utils/AuthContext/AuthContext";
 import { resetLocalData } from "../../../utils/db";
 import {
@@ -158,17 +163,23 @@ export default function Configuraciones() {
   }, []);
 
   const sincronizarDatosGenerales = useCallback(async () => {
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
     setSincronizandoGeneral(true);
     try {
       await integracionPantallaDeCarga.initializeDatabase();
+      const generalData = await integracionPantallaDeCarga.general();
       await Promise.all([
-        integracionPantallaDeCarga.general(),
         integracionPantallaDeCarga.table(),
         integracionPantallaDeCarga.clientes(),
         integracionPantallaDeCarga.inventory(),
         integracionPantallaDeCarga.menu(),
-        integracionPantallaDeCarga.configuraciones(),
       ]);
+      await integracionPantallaDeCarga.configuraciones(generalData);
 
       Alert.alert(
         "Sincronización completa",
@@ -178,7 +189,10 @@ export default function Configuraciones() {
       console.error("Error sincronizando datos generales:", error);
       Alert.alert(
         "Error de sincronización",
-        "No se pudo actualizar la información. Intenta nuevamente.",
+        obtenerMensajeErrorRed(
+          error,
+          "No se pudo actualizar la información. Intenta nuevamente.",
+        ),
       );
     } finally {
       setSincronizandoGeneral(false);

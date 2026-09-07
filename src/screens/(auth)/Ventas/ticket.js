@@ -2,7 +2,9 @@ import { Alert, PermissionsAndroid, Platform } from "react-native";
 import {
   BluetoothEscposPrinter,
   BluetoothManager,
-} from "react-native-bluetooth-escpos-printer";
+  isBluetoothEscposDisponible,
+  MENSAJE_BT_NO_DISPONIBLE,
+} from "../../../utils/bluetoothEscpos";
 import { withDb } from "../../../utils/db";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,6 +65,11 @@ export const imprimirCorteGeneral = (datos) => _imprimir(datos, "GENERAL");
 // ─────────────────────────────────────────────────────────────────────────────
 const _imprimir = async (datos, tipo) => {
   try {
+    if (!isBluetoothEscposDisponible()) {
+      Alert.alert("Impresión no disponible", MENSAJE_BT_NO_DISPONIBLE);
+      return false;
+    }
+
     // Permisos BT
     if (Platform.OS === "android" && Platform.Version >= 31) {
       await PermissionsAndroid.requestMultiple([

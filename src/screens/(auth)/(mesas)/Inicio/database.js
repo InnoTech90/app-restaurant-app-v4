@@ -10,7 +10,7 @@ export class Database {
   // 0: abierta
   // 1: pagada
   // 2: cancelada
-  // 3: pendiente de pago
+  // 3: pendiente de pago 
   // 4: comanda impresa (cuenta impresa, pendiente de confirmar pago)
   /** Devuelve todas las mesas con el campo TIENE_COMANDA_ACTIVA (1/0) */
   static async getMesas() {

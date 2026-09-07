@@ -15,6 +15,11 @@ import MateriaPrimaCard from "../../../components/Molecules/MateriaPrimaCard/Mat
 import ModalAjustarInventario from "../../../components/Molecules/ModalAjustarInventario/ModalAjustarInventario";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import {
+  MENSAJE_SIN_INTERNET,
+  obtenerMensajeErrorRed,
+  verificarConexionInternet,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
@@ -81,6 +86,12 @@ const Inventarios = () => {
   );
 
   const actualizar = async () => {
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
     try {
       const cantidadPendientes = await cargarPendientes();
       if (cantidadPendientes > 0) {
@@ -97,13 +108,21 @@ const Inventarios = () => {
       const data = await InventariosDatabase.getMateriasPrimas();
       setItems(data);
     } catch (e) {
-      setError(String(e?.message ?? e));
+      setError(
+        obtenerMensajeErrorRed(e, "No se pudo actualizar el inventario."),
+      );
     } finally {
       setActualizando(false);
     }
   };
 
   const sincronizar = async () => {
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
     try {
       setSincronizando(true);
       setError(null);
@@ -119,7 +138,10 @@ const Inventarios = () => {
         Alert.alert("Listo", `${sincronizados} movimiento(s) sincronizado(s).`);
       }
     } catch (e) {
-      Alert.alert("Error", String(e?.message ?? e));
+      Alert.alert(
+        "Error",
+        obtenerMensajeErrorRed(e, "No se pudo sincronizar el inventario."),
+      );
     } finally {
       setSincronizando(false);
     }

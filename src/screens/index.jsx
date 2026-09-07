@@ -33,7 +33,10 @@ export default function App() {
     );
   }
   if (authContext.autenticado) {
-    return <Redirect href="/Inicio" />;
+    if (authContext.gerenteSesion) {
+      return <Redirect href="/Inicio" />;
+    }
+    return <Redirect href="/LoginGerente" />;
   } else {
     return <Redirect href="/Login" />;
   }

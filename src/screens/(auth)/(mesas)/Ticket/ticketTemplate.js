@@ -1,5 +1,12 @@
-import { Alert, PermissionsAndroid, Platform } from 'react-native';
-import { BluetoothEscposPrinter, BluetoothManager } from 'react-native-bluetooth-escpos-printer';
+import { Alert, Platform } from 'react-native';
+import { BluetoothEscposPrinter, isBluetoothEscposDisponible } from '../../../../utils/bluetoothEscpos';
+import {
+    conectarImpresora,
+    liberarConexionBT,
+    normalizarMac,
+    prepararBluetooth,
+    sleep,
+} from '../../Impresoras/Funciones/Impresion';
 import Database from './database';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,30 +43,6 @@ const padLine = (left, right) => {
  * @param {object}   mesa      - Objeto mesa (NOMBRE, …)
  * @param {boolean}  esCaja    - Si true, imprime precios y total (ticket de caja)
  */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// Conecta con reintento automático
-const conectarImpresora = async (mac) => {
-    try {
-        await BluetoothManager.connect(mac);
-    } catch (e) {
-        await sleep(1000);
-        await BluetoothManager.connect(mac);
-    }
-};
-
-// Desconecta liberando la conexión para otros dispositivos
-const desconectarImpresora = async () => {
-    try {
-        await BluetoothManager.disconnect();
-    } catch (_) {}
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Imprime una sección de artículos. La conexión ya debe estar establecida.
-//  - esCaja=true  → ticket de caja: nombre + precio
-//  - esCaja=false → ticket de cocina/barra: solo nombre y cantidad (sin costos)
-// ─────────────────────────────────────────────────────────────────────────────
 const imprimirSeccion = async (punto, renglones, comanda, mesa, esCaja) => {
     const ALIGN = BluetoothEscposPrinter.ALIGN;
     await BluetoothEscposPrinter.printerInit();
@@ -153,16 +136,27 @@ const imprimirSeccion = async (punto, renglones, comanda, mesa, esCaja) => {
  */
 export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = false) => {
     try {
-        // Permisos BT (Android 12+) — se solicitan una sola vez
-        if (Platform.OS === 'android' && Platform.Version >= 31) {
-            await PermissionsAndroid.requestMultiple([
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-            ]);
+        if (Platform.OS !== 'android') {
+            Alert.alert('No disponible', 'La impresión Bluetooth solo está disponible en Android.');
+            return false;
         }
 
-        // Asegurar que el Bluetooth esté habilitado
-        await BluetoothManager.enableBluetooth();
+        if (!isBluetoothEscposDisponible()) {
+            Alert.alert(
+                'Impresión no disponible',
+                'El módulo Bluetooth no está cargado. Reinstala el APK de producción.',
+            );
+            return false;
+        }
+
+        const btOk = await prepararBluetooth();
+        if (!btOk) {
+            Alert.alert(
+                'Permisos requeridos',
+                'Se necesitan permisos de Bluetooth y ubicación para imprimir.',
+            );
+            return false;
+        }
 
         // Respetar configuración SOLO_PRODUCTOS_NUEVOS
         const config = await Database.getConfiguraciones();
@@ -176,74 +170,89 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
         }
 
         const puntos = await Database.getPuntosImpresion();
-        // Mapa UUID → fila de PUNTOS_IMPRESION
-        const puntosMap = Object.fromEntries(puntos.map((p) => [p.UUID, p]));
+        const puntosMap = Object.fromEntries(
+            puntos.map((p) => [String(p.UUID).trim(), p]),
+        );
 
-        // Artículos sin PUNTO_IMPRESION (null/0/'') → siempre caja (PRIMER_PUNTO)
         const fallbackUuid = 'PRIMER_PUNTO';
 
-        // ── Paso 1: agrupar renglones por PUNTO_IMPRESION ─────────────────────
         const gruposPorPunto = {};
         for (const renglon of articulosParaImprimir) {
             const raw = renglon.articulo?.PUNTO_IMPRESION;
             const uuid = (raw === null || raw === undefined || raw === 0 || raw === '')
                 ? fallbackUuid
-                : String(raw);
+                : String(raw).trim();
             if (!gruposPorPunto[uuid]) gruposPorPunto[uuid] = [];
             gruposPorPunto[uuid].push(renglon);
         }
 
-        // ── Paso 2: agrupar por MAC (misma impresora puede tener varios puntos) ─
-        // gruposPorMac[mac] = [{ punto, renglones, esCaja }, ...]
         const gruposPorMac = {};
+        const puntosSinImpresora = [];
+
         for (const [uuid, renglones] of Object.entries(gruposPorPunto)) {
             const punto = puntosMap[uuid];
             if (!punto) {
                 console.warn(`Punto de impresión no encontrado en BD: ${uuid}`);
                 continue;
             }
-            if (!punto.ID_IMPRESORA) {
-                console.warn(`Punto "${punto.NOMBRE}" no tiene impresora vinculada, se omite.`);
+            const mac = normalizarMac(punto.ID_IMPRESORA);
+            if (!mac) {
+                puntosSinImpresora.push(punto.NOMBRE);
                 continue;
             }
-            const mac = punto.ID_IMPRESORA;
             if (!gruposPorMac[mac]) gruposPorMac[mac] = [];
-            // sinPrecios=true → ticket de cocina: nunca imprimir precios en ningún punto
-            gruposPorMac[mac].push({ punto, renglones, esCaja: !sinPrecios && uuid === 'PRIMER_PUNTO' });
+            gruposPorMac[mac].push({
+                punto,
+                renglones,
+                esCaja: !sinPrecios && uuid === 'PRIMER_PUNTO',
+            });
         }
 
-        // Si ningún punto tiene impresora vinculada, devolver señal para mostrar modal
+        if (puntosSinImpresora.length > 0) {
+            Alert.alert(
+                'Sin impresora vinculada',
+                `Vincula una impresora en Ajustes → Impresoras para: ${puntosSinImpresora.join(', ')}.`,
+            );
+        }
+
         if (Object.keys(gruposPorMac).length === 0) {
-            return 'SIN_IMPRESORA';
+            return puntosSinImpresora.length > 0 ? false : 'SIN_IMPRESORA';
         }
 
         const errores = [];
         let impresos = 0;
 
-        // ── Paso 3: 1 conexión por impresora física, desconectar al terminar ───
         for (const [mac, secciones] of Object.entries(gruposPorMac)) {
+            const nombres = secciones.map((s) => s.punto.NOMBRE).join(', ');
             try {
-                await conectarImpresora(mac);
+                const conectado = await conectarImpresora(mac);
+                if (!conectado) {
+                    errores.push(`${nombres} (${mac})`);
+                    continue;
+                }
+
+                await sleep(200);
+
                 for (const { punto, renglones, esCaja } of secciones) {
                     await imprimirSeccion(punto, renglones, comanda, mesa, esCaja);
                 }
                 impresos++;
             } catch (e) {
-                const nombres = secciones.map((s) => s.punto.NOMBRE).join(', ');
                 console.error(
                     `Error imprimiendo en (${mac}) [${nombres}]:`,
-                    e?.message ?? e
+                    e?.message ?? e,
                 );
                 errores.push(nombres);
             } finally {
-                await desconectarImpresora();
+                await sleep(500);
+                await liberarConexionBT();
             }
         }
 
         if (errores.length > 0) {
             Alert.alert(
                 'Error de impresión',
-                `No se pudo conectar con: ${errores.join(', ')}.\nVerifica que estén encendidas y en rango.`
+                `No se pudo imprimir en: ${errores.join(', ')}.\n\nVerifica en Impresoras que cada punto tenga su impresora vinculada, encendida y emparejada en Bluetooth.`,
             );
         }
 

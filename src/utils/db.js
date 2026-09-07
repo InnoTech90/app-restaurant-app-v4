@@ -99,6 +99,7 @@ export async function resetLocalData() {
         "MesaSeleccionada",
         "montoRecibido",
         "authData",
+        "gerenteSesion",
       ]);
 
       console.log("✅ Datos locales eliminados correctamente");

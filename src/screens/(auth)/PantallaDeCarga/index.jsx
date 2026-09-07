@@ -1,10 +1,15 @@
 import { useRouter } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Image, Text, View } from "react-native";
 import Button from "../../../components/atoms/Button/Button";
 import GeneralModal from "../../../components/atoms/GeneralModal/GeneralModal";
 import Loading from "../../../components/atoms/Loading/Loading";
 import { AuthContext } from "../../../utils/AuthContext/AuthContext";
+import {
+  MENSAJE_SIN_INTERNET,
+  obtenerMensajeErrorRed,
+  verificarConexionInternet,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { gb } from "../../globalStyles";
 import { integracionPantallaDeCarga } from "./integracion";
 import { s } from "./styles";
@@ -14,6 +19,9 @@ const PantallaDeCarga = () => {
   const reouter = useRouter();
 
   const [modalError, setModalError] = useState(false);
+  const [mensajeError, setMensajeError] = useState(
+    "No se pudo conectar al servidor. Por favor intenta de nuevo.",
+  );
   const [endpontsCargados, setEndpointsCargados] = useState({
     general: null,
     table: null,
@@ -26,145 +34,145 @@ const PantallaDeCarga = () => {
     gastos: null,
     metodo_pago: null,
   });
-  // peticiones a la api
+
+  const mostrarError = useCallback((err, contexto) => {
+    console.error(`Error en la integración de PantallaDeCarga ${contexto}:`, err);
+    setMensajeError(
+      obtenerMensajeErrorRed(
+        err,
+        "No se pudo conectar al servidor. Por favor intenta de nuevo.",
+      ),
+    );
+    setModalError(true);
+  }, []);
+
   const getGeneral = async () => {
     try {
-      const res = await integracionPantallaDeCarga.general();
-
-      // paymentMethods ahora llega dentro de /devices/general.
+      const data = await integracionPantallaDeCarga.general();
       setEndpointsCargados((prev) => ({
         ...prev,
         general: true,
         metodo_pago: true,
       }));
+      return data;
     } catch (err) {
-      console.error("Error en la integración de PantallaDeCarga general:", err);
-      setModalError(true); // ✅ Muestra el modal
+      mostrarError(err, "general");
+      return null;
     }
   };
+
   const getTables = async () => {
     try {
-      const res = await integracionPantallaDeCarga.table();
-
+      await integracionPantallaDeCarga.table();
       setEndpointsCargados((prev) => ({ ...prev, table: true }));
     } catch (err) {
-      console.error("Error en la integración de PantallaDeCarga table:", err);
-      setModalError(true); // ✅ Muestra el modal
+      mostrarError(err, "table");
     }
   };
+
   const getClientes = async () => {
     try {
-      const res = await integracionPantallaDeCarga.clientes();
-
+      await integracionPantallaDeCarga.clientes();
       setEndpointsCargados((prev) => ({ ...prev, clientes: true }));
     } catch (err) {
-      console.error(
-        "Error en la integración de PantallaDeCarga clientes:",
-        err,
-      );
-      setModalError(true); // ✅ Muestra el modal
+      mostrarError(err, "clientes");
     }
   };
+
   const getInventory = async () => {
     try {
-      const res = await integracionPantallaDeCarga.inventory();
+      await integracionPantallaDeCarga.inventory();
       setEndpointsCargados((prev) => ({ ...prev, inventory: true }));
     } catch (err) {
-      console.error(
-        "Error en la integración de PantallaDeCarga inventory:",
-        err,
-      );
-      setModalError(true); // ✅ Muestra el modal
+      mostrarError(err, "inventory");
     }
   };
+
   const getMenu = async () => {
     try {
-      const res = await integracionPantallaDeCarga.menu();
+      await integracionPantallaDeCarga.menu();
       setEndpointsCargados((prev) => ({ ...prev, menu: true }));
     } catch (err) {
-      console.error("Error en la integración de PantallaDeCarga menu:", err);
-      setModalError(true);
+      mostrarError(err, "menu");
     }
   };
+
   const getGastos = async () => {
     try {
-      const res = await integracionPantallaDeCarga.gastos();
-
-      console.log("PantallaDeCarga gastos:", res); // ✅ Log para verificar la respuesta
-
+      await integracionPantallaDeCarga.gastos();
       setEndpointsCargados((prev) => ({ ...prev, gastos: true }));
     } catch (err) {
-      console.error("Error en la integración de PantallaDeCarga gastos:", err);
-      setModalError(true);
-    }
-  };
-  const getConfiguraciones = async () => {
-    try {
-      const res = await integracionPantallaDeCarga.configuraciones();
-      setEndpointsCargados((prev) => ({ ...prev, configuraciones: true }));
-    } catch (err) {
-      console.error(
-        "Error en la integración de PantallaDeCarga configuraciones:",
-        err,
-      );
-      setModalError(true);
-    }
-  };
-  const getHistorialCaja = async () => {
-    try {
-      const res = await integracionPantallaDeCarga.historialCaja();
-      setEndpointsCargados((prev) => ({ ...prev, historialCaja: true }));
-    } catch (err) {
-      console.error(
-        "Error en la integración de PantallaDeCarga historialCaja:",
-        err,
-      );
-      setModalError(true);
-    }
-  };
-  const createComandaTable = async () => {
-    try {
-      const res = await integracionPantallaDeCarga.comandaTable();
-      setEndpointsCargados((prev) => ({ ...prev, comanda: true }));
-    } catch (err) {
-      console.error(
-        "Error en la integración de PantallaDeCarga comandaTable:",
-        err,
-      );
-      setModalError(true);
+      mostrarError(err, "gastos");
     }
   };
 
-  // inicializacion y carga de todo
-  useEffect(() => {
-    if (authContext.isReady) {
-      const initialize = async () => {
-        try {
-          console.log("📱 Iniciando inicialización...");
-          await integracionPantallaDeCarga.initializeDatabase();
-          await getGeneral();
-          await getTables();
-          await getClientes();
-          await getInventory();
-          await getMenu();
-          await getGastos();
-          await getConfiguraciones();
-          await getHistorialCaja();
-          await createComandaTable();
-        } catch (error) {
-          console.error("❌ Error durante inicialización:", error);
-          setModalError(true);
-        }
-      };
-      initialize();
+  const getConfiguraciones = async (generalData) => {
+    try {
+      await integracionPantallaDeCarga.configuraciones(generalData);
+      setEndpointsCargados((prev) => ({ ...prev, configuraciones: true }));
+    } catch (err) {
+      mostrarError(err, "configuraciones");
     }
-  }, [authContext.isReady]);
-  // Solo permite continuar cuando todas las fuentes terminaron correctamente.
+  };
+
+  const getHistorialCaja = async () => {
+    try {
+      await integracionPantallaDeCarga.historialCaja();
+      setEndpointsCargados((prev) => ({ ...prev, historialCaja: true }));
+    } catch (err) {
+      mostrarError(err, "historialCaja");
+    }
+  };
+
+  const createComandaTable = async () => {
+    try {
+      await integracionPantallaDeCarga.comandaTable();
+      setEndpointsCargados((prev) => ({ ...prev, comanda: true }));
+    } catch (err) {
+      mostrarError(err, "comandaTable");
+    }
+  };
+
+  useEffect(() => {
+    if (!authContext.isReady) return;
+
+    const initialize = async () => {
+      try {
+        const hayInternet = await verificarConexionInternet();
+        if (!hayInternet) {
+          setMensajeError(MENSAJE_SIN_INTERNET);
+          setModalError(true);
+          return;
+        }
+
+        console.log("📱 Iniciando inicialización...");
+        await integracionPantallaDeCarga.initializeDatabase();
+        const generalData = await getGeneral();
+        if (!generalData) return;
+
+        await Promise.all([
+          getTables(),
+          getClientes(),
+          getInventory(),
+          getMenu(),
+          getGastos(),
+        ]);
+        await getConfiguraciones(generalData);
+        await getHistorialCaja();
+        await createComandaTable();
+      } catch (error) {
+        mostrarError(error, "initialize");
+      }
+    };
+
+    initialize();
+  }, [authContext.isReady, mostrarError]);
+
   useEffect(() => {
     if (Object.values(endpontsCargados).every((cargado) => cargado === true)) {
-      reouter.replace("/Inicio");
+      reouter.replace("/LoginGerente");
     }
-  }, [endpontsCargados]);
+  }, [endpontsCargados, reouter]);
 
   if (!authContext.isReady) {
     return null;
@@ -193,7 +201,6 @@ const PantallaDeCarga = () => {
         </View>
       </View>
 
-      {/* Modal de error */}
       <GeneralModal
         visible={modalError}
         onRequestClose={() => setModalError(false)}
@@ -201,13 +208,11 @@ const PantallaDeCarga = () => {
         <Text style={{ fontWeight: "bold", fontSize: 16, marginBottom: 8 }}>
           Error de conexión
         </Text>
-        <Text style={{ marginBottom: 16 }}>
-          No se pudo conectar al servidor. Por favor intenta de nuevo.
-        </Text>
+        <Text style={{ marginBottom: 16 }}>{mensajeError}</Text>
         <Button
           onPress={() => {
             setModalError(false);
-            authContext.desautenticar(); // ✅ Desautentica al cerrar
+            authContext.desautenticar();
           }}
         >
           <Text style={{ color: gb.gray50 }}>Aceptar</Text>
@@ -216,4 +221,5 @@ const PantallaDeCarga = () => {
     </View>
   );
 };
+
 export default PantallaDeCarga;

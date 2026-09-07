@@ -17,6 +17,7 @@ import {
 } from "../../../utils/sectionAccess";
 import {
   esErrorDeConexion,
+  MENSAJE_SIN_INTERNET,
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -491,10 +492,7 @@ const Ventas = () => {
 
           const hayInternet = await verificarConexionInternet();
           if (!hayInternet) {
-            Alert.alert(
-              "Sin conexión",
-              "No hay internet disponible. Conéctate a una red e intenta sincronizar de nuevo.",
-            );
+            Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
             return;
           }
 
@@ -520,10 +518,7 @@ const Ventas = () => {
             }
           } catch (e) {
             if (esErrorDeConexion(e)) {
-              Alert.alert(
-                "Sin conexión",
-                "No se pudo conectar con el servidor. Verifica tu internet e intenta de nuevo.",
-              );
+              Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
             } else {
               console.error("Error sincronizando ventas:", e);
               Alert.alert(

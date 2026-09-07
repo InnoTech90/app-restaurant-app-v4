@@ -1,4 +1,5 @@
 import { withDb } from "../../../utils/db";
+import { runDatabaseMigrations } from "../../../utils/databaseMigrations";
 
 export default class Database {
   /**
@@ -7,50 +8,7 @@ export default class Database {
    */
   static async runMigraciones() {
     return withDb("Configuraciones.runMigraciones", async (db) => {
-      // COMANDA_ARTICULO → columna IMPRESO
-      const colsArticulo = await db.getAllAsync(
-        `PRAGMA table_info(COMANDA_ARTICULO)`,
-      );
-      if (!colsArticulo.some((c) => c.name === "IMPRESO")) {
-        await db.runAsync(
-          `ALTER TABLE COMANDA_ARTICULO ADD COLUMN IMPRESO INTEGER DEFAULT 0`,
-        );
-      }
-
-      // CONFIGURACIONES → columnas _ES_PCT
-      const colsConfig = await db.getAllAsync(
-        `PRAGMA table_info(CONFIGURACIONES)`,
-      );
-      const nombres = colsConfig.map((c) => c.name);
-
-      if (!nombres.includes("COSTO_ENVIO_ES_PCT")) {
-        await db.runAsync(
-          `ALTER TABLE CONFIGURACIONES ADD COLUMN COSTO_ENVIO_ES_PCT INTEGER DEFAULT 0`,
-        );
-      }
-      if (!nombres.includes("IMPUESTOS_ES_PCT")) {
-        await db.runAsync(
-          `ALTER TABLE CONFIGURACIONES ADD COLUMN IMPUESTOS_ES_PCT INTEGER DEFAULT 0`,
-        );
-      }
-      if (!nombres.includes("DESCUENTOS_ES_PCT")) {
-        await db.runAsync(
-          `ALTER TABLE CONFIGURACIONES ADD COLUMN DESCUENTOS_ES_PCT INTEGER DEFAULT 0`,
-        );
-      }
-      if (!nombres.includes("HABILITAR_EDICION_TICKET")) {
-        await db.runAsync(
-          `ALTER TABLE CONFIGURACIONES ADD COLUMN HABILITAR_EDICION_TICKET INTEGER DEFAULT 1`,
-        );
-      }
-
-      const colsComanda = await db.getAllAsync(`PRAGMA table_info(COMANDA)`);
-      const nombresComanda = colsComanda.map((c) => c.name);
-      if (!nombresComanda.includes("IMPUESTOS")) {
-        await db.runAsync(
-          `ALTER TABLE COMANDA ADD COLUMN IMPUESTOS REAL DEFAULT 0`,
-        );
-      }
+      await runDatabaseMigrations(db);
     });
   }
 

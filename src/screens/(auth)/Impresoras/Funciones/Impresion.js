@@ -2,95 +2,168 @@ import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import {
     BluetoothEscposPrinter,
     BluetoothManager,
-} from 'react-native-bluetooth-escpos-printer';
+    isBluetoothEscposDisponible,
+} from '../../../../utils/bluetoothEscpos';
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Permisos (Android 12+)
-// ─────────────────────────────────────────────────────────────────────────────
+/** Normaliza MAC a formato XX:XX:XX:XX:XX:XX en mayúsculas. */
+export const normalizarMac = (address) => {
+    if (!address) return '';
+    return String(address).trim().toUpperCase().replace(/-/g, ':');
+};
+
 /**
- * Solicita BLUETOOTH_SCAN y BLUETOOTH_CONNECT en tiempo de ejecución (API ≥ 31).
- * @returns {Promise<boolean>} true si los permisos fueron concedidos o no son necesarios.
+ * Solicita permisos de Bluetooth según la versión de Android.
+ * @returns {Promise<boolean>}
  */
 export const solicitarPermisosBluetooth = async () => {
-    if (Platform.OS !== 'android' || Platform.Version < 31) return true;
-    const grants = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-    ]);
-    return Object.values(grants).every(
-        (g) => g === PermissionsAndroid.RESULTS.GRANTED
-    );
-};
+    if (Platform.OS !== 'android') return true;
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Conexión
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Conecta con la impresora especificada por dirección MAC.
- * Si no está emparejada, muestra el diálogo de vinculación de Android.
- * @param {string} address  Dirección MAC del dispositivo.
- * @returns {Promise<void>}
- */
-export const conectarImpresora = async (address) => {
-    // En algunos dispositivos Android, connect() lanza incluso cuando la conexión
-    // BT se establece correctamente (socket residual). Se reintenta tras 1 s.
-    try {
-        await BluetoothManager.connect(address);
-    } catch (e) {
-        await sleep(1000);
-        await BluetoothManager.connect(address);
+    if (Platform.Version >= 31) {
+        const grants = await PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        ]);
+        return Object.values(grants).every(
+            (g) => g === PermissionsAndroid.RESULTS.GRANTED,
+        );
     }
+
+    const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Desconexión temporal (liberar socket después de vincular)
-// ─────────────────────────────────────────────────────────────────────────────
 /**
- * Cierra el socket BT activo. Android permite ~5-7 conexiones simultáneas;
- * llamar esto após vincular evita agotar el stack.
+ * Permisos + activar Bluetooth antes de imprimir o escanear.
+ * @returns {Promise<boolean>}
+ */
+export const prepararBluetooth = async () => {
+    if (!isBluetoothEscposDisponible()) return false;
+    if (Platform.OS !== 'android') return true;
+
+    const permisosOk = await solicitarPermisosBluetooth();
+    if (!permisosOk) {
+        Alert.alert(
+            'Permisos requeridos',
+            'Activa los permisos de Bluetooth y ubicación para imprimir.',
+        );
+        return false;
+    }
+
+    try {
+        await BluetoothManager.enableBluetooth();
+    } catch (e) {
+        console.warn('[BT] enableBluetooth:', e?.message ?? e);
+        Alert.alert(
+            'Bluetooth',
+            'Activa Bluetooth en el dispositivo e intenta de nuevo.',
+        );
+        return false;
+    }
+
+    return true;
+};
+
+/**
+ * Cierra el socket BT activo. Necesario al cambiar entre impresoras.
  */
 export const liberarConexionBT = async () => {
+    if (!BluetoothManager?.disconnect) return;
     try {
         await BluetoothManager.disconnect();
     } catch (_) {}
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Desconexión / desemparejamiento
-// ─────────────────────────────────────────────────────────────────────────────
 /**
- * Desconecta y desempareja la impresora especificada.
- * @param {string} address  Dirección MAC del dispositivo.
- * @returns {Promise<void>}
+ * Conecta con la impresora (desconecta antes, normaliza MAC, reintenta).
+ * @returns {Promise<boolean>}
  */
-export const desconectarImpresora = async (address) => {
-    await BluetoothManager.unpair(address);
+export const conectarImpresora = async (address) => {
+    if (!isBluetoothEscposDisponible()) return false;
+    const mac = normalizarMac(address);
+    if (!mac) return false;
+
+    await liberarConexionBT();
+    await sleep(800);
+
+    for (let intento = 0; intento < 2; intento++) {
+        try {
+            await BluetoothManager.connect(mac);
+            await sleep(600);
+            return true;
+        } catch (e) {
+            console.warn(
+                `[BT] connect intento ${intento + 1} (${mac}):`,
+                e?.message ?? e,
+            );
+            if (intento === 0) {
+                await liberarConexionBT();
+                await sleep(1200);
+            }
+        }
+    }
+
+    return false;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Impresión
-// ─────────────────────────────────────────────────────────────────────────────
+export const desconectarImpresora = async (address) => {
+    await liberarConexionBT();
+    const mac = normalizarMac(address);
+    if (!mac || !BluetoothManager?.unpair) return;
+    try {
+        await BluetoothManager.unpair(mac);
+    } catch (_) {}
+};
+
 /**
- * Conecta con la impresora, la inicializa y ejecuta la función de impresión.
- * Centraliza el manejo de errores de conexión e impresión.
- *
- * @param {string}            address     Dirección MAC de la impresora.
- * @param {() => Promise<void>} imprimirFn  Función async con los comandos ESC/POS.
- * @returns {Promise<boolean>} true si la impresión fue exitosa.
+ * Conecta, imprime y libera la conexión al terminar.
+ * @returns {Promise<boolean>}
  */
 export const imprimirConImpresora = async (address, imprimirFn) => {
-    try {
-        await BluetoothManager.connect(address);
-        await BluetoothEscposPrinter.printerInit();
-        await imprimirFn();
-        return true;
-    } catch (e) {
+    if (!isBluetoothEscposDisponible()) {
         Alert.alert(
-            'Error de impresión',
-            'No se pudo conectar con la impresora. Verifica que esté encendida y en rango.'
+            'Impresión no disponible',
+            'El módulo Bluetooth no está cargado. Reinstala el APK de producción.',
         );
         return false;
+    }
+
+    const mac = normalizarMac(address);
+    if (!mac) {
+        Alert.alert('Impresora inválida', 'La MAC de la impresora no es válida.');
+        return false;
+    }
+
+    const btOk = await prepararBluetooth();
+    if (!btOk) return false;
+
+    try {
+        const conectado = await conectarImpresora(mac);
+        if (!conectado) {
+            Alert.alert(
+                'Sin conexión',
+                `No se pudo conectar con ${mac}. Verifica que la impresora esté encendida, emparejada en Ajustes → Bluetooth y cerca del dispositivo.`,
+            );
+            return false;
+        }
+
+        await BluetoothEscposPrinter.printerInit();
+        await sleep(200);
+        await imprimirFn();
+        await sleep(800);
+        return true;
+    } catch (e) {
+        console.warn('[BT] Error imprimiendo en', mac, e?.message ?? e);
+        Alert.alert(
+            'Error de impresión',
+            e?.message ?? 'Ocurrió un error al enviar datos a la impresora.',
+        );
+        return false;
+    } finally {
+        await sleep(300);
+        await liberarConexionBT();
     }
 };

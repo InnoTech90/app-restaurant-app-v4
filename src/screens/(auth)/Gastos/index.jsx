@@ -20,6 +20,11 @@ import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import {
+  MENSAJE_SIN_INTERNET,
+  obtenerMensajeErrorRed,
+  verificarConexionInternet,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
@@ -339,6 +344,12 @@ const Gastos = () => {
   };
 
   const sincronizarGastos = async () => {
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
     try {
       setSincronizando(true);
       const { sincronizados } = await integracionGastos.sincronizarGastos();
@@ -350,7 +361,13 @@ const Gastos = () => {
       await cargar();
     } catch (e) {
       console.error("Error al sincronizar gastos:", e);
-      Alert.alert("Error", "No se pudo sincronizar con el servidor.");
+      Alert.alert(
+        "Error",
+        obtenerMensajeErrorRed(
+          e,
+          "No se pudo sincronizar con el servidor.",
+        ),
+      );
     } finally {
       setSincronizando(false);
     }

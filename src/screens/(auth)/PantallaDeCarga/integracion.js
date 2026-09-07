@@ -99,9 +99,12 @@ export class integracionPantallaDeCarga {
     }
   };
   // creaciones de db sin consulta a la api
-  static configuraciones = async () => {
+  static configuraciones = async (generalData = null) => {
     try {
-      await Database.configuracionesModel();
+      const ctx = generalData
+        ? Database.getConfigContextFromGeneral(generalData)
+        : {};
+      await Database.configuracionesModel(ctx);
     } catch (error) {
       console.error("Error fetching configuraciones data:", error);
 

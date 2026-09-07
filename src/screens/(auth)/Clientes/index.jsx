@@ -15,6 +15,11 @@ import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import {
+  MENSAJE_SIN_INTERNET,
+  obtenerMensajeErrorRed,
+  verificarConexionInternet,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
+import {
   listColumns,
   normalize,
 } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -158,18 +163,33 @@ const Clientes = () => {
   };
 
   const handleActualizar = async () => {
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
     try {
       setActualizando(true);
       await integracionClientes.actualizar();
       await cargar();
     } catch (e) {
-      Alert.alert("Error", String(e?.message ?? e));
+      Alert.alert(
+        "Error",
+        obtenerMensajeErrorRed(e, "No se pudieron actualizar los clientes."),
+      );
     } finally {
       setActualizando(false);
     }
   };
 
   const handleSincronizar = async () => {
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
     try {
       setSincronizando(true);
       const { sincronizados } = await integracionClientes.sincronizar();
@@ -180,7 +200,10 @@ const Clientes = () => {
         Alert.alert("Listo", `${sincronizados} cliente(s) sincronizado(s).`);
       }
     } catch (e) {
-      Alert.alert("Error", String(e?.message ?? e));
+      Alert.alert(
+        "Error",
+        obtenerMensajeErrorRed(e, "No se pudieron sincronizar los clientes."),
+      );
     } finally {
       setSincronizando(false);
     }

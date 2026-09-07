@@ -5,24 +5,48 @@ export class Database {
     static async getPuntosImpresion() {
         return withDb("Impresoras.getPuntosImpresion", async (db) => {
             return await db.getAllAsync(
-                `SELECT * FROM PUNTOS_IMPRESION`
+                `SELECT * FROM PUNTOS_IMPRESION ORDER BY NOMBRE ASC`
             );
+        });
+    }
+
+    /** Garantiza al menos el punto de caja si la BD quedó vacía. */
+    static async asegurarPuntoCaja(idSucursal) {
+        if (!idSucursal) return;
+        return withDb("Impresoras.asegurarPuntoCaja", async (db) => {
+            await db.runAsync(
+                `INSERT OR IGNORE INTO PUNTOS_IMPRESION (UUID, NOMBRE, ID_SUCURSAL)
+                 VALUES (?, ?, ?)`,
+                ["PRIMER_PUNTO", "Caja", idSucursal],
+            );
+        });
+    }
+
+    static async getSucursalId() {
+        return withDb("Impresoras.getSucursalId", async (db) => {
+            const row = await db.getFirstAsync(
+                `SELECT UUID FROM SUCURSAL LIMIT 1`,
+            );
+            return row?.UUID ?? null;
         });
     }
 
 
     static async vincularImpresora(id, idImpresora) {
-        return withDb("Impresoras.vincularImpresora", async (db) => {
+        const mac = String(idImpresora || "")
+            .trim()
+            .toUpperCase()
+            .replace(/-/g, ":");
 
+        return withDb("Impresoras.vincularImpresora", async (db) => {
             await db.runAsync(
                 `
                 UPDATE PUNTOS_IMPRESION
                 SET ID_IMPRESORA = ?
                 WHERE ID = ?
                 `,
-                [idImpresora, id]
+                [mac, id],
             );
-
         });
     }
 

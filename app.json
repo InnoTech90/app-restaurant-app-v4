@@ -7,7 +7,7 @@
     "icon": "./src/assets/img/avatar_app_rest.png",
     "scheme": "apprestaurant",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "assetBundlePatterns": [
       "**/*"
     ],

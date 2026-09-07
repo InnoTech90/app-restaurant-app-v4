@@ -115,11 +115,27 @@ export const DatabaseSchema = {
       ddl: `
         CREATE TABLE IF NOT EXISTS GERENTES (
           ID INTEGER PRIMARY KEY AUTOINCREMENT,
+          UUID NVARCHAR UNIQUE,
           NAME NVARCHAR,
-          NIP INTEGER
+          NIP NVARCHAR,
+          ACTIVO INTEGER DEFAULT 1
         )
       `,
       dependencies: [],
+    },
+
+    GERENTE_PERMISOS: {
+      name: "GERENTE_PERMISOS",
+      ddl: `
+        CREATE TABLE IF NOT EXISTS GERENTE_PERMISOS (
+          ID INTEGER PRIMARY KEY AUTOINCREMENT,
+          ID_GERENTE NVARCHAR,
+          NOMBRE NVARCHAR,
+          KEYWORD NVARCHAR,
+          UNIQUE(ID_GERENTE, KEYWORD)
+        )
+      `,
+      dependencies: ["GERENTES"],
     },
 
     METODO_PAGO: {

@@ -37,9 +37,13 @@ function isLocalApiUrl(url) {
   try {
     const { hostname, protocol } = new URL(url);
     if (protocol !== "http:") return false;
-    return ["localhost", "127.0.0.1", "0.0.0.0", "10.0.2.2", "10.0.3.2"].includes(
-      hostname,
-    );
+    return [
+      "localhost",
+      "127.0.0.1",
+      "0.0.0.0",
+      "10.0.2.2",
+      "10.0.3.2",
+    ].includes(hostname);
   } catch {
     return false;
   }

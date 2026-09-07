@@ -1,5 +1,10 @@
-import { PermissionsAndroid, Platform } from 'react-native';
-import { BluetoothEscposPrinter, BluetoothManager } from 'react-native-bluetooth-escpos-printer';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import {
+    BluetoothEscposPrinter,
+    BluetoothManager,
+    isBluetoothEscposDisponible,
+    MENSAJE_BT_NO_DISPONIBLE,
+} from '../../../../utils/bluetoothEscpos';
 import Database from './database';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +61,11 @@ const desconectarImpresora = async () => {
  */
 export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales, metodoPago, pagoDividido = [], formatosPago = []) => {
     try {
+        if (!isBluetoothEscposDisponible()) {
+            Alert.alert('Impresión no disponible', MENSAJE_BT_NO_DISPONIBLE);
+            return false;
+        }
+
         if (Platform.OS === 'android' && Platform.Version >= 31) {
             await PermissionsAndroid.requestMultiple([
                 PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,

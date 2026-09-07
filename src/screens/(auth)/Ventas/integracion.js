@@ -97,6 +97,8 @@ export class integracionVentas {
       return sale;
     });
 
+    console.log("sales", sales);
+
     // Llamada al endpoint
     const response = await deviceApi.post(
       "/devices/synchronize-sale",
