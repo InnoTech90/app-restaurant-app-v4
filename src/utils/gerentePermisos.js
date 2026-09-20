@@ -1,6 +1,9 @@
 /**
- * Permisos de gerente por KEYWORD (GERENTE_PERMISOS).
- * Owner ve todas las opciones; managers solo las que coincidan.
+ * Opciones del drawer que requieren NIP del dueño (CONFIGURACIONES.NIP)
+ * cuando no hay permiso de gerente para esa keyword.
+ *
+ * Sin sesión de gerente: toda opción con keywords pide NIP del dueño.
+ * Mesas (siempreVisible) no pide NIP.
  */
 
 const normalizarKeyword = (value) =>
@@ -8,7 +11,6 @@ const normalizarKeyword = (value) =>
     .trim()
     .toLowerCase();
 
-/** Keywords del manager autenticado. */
 export function obtenerKeywordsGerente(gerenteSesion) {
   if (!gerenteSesion) return new Set();
   const permisos = Array.isArray(gerenteSesion.permisos)
@@ -23,25 +25,32 @@ export function obtenerKeywordsGerente(gerenteSesion) {
 }
 
 /**
- * ¿Puede ver esta opción del drawer?
- * - Owner: siempre sí
- * - siempreVisible: sí (ej. Mesas)
- * - keywords: sí si tiene al menos uno
- * - sin keywords: no (salvo owner)
+ * ¿El usuario tiene keyword de permiso para esta opción?
+ * Sin sesión de gerente → false (se pedirá NIP del dueño).
  */
-export function puedeVerOpcionDrawer(gerenteSesion, screen) {
-  if (!gerenteSesion) return false;
-  if (gerenteSesion.tipo === "owner" || gerenteSesion.id === "owner") {
+export function tienePermisoKeyword(gerenteSesion, screen) {
+  if (!screen) return true;
+  if (screen.siempreVisible) return true;
+  if (gerenteSesion?.tipo === "owner" || gerenteSesion?.id === "owner") {
     return true;
   }
-  if (screen?.siempreVisible) return true;
 
-  const requeridos = Array.isArray(screen?.keywords)
+  const requeridos = Array.isArray(screen.keywords)
     ? screen.keywords.map(normalizarKeyword).filter(Boolean)
     : [];
 
-  if (requeridos.length === 0) return false;
+  if (requeridos.length === 0) return true;
+
+  if (!gerenteSesion) return false;
 
   const otorgados = obtenerKeywordsGerente(gerenteSesion);
   return requeridos.some((k) => otorgados.has(k));
+}
+
+/**
+ * ¿Hay que pedir NIP del dueño para entrar a esta opción?
+ */
+export function requiereNipDueño(gerenteSesion, screen) {
+  if (!screen || screen.siempreVisible) return false;
+  return !tienePermisoKeyword(gerenteSesion, screen);
 }

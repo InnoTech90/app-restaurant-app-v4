@@ -1,18 +1,14 @@
 ﻿import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  DeviceEventEmitter,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,228 +25,174 @@ import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./database";
+import { GASTOS_REFRESH_EVENT } from "./events";
 import { integracionGastos } from "./integracion";
 import { s } from "./styles";
 
-/* ─── Fila de un concepto ──────────────────────────────────────── */
-const ConceptoRow = ({ concepto, onPress }) => (
-  <Pressable
-    style={s.conceptoRow}
-    onPress={() => onPress(concepto)}
-    android_ripple={{ color: "#0001" }}
-  >
-    <View style={s.conceptoRowInfo}>
-      <View style={s.conceptoRowTopLine}>
-        <Text style={s.conceptoRowNombre} numberOfLines={1}>
-          {concepto.NOMBRE}
-        </Text>
-        <EstatusSincronizado sincronizado={!concepto.TIENE_PENDIENTES} />
+const formatearFechaCorta = (fechaIso) => {
+  if (!fechaIso) return "—";
+  const d = new Date(fechaIso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+/* ─── Gasto (registro) ─────────────────────────────────────────── */
+const GastoRow = ({ registro, onEdit, onDelete }) => (
+  <View style={s.gastoRow}>
+    <Pressable style={s.gastoRowMain} onPress={() => onEdit(registro)}>
+      <View style={{ flex: 1 }}>
+        <Text style={s.gastoFecha}>{formatearFechaCorta(registro.FECHA)}</Text>
+        {!!registro.NOTA && (
+          <Text style={s.gastoNota} numberOfLines={2}>
+            {registro.NOTA}
+          </Text>
+        )}
       </View>
-      {(concepto.PRECIO ?? 0) > 0 && (
-        <Text style={s.conceptoRowPrecioBase}>
-          Precio: ${Number(concepto.PRECIO).toFixed(2)}
-        </Text>
-      )}
-    </View>
-    <Text style={s.conceptoRowMonto}>
-      ${Number(concepto.TOTAL ?? 0).toFixed(2)}
-    </Text>
-  </Pressable>
+      <Text style={s.gastoMonto}>${Number(registro.MONTO ?? 0).toFixed(2)}</Text>
+      <EstatusSincronizado sincronizado={!!registro.SINCRONIZADO} />
+    </Pressable>
+    <Pressable
+      style={s.conceptoDeleteBtn}
+      onPress={() => onDelete(registro)}
+      hitSlop={8}
+      accessibilityLabel="Eliminar gasto"
+    >
+      <Ionicons name="trash-outline" size={normalize(16)} color={gb.red600} />
+    </Pressable>
+  </View>
 );
 
-/* ─── Sección de una categoría ─────────────────────────────────── */
-const CategoriaSection = ({ categoria, onConceptoPress }) => {
-  const totalCat = (categoria.conceptos ?? []).reduce(
-    (sum, c) => sum + (c.TOTAL ?? 0),
-    0,
-  );
-  return (
-    <View style={s.seccion}>
-      {/* Header degradado de categoría */}
+/* ─── Concepto expandible ──────────────────────────────────────── */
+const ConceptoAccordion = ({
+  concepto,
+  categoria,
+  expandido,
+  onToggle,
+  onAddGasto,
+  onEditGasto,
+  onDeleteGasto,
+}) => (
+  <View style={s.conceptoAccordion}>
+    <Pressable
+      style={s.conceptoRow}
+      onPress={onToggle}
+      android_ripple={{ color: "#0001" }}
+    >
+      <Ionicons
+        name={expandido ? "chevron-down" : "chevron-forward"}
+        size={normalize(16)}
+        color={gb.gray500}
+      />
+      <View style={s.conceptoRowInfo}>
+        <View style={s.conceptoRowTopLine}>
+          <Text style={s.conceptoRowNombre} numberOfLines={1}>
+            {concepto.NOMBRE}
+          </Text>
+          <EstatusSincronizado sincronizado={!concepto.TIENE_PENDIENTES} />
+        </View>
+        {!!concepto.DESCRIPCION && (
+          <Text style={s.conceptoRowPrecioBase} numberOfLines={1}>
+            {concepto.DESCRIPCION}
+          </Text>
+        )}
+      </View>
+      <Text style={s.conceptoRowMonto}>
+        ${Number(concepto.TOTAL ?? 0).toFixed(2)}
+      </Text>
+    </Pressable>
+
+    {expandido && (
+      <View style={s.gastosWrap}>
+        <Pressable
+          style={s.addGastoBtn}
+          onPress={() => onAddGasto(concepto, categoria)}
+        >
+          <Ionicons
+            name="add-circle-outline"
+            size={normalize(16)}
+            color={gb.blue550}
+          />
+          <Text style={s.addGastoBtnText}>Agregar gasto</Text>
+        </Pressable>
+
+        {(concepto.registros ?? []).length === 0 ? (
+          <Text style={s.seccionVaciaText}>Sin gastos registrados</Text>
+        ) : (
+          (concepto.registros ?? []).map((r) => (
+            <GastoRow
+              key={String(r.ID)}
+              registro={r}
+              onEdit={onEditGasto}
+              onDelete={onDeleteGasto}
+            />
+          ))
+        )}
+      </View>
+    )}
+  </View>
+);
+
+/* ─── Categoría expandible ─────────────────────────────────────── */
+const CategoriaAccordion = ({
+  categoria,
+  expandida,
+  conceptosExpandidos,
+  onToggleCategoria,
+  onToggleConcepto,
+  onAddGasto,
+  onEditGasto,
+  onDeleteGasto,
+}) => (
+  <View style={s.seccion}>
+    <Pressable onPress={onToggleCategoria}>
       <LinearGradient
         style={s.seccionHeader}
         colors={gb.gradient_blue}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
-        <Text style={s.seccionNombre}>{categoria.NOMBRE}</Text>
+        <Ionicons
+          name={expandida ? "chevron-down" : "chevron-forward"}
+          size={normalize(18)}
+          color="white"
+        />
+        <Text style={s.seccionNombre} numberOfLines={1}>
+          {categoria.NOMBRE}
+        </Text>
+        <Text style={s.seccionHeaderTotal}>
+          ${Number(categoria.TOTAL ?? 0).toFixed(2)}
+        </Text>
       </LinearGradient>
+    </Pressable>
 
-      {/* Lista de conceptos */}
-      {(categoria.conceptos ?? []).length === 0 ? (
-        <View style={s.seccionVacia}>
-          <Text style={s.seccionVaciaText}>Sin conceptos</Text>
-        </View>
-      ) : (
-        (categoria.conceptos ?? []).map((c, i) => (
-          <View key={String(c.ID)}>
-            <ConceptoRow concepto={c} onPress={onConceptoPress} />
-            {i < categoria.conceptos.length - 1 && (
-              <View style={s.conceptoDivider} />
-            )}
+    {expandida && (
+      <View style={s.conceptosWrap}>
+        {(categoria.conceptos ?? []).length === 0 ? (
+          <View style={s.seccionVacia}>
+            <Text style={s.seccionVaciaText}>Sin conceptos</Text>
           </View>
-        ))
-      )}
-
-      {/* Total de categoría */}
-      <View style={s.seccionTotalRow}>
-        <Text style={s.seccionTotalLabel}>TOTAL:</Text>
-        <Text style={s.seccionTotalMonto}>${totalCat.toFixed(2)}</Text>
-      </View>
-    </View>
-  );
-};
-
-/* ─── Modal de registro de pago ─────────────────────────────────── */
-const ModalRegistro = ({
-  visible,
-  concepto,
-  registros,
-  monto,
-  onMontoChange,
-  nota,
-  onNotaChange,
-  onCancel,
-  onGuardar,
-  guardando,
-}) => {
-  if (!concepto) return null;
-
-  const hoy = new Date();
-  const fechaTexto = `${hoy.getDate().toString().padStart(2, "0")} / ${(
-    hoy.getMonth() + 1
-  )
-    .toString()
-    .padStart(2, "0")} / ${hoy.getFullYear()}`;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
-      <KeyboardAvoidingView
-        style={s.modalOverlay}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        {/* Tap fuera cierra */}
-        <Pressable style={s.modalTapZone} onPress={onCancel} />
-
-        <View style={s.modalCard}>
-          {/* Franja superior degradada */}
-          <LinearGradient
-            colors={gb.gradient_blue}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.modalAccent}
-          />
-
-          {/* Título y fecha */}
-          <Text style={s.modalTitle}>{concepto.NOMBRE}</Text>
-          <Text style={s.modalFecha}>{fechaTexto}</Text>
-
-          {/* Input de monto */}
-          <View style={s.modalMontoWrap}>
-            <Text style={s.modalSigPeso}>$</Text>
-            <TextInput
-              style={s.modalMontoInput}
-              value={monto}
-              onChangeText={onMontoChange}
-              placeholder="0.00"
-              placeholderTextColor={gb.gray300}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
+        ) : (
+          (categoria.conceptos ?? []).map((c) => (
+            <ConceptoAccordion
+              key={String(c.ID)}
+              concepto={c}
+              categoria={categoria}
+              expandido={!!conceptosExpandidos[c.UUID]}
+              onToggle={() => onToggleConcepto(c.UUID)}
+              onAddGasto={onAddGasto}
+              onEditGasto={onEditGasto}
+              onDeleteGasto={onDeleteGasto}
             />
-          </View>
-
-          {/* Nota */}
-          <Text style={s.modalLabel}>NOTA:</Text>
-          <TextInput
-            style={s.modalNotaInput}
-            value={nota}
-            onChangeText={onNotaChange}
-            placeholder="Comentario opcional"
-            placeholderTextColor={gb.gray400}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-
-          {/* Historial */}
-          {registros.length > 0 && (
-            <View style={s.modalHistorialWrap}>
-              <Text style={s.modalHistorialLabel}>
-                HISTORIAL ({registros.length})
-              </Text>
-              <ScrollView
-                style={s.modalHistorialScroll}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-              >
-                {registros.map((r) => (
-                  <View key={String(r.ID)} style={s.modalHistorialItem}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.modalHistorialFecha}>
-                        {r.FECHA
-                          ? new Date(r.FECHA).toLocaleDateString("es-MX", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
-                          : "—"}
-                      </Text>
-                      {!!r.NOTA && (
-                        <Text style={s.modalHistorialNota} numberOfLines={1}>
-                          {r.NOTA}
-                        </Text>
-                      )}
-                    </View>
-                    <Text style={s.modalHistorialMonto}>
-                      ${Number(r.MONTO).toFixed(2)}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Botones */}
-          <View style={s.modalButtons}>
-            <Pressable
-              style={({ pressed }) => [
-                s.modalBtnCancel,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-              onPress={onCancel}
-            >
-              <Text style={s.modalBtnCancelText}>CANCELAR</Text>
-            </Pressable>
-            <LinearGradient
-              colors={gb.gradient_blue}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={s.modalBtnGuardar}
-            >
-              <Pressable
-                style={({ pressed }) => [
-                  s.modalBtnGuardarInner,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
-                onPress={onGuardar}
-                disabled={guardando}
-              >
-                <Text style={s.modalBtnGuardarText}>
-                  {guardando ? "..." : "GUARDAR"}
-                </Text>
-              </Pressable>
-            </LinearGradient>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
+          ))
+        )}
+      </View>
+    )}
+  </View>
+);
 
 /* ─── Pantalla principal ───────────────────────────────────────── */
 const Gastos = () => {
@@ -269,31 +211,33 @@ const Gastos = () => {
 
   const [categorias, setCategorias] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
-
-  /* modal */
-  const [modalVisible, setModalVisible] = useState(false);
-  const [conceptoSelec, setConceptoSelec] = useState(null);
-  const [registros, setRegistros] = useState([]);
-  const [nota, setNota] = useState("");
-  const [monto, setMonto] = useState("");
-  const [guardando, setGuardando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [catsExpandidas, setCatsExpandidas] = useState({});
+  const [conceptosExpandidos, setConceptosExpandidos] = useState({});
+  const [modalNipCrud, setModalNipCrud] = useState(false);
+  const [accionPendiente, setAccionPendiente] = useState(null);
+  // accionPendiente: { tipo: 'agregar'|'editar'|'eliminar', ...payload }
 
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     try {
       const res = await Database.getGastosConConceptos();
       setCategorias(res ?? []);
     } catch (e) {
       console.error("Error al obtener gastos:", e);
     }
-  };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       if (!accesoPermitido) return;
       cargar();
-    }, [accesoPermitido]),
+    }, [accesoPermitido, cargar]),
   );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(GASTOS_REFRESH_EVENT, cargar);
+    return () => sub.remove();
+  }, [cargar]);
 
   const onRefresh = async () => {
     setRefrescando(true);
@@ -302,44 +246,92 @@ const Gastos = () => {
   };
 
   const totalGeneral = categorias.reduce(
-    (sum, cat) =>
-      sum + (cat.conceptos ?? []).reduce((s, c) => s + (c.TOTAL ?? 0), 0),
+    (sum, cat) => sum + Number(cat.TOTAL ?? 0),
     0,
   );
 
-  const abrirModal = async (concepto) => {
-    setConceptoSelec(concepto);
-    try {
-      const regs = await Database.getRegistrosByConcepto(concepto.UUID);
-      setRegistros(regs ?? []);
-    } catch {
-      setRegistros([]);
-    }
-    setNota("");
-    setMonto(concepto.PRECIO > 0 ? String(concepto.PRECIO) : "");
-    setModalVisible(true);
+  const toggleCategoria = (uuid) =>
+    setCatsExpandidas((prev) => ({ ...prev, [uuid]: !prev[uuid] }));
+
+  const toggleConcepto = (uuid) =>
+    setConceptosExpandidos((prev) => ({ ...prev, [uuid]: !prev[uuid] }));
+
+  const irAAgregarGasto = (concepto, categoria) => {
+    setAccionPendiente({
+      tipo: "agregar",
+      titulo: "Nuevo gasto",
+      concepto,
+      categoria,
+    });
+    setModalNipCrud(true);
   };
 
-  const guardarRegistro = async () => {
-    const montoNum = parseFloat(monto.replace(",", "."));
-    if (!montoNum || montoNum <= 0 || isNaN(montoNum)) {
-      Alert.alert("Monto requerido", "Ingresa un monto válido mayor a cero.");
+  const irAEditarGasto = (registro) => {
+    setAccionPendiente({
+      tipo: "editar",
+      titulo: "Editar gasto",
+      registro,
+    });
+    setModalNipCrud(true);
+  };
+
+  const eliminarGasto = (registro) => {
+    setAccionPendiente({
+      tipo: "eliminar",
+      titulo: "Eliminar gasto",
+      registro,
+    });
+    setModalNipCrud(true);
+  };
+
+  const onNipCrudCorrecto = async () => {
+    const accion = accionPendiente;
+    setModalNipCrud(false);
+    setAccionPendiente(null);
+    if (!accion) return;
+
+    if (accion.tipo === "agregar") {
+      router.push({
+        pathname: "/Gastos/AsignarGasto",
+        params: {
+          idConcepto: accion.concepto.UUID,
+          nombreConcepto: accion.concepto.NOMBRE,
+          nombreCategoria: accion.categoria.NOMBRE,
+        },
+      });
       return;
     }
-    try {
-      setGuardando(true);
-      await Database.insertRegistro({
-        idConcepto: conceptoSelec.UUID,
-        monto: montoNum,
-        nota: nota.trim(),
+
+    if (accion.tipo === "editar") {
+      router.push({
+        pathname: "/Gastos/AsignarGasto",
+        params: { idRegistro: String(accion.registro.ID) },
       });
-      setModalVisible(false);
-      await cargar();
-    } catch (e) {
-      console.error("Error al guardar registro:", e);
-      Alert.alert("Error", "No se pudo guardar el registro.");
-    } finally {
-      setGuardando(false);
+      return;
+    }
+
+    if (accion.tipo === "eliminar") {
+      Alert.alert(
+        "Eliminar gasto",
+        `¿Eliminar el gasto de $${Number(accion.registro.MONTO ?? 0).toFixed(2)}?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await Database.deleteRegistro(accion.registro.ID);
+                DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
+                await cargar();
+              } catch (e) {
+                console.error("Error al eliminar gasto:", e);
+                Alert.alert("Error", "No se pudo eliminar el gasto.");
+              }
+            },
+          },
+        ],
+      );
     }
   };
 
@@ -373,14 +365,11 @@ const Gastos = () => {
     }
   };
 
-  const irAAgregar = () => router.push({ pathname: "/Gastos/Agregar" });
-
   return (
     <SafeAreaView
       edges={["bottom"]}
       style={{ flex: 1, backgroundColor: "black" }}
     >
-      {/* Header */}
       <LinearGradient
         style={s.header}
         colors={gb.gradient_blue}
@@ -389,48 +378,57 @@ const Gastos = () => {
       >
         <RecoverButton />
         <Text style={s.headerTitle}>Gastos</Text>
-        <Button style={s.btnAdd} onPress={irAAgregar}>
-          <Ionicons name="add" size={normalize(20)} color="white" />
-        </Button>
+        <View style={{ width: normalize(35) }} />
       </LinearGradient>
 
-      {/* Banner total general */}
-      <View style={s.totalBanner}>
-        <Text style={s.totalBannerLabel}>TOTAL DE GASTOS</Text>
-        <Text style={s.totalBannerMonto}>${totalGeneral.toFixed(2)}</Text>
+      <View style={s.body}>
+        <View style={s.totalBanner}>
+          <Text style={s.totalBannerLabel}>TOTAL DE GASTOS</Text>
+          <Text style={s.totalBannerMonto}>${totalGeneral.toFixed(2)}</Text>
+        </View>
+
+        <FlatList
+          style={{ flex: 1 }}
+          data={categorias}
+          keyExtractor={(item) => String(item.UUID ?? item.ID)}
+          contentContainerStyle={[
+            s.listContent,
+            categorias.length === 0 && { flexGrow: 1 },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refrescando}
+              onRefresh={onRefresh}
+              colors={gb.gradient_blue}
+            />
+          }
+          renderItem={({ item }) => (
+            <CategoriaAccordion
+              categoria={item}
+              expandida={!!catsExpandidas[item.UUID]}
+              conceptosExpandidos={conceptosExpandidos}
+              onToggleCategoria={() => toggleCategoria(item.UUID)}
+              onToggleConcepto={toggleConcepto}
+              onAddGasto={irAAgregarGasto}
+              onEditGasto={irAEditarGasto}
+              onDeleteGasto={eliminarGasto}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={s.emptyContainer}>
+              <Ionicons
+                name="wallet-outline"
+                size={normalize(52)}
+                color={gb.gray300}
+              />
+              <Text style={s.emptyText}>
+                Sin categorías. Sincroniza al iniciar sesión.
+              </Text>
+            </View>
+          }
+        />
       </View>
 
-      {/* Lista de categorías expandidas */}
-      <FlatList
-        data={categorias}
-        keyExtractor={(item) => String(item.ID)}
-        contentContainerStyle={[
-          s.listContent,
-          categorias.length === 0 && { flex: 1 },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refrescando}
-            onRefresh={onRefresh}
-            colors={gb.gradient_blue}
-          />
-        }
-        renderItem={({ item }) => (
-          <CategoriaSection categoria={item} onConceptoPress={abrirModal} />
-        )}
-        ListEmptyComponent={
-          <View style={s.emptyContainer}>
-            <Ionicons
-              name="wallet-outline"
-              size={normalize(52)}
-              color={gb.gray300}
-            />
-            <Text style={s.emptyText}>Sin gastos registrados</Text>
-          </View>
-        }
-      />
-
-      {/* Footer */}
       <LinearGradient
         style={s.footer}
         colors={gb.gradient_blue}
@@ -439,7 +437,7 @@ const Gastos = () => {
       >
         <Button style={s.btnSync} onPress={onRefresh}>
           <Ionicons name="refresh-outline" size={normalize(20)} color="white" />
-          <Text style={s.btnSyncText}>Actualizar Gastos</Text>
+          <Text style={s.btnSyncText}>Actualizar</Text>
         </Button>
         <Button
           style={s.btnSync}
@@ -448,30 +446,27 @@ const Gastos = () => {
         >
           <Ionicons name="sync-outline" size={normalize(20)} color="white" />
           <Text style={s.btnSyncText}>
-            {sincronizando ? "..." : "Sincronizar Gastos"}
+            {sincronizando ? "..." : "Sincronizar"}
           </Text>
         </Button>
       </LinearGradient>
-
-      {/* Modal de registro */}
-      <ModalRegistro
-        visible={modalVisible}
-        concepto={conceptoSelec}
-        registros={registros}
-        monto={monto}
-        onMontoChange={setMonto}
-        nota={nota}
-        onNotaChange={setNota}
-        onCancel={() => setModalVisible(false)}
-        onGuardar={guardarRegistro}
-        guardando={guardando}
-      />
 
       <NipModal
         visible={modalAcceso}
         titulo={tituloModal}
         onSubmit={onAccesoCorrecto}
         onClose={onAccesoCancelado}
+      />
+
+      <NipModal
+        visible={modalNipCrud}
+        modo="gerente"
+        titulo={accionPendiente?.titulo ?? "Gastos"}
+        onClose={() => {
+          setModalNipCrud(false);
+          setAccionPendiente(null);
+        }}
+        onSubmit={onNipCrudCorrecto}
       />
     </SafeAreaView>
   );

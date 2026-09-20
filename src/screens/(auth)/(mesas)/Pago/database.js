@@ -35,16 +35,27 @@ export default class Database {
             [renglon.ID_ARTICULO],
           );
           const compRows = await db.getAllAsync(
-            `SELECT cc.*, c.NOMBRE as COMP_NOMBRE, c.PRECIO as COMP_PRECIO
-                         FROM COMANDA_COMPLEMENTO cc
-                         LEFT JOIN COMPLEMENTO c ON cc.ID_COMPLEMENTO = c.UUID
-                         WHERE cc.ID_COMANDA_ARTICULO = ?`,
+            `SELECT cc.*,
+                    COALESCE(c.NOMBRE, gc.NOMBRE, cc.NOTA) as COMP_NOMBRE,
+                    COALESCE(c.PRECIO, cc.PRECIO_VENTA, 0) as COMP_PRECIO
+             FROM COMANDA_COMPLEMENTO cc
+             LEFT JOIN COMPLEMENTO c ON cc.ID_COMPLEMENTO = c.UUID
+             LEFT JOIN GRUPO_COMPLEMENTOS gc ON cc.ID_COMPLEMENTO = gc.UUID
+             WHERE cc.ID_COMANDA_ARTICULO = ?`,
             [renglon.ID],
           );
+          const complementos = compRows.map((cr) => ({
+            ...cr,
+            complemento: {
+              UUID: cr.ID_COMPLEMENTO,
+              NOMBRE: cr.COMP_NOMBRE,
+              PRECIO: cr.COMP_PRECIO,
+            },
+          }));
           return {
             ...renglon,
             articulo: articulo ?? null,
-            complementos: compRows,
+            complementos,
           };
         }),
       );
@@ -120,12 +131,19 @@ export default class Database {
     });
   }
 
-  static async actualizarCantidadArticulo(idRenglon, cantidad, precioVenta) {
-    const total = cantidad * precioVenta;
+  static async actualizarCantidadArticulo(
+    idRenglon,
+    cantidad,
+    precioVenta,
+    { subtotal, total, descuento } = {},
+  ) {
+    const sub = subtotal ?? cantidad * precioVenta;
+    const tot = total ?? sub;
+    const desc = descuento ?? 0;
     return withDb("Pago.actualizarCantidadArticulo", async (db) => {
       return await db.runAsync(
-        `UPDATE COMANDA_ARTICULO SET CANTIDAD = ?, SUBTOTAL = ?, TOTAL = ? WHERE ID = ?`,
-        [cantidad, total, total, idRenglon],
+        `UPDATE COMANDA_ARTICULO SET CANTIDAD = ?, SUBTOTAL = ?, TOTAL = ?, DESCUENTO = ? WHERE ID = ?`,
+        [cantidad, sub, tot, desc, idRenglon],
       );
     });
   }

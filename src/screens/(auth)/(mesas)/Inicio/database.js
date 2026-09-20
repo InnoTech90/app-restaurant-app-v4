@@ -50,16 +50,67 @@ export class Database {
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.get("/devices/table", { headers });
 
-      // Guardar las nuevas mesas en la BD
       await PantallaDeCargaDatabase.mesasModel(response.data);
       console.log("✅ Mesas actualizadas desde API");
 
-      // Retornar todas las mesas desde la BD local
       return await this.getMesas();
     } catch (error) {
       console.error("⚠️ Error actualizando mesas desde API:", error);
-      // Si hay error en la API, retornar mesas del cache local
       return await this.getMesas();
     }
+  }
+
+  /**
+   * Mueve la comanda abierta de una mesa a otra libre.
+   */
+  static async cambiarMesa(uuidMesaOrigen, uuidMesaDestino) {
+    return withDb("Inicio.cambiarMesa", async (db) => {
+      if (!uuidMesaOrigen || !uuidMesaDestino) {
+        throw new Error("Mesas origen y destino son requeridas");
+      }
+      if (uuidMesaOrigen === uuidMesaDestino) {
+        throw new Error("La mesa destino debe ser distinta");
+      }
+
+      const destinoOcupada = await db.getFirstAsync(
+        `SELECT ID FROM COMANDA
+         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND ACTIVO = 1
+         LIMIT 1`,
+        [uuidMesaDestino],
+      );
+      if (destinoOcupada) {
+        const err = new Error("La mesa destino está ocupada");
+        err.code = "MESA_OCUPADA";
+        throw err;
+      }
+
+      const comanda = await db.getFirstAsync(
+        `SELECT ID FROM COMANDA
+         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND ACTIVO = 1
+         LIMIT 1`,
+        [uuidMesaOrigen],
+      );
+      if (!comanda) {
+        const err = new Error("No hay comanda activa en la mesa origen");
+        err.code = "SIN_COMANDA";
+        throw err;
+      }
+
+      await db.runAsync(`UPDATE COMANDA SET ID_MESA = ? WHERE ID = ?`, [
+        uuidMesaDestino,
+        comanda.ID,
+      ]);
+
+      await db.runAsync(
+        `UPDATE MESA SET ESTATUS = 0, ID_COMANDA = NULL WHERE UUID = ?`,
+        [uuidMesaOrigen],
+      );
+      await db.runAsync(
+        `UPDATE MESA SET ESTATUS = 1, ID_COMANDA = ? WHERE UUID = ?`,
+        [comanda.ID, uuidMesaDestino],
+      );
+
+      return { idComanda: comanda.ID, uuidMesaDestino };
+    });
   }
 }

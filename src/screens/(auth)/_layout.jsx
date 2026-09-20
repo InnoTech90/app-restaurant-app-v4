@@ -3,9 +3,9 @@ import {
   DrawerItem,
   DrawerItemList,
 } from "@react-navigation/drawer";
-import { Redirect, useRouter, useSegments } from "expo-router";
+import { Redirect, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import AuthHeader from "../../components/Molecules/AuthHeader/AuthHeader";
 import NipModal from "../../components/Molecules/NipModal/NipModal";
@@ -15,13 +15,13 @@ import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
 } from "../../utils/exportDatabase";
+import { requiereNipDueño } from "../../utils/gerentePermisos";
 import {
   autorizarSeccion,
   revocarOtrasSecciones,
   revocarTodasLasSecciones,
   tieneAccesoSeccion,
 } from "../../utils/sectionAccess";
-import { puedeVerOpcionDrawer } from "../../utils/gerentePermisos";
 import VentasDatabase from "./Ventas/database";
 
 function CustomDrawerContent({
@@ -49,7 +49,6 @@ function CustomDrawerContent({
 export default function AuthLayout() {
   const contextoAutenticacion = useContext(AuthContext);
   const segments = useSegments();
-  const router = useRouter();
   const [exportandoDb, setExportandoDb] = useState(false);
   const [nipModal, setNipModal] = useState({
     visible: false,
@@ -57,33 +56,7 @@ export default function AuthLayout() {
     accion: null,
   });
 
-  const enPantallaLibre =
-    segments.includes("LoginGerente") || segments.includes("PantallaDeCarga");
-
-  useEffect(() => {
-    if (!contextoAutenticacion.isReady || !contextoAutenticacion.autenticado) {
-      return;
-    }
-
-    if (!contextoAutenticacion.gerenteSesion && !enPantallaLibre) {
-      router.replace("/LoginGerente");
-      return;
-    }
-
-    if (
-      contextoAutenticacion.gerenteSesion &&
-      segments.includes("LoginGerente")
-    ) {
-      router.replace("/Inicio");
-    }
-  }, [
-    contextoAutenticacion.isReady,
-    contextoAutenticacion.autenticado,
-    contextoAutenticacion.gerenteSesion,
-    enPantallaLibre,
-    segments,
-    router,
-  ]);
+  const enPantallaLibre = segments.includes("PantallaDeCarga");
 
   const pedirNip = (titulo, accion) => {
     setNipModal({ visible: true, titulo, accion });
@@ -139,7 +112,7 @@ export default function AuthLayout() {
 
       pedirNip("Cerrar sesión", () => {
         revocarTodasLasSecciones();
-        contextoAutenticacion.cerrarSesionGerente();
+        contextoAutenticacion.desautenticar();
       });
     } catch (error) {
       console.error("Error verificando ventas antes de cerrar sesión:", error);
@@ -162,7 +135,6 @@ export default function AuthLayout() {
       name: "(mesas)",
       label: "Mesas",
       title: "Mesas",
-      // Entrada principal tras login; no depende de KEYWORD.
       siempreVisible: true,
     },
     {
@@ -219,18 +191,10 @@ export default function AuthLayout() {
       label: "Configuraciones",
       title: "Configuraciones",
       keywords: ["settings"],
-      requiereNip: false,
     },
   ];
 
-  const gerenteSesion = contextoAutenticacion.gerenteSesion;
-
   const hiddenScreens = [
-    {
-      name: "LoginGerente/index",
-      headerShown: false,
-      swipeEnabled: false,
-    },
     { name: "Inventarios/database" },
     { name: "Ventas/database" },
     {
@@ -274,11 +238,44 @@ export default function AuthLayout() {
     { name: "PantallaDeCarga/integracion" },
     { name: "Impresoras/Funciones/Impresion" },
     { name: "Impresoras/templates/TicketDePrueba" },
-    { name: "LoginGerente/database" },
-    { name: "LoginGerente/integracion" },
   ];
 
   const ocultarDrawer = enPantallaLibre;
+
+  const resolverAccesoYNavegar = async (screen, navigation) => {
+    revocarOtrasSecciones(screen.seccionAcceso ?? null);
+
+    if (navigation.isFocused()) return;
+
+    const navegar = () => {
+      if (screen.seccionAcceso) {
+        autorizarSeccion(screen.seccionAcceso);
+      }
+      navigation.navigate(screen.name);
+    };
+
+    // Sin permiso de keyword → NIP del dueño.
+    if (requiereNipDueño(null, screen)) {
+      pedirNip(screen.title, navegar);
+      return;
+    }
+
+    let necesitaNip = !!screen.requiereNip;
+
+    if (screen.requiereNipSi) {
+      const configuraciones = await dataBase.getConfiguracionesModel();
+      const config = configuraciones?.[0];
+      if (config?.[screen.requiereNipSi]) {
+        necesitaNip = !tieneAccesoSeccion(screen.seccionAcceso);
+      }
+    }
+
+    if (necesitaNip) {
+      pedirNip(screen.title, navegar);
+    } else {
+      navegar();
+    }
+  };
 
   return (
     <>
@@ -313,88 +310,29 @@ export default function AuthLayout() {
           ),
         }}
       >
-        {drawerScreens.map((screen) => {
-          const tienePermiso = puedeVerOpcionDrawer(gerenteSesion, screen);
-          const ocultarItem = ocultarDrawer || !tienePermiso;
-
-          return (
-            <Drawer.Screen
-              key={screen.name}
-              name={screen.name}
-              options={{
-                drawerLabel: screen.label,
-                title: screen.title,
-                ...(ocultarItem
-                  ? {
-                      drawerItemStyle: { display: "none" },
-                      // Expo Router: oculta del menú aunque exista el archivo de ruta
-                      href: null,
-                    }
-                  : {}),
-              }}
-              listeners={
-                screen.requiereNip || screen.requiereNipSi
-                  ? ({ navigation }) => ({
-                      drawerItemPress: async (e) => {
-                        e.preventDefault();
-                        navigation.closeDrawer();
-
-                        if (!puedeVerOpcionDrawer(gerenteSesion, screen)) {
-                          Alert.alert(
-                            "Sin permiso",
-                            "Tu usuario no tiene acceso a esta opción.",
-                          );
-                          return;
-                        }
-
-                        revocarOtrasSecciones(screen.seccionAcceso ?? null);
-
-                        if (navigation.isFocused()) return;
-
-                        let necesitaNip = !!screen.requiereNip;
-
-                        if (screen.requiereNipSi) {
-                          const configuraciones =
-                            await dataBase.getConfiguracionesModel();
-                          const config = configuraciones?.[0];
-                          if (config?.[screen.requiereNipSi]) {
-                            necesitaNip = !tieneAccesoSeccion(
-                              screen.seccionAcceso,
-                            );
-                          }
-                        }
-
-                        const navegar = () => navigation.navigate(screen.name);
-
-                        if (necesitaNip) {
-                          pedirNip(screen.title, () => {
-                            if (screen.seccionAcceso) {
-                              autorizarSeccion(screen.seccionAcceso);
-                            }
-                            navegar();
-                          });
-                        } else {
-                          navegar();
-                        }
-                      },
-                    })
-                  : () => ({
-                      drawerItemPress: (e) => {
-                        if (!puedeVerOpcionDrawer(gerenteSesion, screen)) {
-                          e.preventDefault();
-                          Alert.alert(
-                            "Sin permiso",
-                            "Tu usuario no tiene acceso a esta opción.",
-                          );
-                          return;
-                        }
-                        revocarTodasLasSecciones();
-                      },
-                    })
-              }
-            />
-          );
-        })}
+        {drawerScreens.map((screen) => (
+          <Drawer.Screen
+            key={screen.name}
+            name={screen.name}
+            options={{
+              drawerLabel: screen.label,
+              title: screen.title,
+              ...(ocultarDrawer
+                ? {
+                    drawerItemStyle: { display: "none" },
+                    href: null,
+                  }
+                : {}),
+            }}
+            listeners={({ navigation }) => ({
+              drawerItemPress: async (e) => {
+                e.preventDefault();
+                navigation.closeDrawer();
+                await resolverAccesoYNavegar(screen, navigation);
+              },
+            })}
+          />
+        ))}
 
         {hiddenScreens.map((screen) => (
           <Drawer.Screen

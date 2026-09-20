@@ -1,11 +1,16 @@
 import { Stack } from "expo-router";
+import { gb } from "../../globalStyles";
 
 export default function GastosLayout() {
     return (
-        <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="Agregar" options={{ headerShown: false }} />
-            <Stack.Screen name="Detalle" options={{ headerShown: false }} />
+        <Stack
+            screenOptions={{
+                headerShown: false,
+                contentStyle: { flex: 1, backgroundColor: gb.gray100 },
+            }}
+        >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="AsignarGasto" />
         </Stack>
     );
 }

@@ -85,18 +85,9 @@ export class integracionPantallaDeCarga {
     }
   };
   static gastos = async () => {
-    try {
-      const headers = await getDeviceAuthHeaders();
-      await deviceApi.get("/devices/expensess", { headers });
-
-      return 0;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        return [];
-      }
-
-      throw error;
-    }
+    // expenseGroups se sincronizan desde /devices/general (generalModel → gastosModel).
+    // Se mantiene el método por compatibilidad con el flujo de carga.
+    return [];
   };
   // creaciones de db sin consulta a la api
   static configuraciones = async (generalData = null) => {

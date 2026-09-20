@@ -26,6 +26,12 @@ export async function runDatabaseMigrations(db) {
     "IMPRESO",
     "ALTER TABLE COMANDA_ARTICULO ADD COLUMN IMPRESO INTEGER DEFAULT 0",
   );
+  await ensureColumn(
+    db,
+    "COMANDA_ARTICULO",
+    "DESCUENTO",
+    "ALTER TABLE COMANDA_ARTICULO ADD COLUMN DESCUENTO REAL DEFAULT 0",
+  );
 
   await ensureColumn(
     db,

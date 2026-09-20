@@ -8,6 +8,46 @@ export default class Database {
   // 3: pendiente de pago
   // 4: comanda impresa (cuenta impresa, pendiente de confirmar pago)
 
+  static async getArticulosComanda(idComanda) {
+    return withDb("Ticket.getArticulosComanda", async (db) => {
+      const renglones = await db.getAllAsync(
+        `SELECT ca.* FROM COMANDA_ARTICULO ca WHERE ca.ID_COMANDA = ? ORDER BY ca.ID ASC`,
+        [idComanda],
+      );
+      return Promise.all(
+        renglones.map(async (renglon) => {
+          const articulo = await db.getFirstAsync(
+            `SELECT * FROM ARTICULO WHERE UUID = ?`,
+            [renglon.ID_ARTICULO],
+          );
+          const compRows = await db.getAllAsync(
+            `SELECT cc.*,
+                    COALESCE(c.NOMBRE, gc.NOMBRE, cc.NOTA) as COMP_NOMBRE,
+                    COALESCE(c.PRECIO, cc.PRECIO_VENTA, 0) as COMP_PRECIO
+             FROM COMANDA_COMPLEMENTO cc
+             LEFT JOIN COMPLEMENTO c ON cc.ID_COMPLEMENTO = c.UUID
+             LEFT JOIN GRUPO_COMPLEMENTOS gc ON cc.ID_COMPLEMENTO = gc.UUID
+             WHERE cc.ID_COMANDA_ARTICULO = ?`,
+            [renglon.ID],
+          );
+          const complementos = compRows.map((cr) => ({
+            ...cr,
+            complemento: {
+              UUID: cr.ID_COMPLEMENTO,
+              NOMBRE: cr.COMP_NOMBRE,
+              PRECIO: cr.COMP_PRECIO,
+            },
+          }));
+          return {
+            ...renglon,
+            articulo: articulo ?? null,
+            complementos,
+          };
+        }),
+      );
+    });
+  }
+
   static async getMesa(uuid) {
     return withDb("Ticket.getMesa", async (db) => {
       return await db.getFirstAsync(`SELECT * FROM MESA WHERE UUID = ?`, [
@@ -33,12 +73,19 @@ export default class Database {
     });
   }
 
-  static async actualizarCantidadArticulo(idRenglon, cantidad, precioVenta) {
-    const total = cantidad * precioVenta;
+  static async actualizarCantidadArticulo(
+    idRenglon,
+    cantidad,
+    precioVenta,
+    { subtotal, total, descuento } = {},
+  ) {
+    const sub = subtotal ?? cantidad * precioVenta;
+    const tot = total ?? sub;
+    const desc = descuento ?? 0;
     return withDb("Ticket.actualizarCantidadArticulo", async (db) => {
       await db.runAsync(
-        `UPDATE COMANDA_ARTICULO SET CANTIDAD = ?, SUBTOTAL = ?, TOTAL = ? WHERE ID = ?`,
-        [cantidad, total, total, idRenglon],
+        `UPDATE COMANDA_ARTICULO SET CANTIDAD = ?, SUBTOTAL = ?, TOTAL = ?, DESCUENTO = ? WHERE ID = ?`,
+        [cantidad, sub, tot, desc, idRenglon],
       );
     });
   }
@@ -96,6 +143,72 @@ export default class Database {
   static async getConfiguraciones() {
     return withDb("Ticket.getConfiguraciones", async (db) => {
       return await db.getFirstAsync(`SELECT * FROM CONFIGURACIONES LIMIT 1`);
+    });
+  }
+
+  static async getComplementosDisponibles(articuloUUID) {
+    return withDb("Ticket.getComplementosDisponibles", async (db) => {
+      const grupos = await db.getAllAsync(
+        `SELECT * FROM GRUPO_COMPLEMENTOS WHERE ID_ARTICULO = ? ORDER BY POSICION`,
+        [articuloUUID],
+      );
+      for (const grupo of grupos) {
+        grupo.complementos = await db.getAllAsync(
+          `SELECT * FROM COMPLEMENTO WHERE ID_GRUPO_COMP = ? ORDER BY POSICION`,
+          [grupo.UUID],
+        );
+      }
+      return grupos;
+    });
+  }
+
+  /**
+   * Reemplaza los complementos de un renglón y recalcula el TOTAL del artículo.
+   * @param {number} idComandaArticulo
+   * @param {Array<{ID_COMPLEMENTO, CANTIDAD, PRECIO_VENTA, SUBTOTAL, TOTAL}>} complementos
+   * @param {{ subtotal: number, total: number }} totales
+   */
+  static async guardarComplementosArticulo(
+    idComandaArticulo,
+    complementos,
+    { subtotal, total, descuento },
+  ) {
+    return withDb("Ticket.guardarComplementosArticulo", async (db) => {
+      await db.runAsync(
+        `DELETE FROM COMANDA_COMPLEMENTO WHERE ID_COMANDA_ARTICULO = ?`,
+        [idComandaArticulo],
+      );
+
+      for (const complemento of complementos ?? []) {
+        if (!complemento.ID_COMPLEMENTO || !(complemento.CANTIDAD > 0)) continue;
+        await db.runAsync(
+          `INSERT INTO COMANDA_COMPLEMENTO (
+            ID_COMANDA_ARTICULO,
+            ID_COMPLEMENTO,
+            CANTIDAD_CANCELADOS,
+            CANTIDAD,
+            PRECIO_VENTA,
+            NOTA,
+            SUBTOTAL,
+            TOTAL
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            idComandaArticulo,
+            complemento.ID_COMPLEMENTO,
+            0,
+            complemento.CANTIDAD,
+            complemento.PRECIO_VENTA ?? 0,
+            complemento.NOTA ?? "",
+            complemento.SUBTOTAL ?? 0,
+            complemento.TOTAL ?? 0,
+          ],
+        );
+      }
+
+      await db.runAsync(
+        `UPDATE COMANDA_ARTICULO SET SUBTOTAL = ?, TOTAL = ?, DESCUENTO = ? WHERE ID = ?`,
+        [subtotal, total, descuento ?? 0, idComandaArticulo],
+      );
     });
   }
 

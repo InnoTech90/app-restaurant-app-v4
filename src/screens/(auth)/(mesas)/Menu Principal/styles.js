@@ -18,11 +18,49 @@ export const s = StyleSheet.create({
   },
   header: {
     width: "100%",
-    height: normalize(50),
+    height: normalize(60),
     paddingHorizontal: normalize(10),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  headerMesa: {
+    fontSize: normalize(16),
+    fontWeight: "800",
+    color: gb.gray50,
+  },
+  headerSub: {
+    fontSize: normalize(11),
+    color: gb.blue100,
+    marginTop: normalize(2),
+  },
+  headerSpacer: {
+    width: normalize(40),
+    height: normalize(40),
+  },
+  clienteStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: normalize(6),
+    backgroundColor: gb.green50,
+    borderBottomWidth: 1,
+    borderBottomColor: gb.green200,
+    paddingHorizontal: normalize(16),
+    paddingVertical: normalize(8),
+  },
+  clienteNombre: {
+    fontSize: normalize(13),
+    fontWeight: "600",
+    color: gb.green700,
+    flex: 1,
+  },
+  clienteTelefono: {
+    fontSize: normalize(12),
+    color: gb.green600,
   },
   buscadorWrapper: {
     paddingHorizontal: isTablet
@@ -63,87 +101,32 @@ export const s = StyleSheet.create({
     fontSize: normalize(14),
     color: gb.gray400,
   },
-  // ── Barra de comanda activa ─────────────────────────────────────────────
-  comandaBar: {
-    marginHorizontal: isTablet
-      ? contentPaddingH + normalize(16)
-      : normalize(16),
-    marginTop: normalize(6),
-    borderRadius: normalize(12),
-    overflow: "hidden",
-    backgroundColor: gb.gray50,
-  },
-  comandaBarInner: {
-    paddingHorizontal: normalize(16),
-    paddingVertical: normalize(12),
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: normalize(10),
-  },
-  comandaBarIcono: {
-    marginTop: normalize(2),
-  },
-  comandaBarTextos: {
-    flex: 1,
-  },
-  comandaBarTitulo: {
-    fontSize: normalize(13),
-    fontWeight: "700",
-    color: gb.gray50,
-    marginBottom: normalize(4),
-  },
-  comandaBarArticulo: {
-    fontSize: normalize(12),
-    color: gb.blue100,
-    lineHeight: normalize(18),
-  },
-  comandaBarTotal: {
-    fontSize: normalize(15),
-    fontWeight: "800",
-    color: gb.gray50,
-    alignSelf: "center",
-  },
-  containerButtons: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    backgroundColor: gb.gray50,
-    borderTopWidth: 1,
-    borderTopColor: gb.gray200,
-    paddingVertical: normalize(10),
-    paddingHorizontal: isTablet ? contentPaddingH + normalize(8) : normalize(8),
-    gap: normalize(4),
-  },
-  botonAccionContainer: {
-    flex: 1,
-  },
-  botonAccion: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: normalize(isTablet ? 12 : 10),
-    borderRadius: normalize(10),
-    gap: normalize(4),
-    backgroundColor: "transparent",
-  },
-  botonPagar: {
-    backgroundColor: gb.green500,
-  },
-  botonAccionTexto: {
-    fontSize: normalize(12),
-    fontWeight: "600",
-    color: gb.blue550,
-  },
-  botonAccionDivider: {
-    width: 1,
-    backgroundColor: gb.gray200,
-    marginVertical: normalize(6),
-  },
   // ── Modal de clientes ───────────────────────────────────────────────────
   modalBuscador: {
     paddingVertical: normalize(10),
+    gap: normalize(8),
+  },
+  modalNuevoClienteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: normalize(6),
+    paddingVertical: normalize(8),
+    borderRadius: normalize(8),
+    backgroundColor: gb.blue50,
+    borderWidth: 1,
+    borderColor: gb.blue200,
+  },
+  modalNuevoClienteText: {
+    color: gb.blue550,
+    fontWeight: "700",
+    fontSize: normalize(13),
   },
   modalClienteItem: {
     borderBottomWidth: 1,
     borderBottomColor: gb.gray100,
+    flexDirection: "row",
+    alignItems: "center",
   },
   modalClienteBoton: {
     flexDirection: "row",
@@ -152,6 +135,11 @@ export const s = StyleSheet.create({
     gap: normalize(12),
     backgroundColor: "transparent",
     borderRadius: 0,
+    flex: 1,
+  },
+  modalClienteEditBtn: {
+    paddingHorizontal: normalize(10),
+    paddingVertical: normalize(12),
   },
   modalClienteAvatar: {
     width: normalize(38),
@@ -181,5 +169,39 @@ export const s = StyleSheet.create({
     marginTop: normalize(40),
     fontSize: normalize(14),
     color: gb.gray400,
+  },
+  modalFormScroll: {
+    paddingVertical: normalize(8),
+    gap: normalize(8),
+    paddingBottom: normalize(24),
+  },
+  modalFormActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: normalize(10),
+    marginTop: normalize(12),
+  },
+  modalFormBtnSecundario: {
+    paddingHorizontal: normalize(14),
+    paddingVertical: normalize(10),
+  },
+  modalFormBtnSecundarioText: {
+    color: gb.gray500,
+    fontWeight: "600",
+    fontSize: normalize(13),
+  },
+  modalFormBtnPrimario: {
+    borderRadius: normalize(10),
+    overflow: "hidden",
+  },
+  modalFormBtnPrimarioInner: {
+    paddingHorizontal: normalize(16),
+    paddingVertical: normalize(10),
+  },
+  modalFormBtnPrimarioText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: normalize(13),
   },
 });

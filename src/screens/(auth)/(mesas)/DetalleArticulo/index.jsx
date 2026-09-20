@@ -1,8 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import InputCantidad from "../../../../components/atoms/InputCantidad/InputCantidad";
@@ -14,269 +21,463 @@ import { Database } from "./database";
 import { s } from "./styles";
 
 const DetalleArticulo = () => {
-    const { articulo: articuloRaw, id_mesa: idMesa } = useLocalSearchParams();
-    const articulo = articuloRaw ? JSON.parse(articuloRaw) : null;
-    const router = useRouter();
+  const {
+    articulo: articuloRaw,
+    id_mesa: idMesa,
+    modo,
+    id_comanda_articulo: idComandaArticulo,
+    id_articulo: idArticuloParam,
+  } = useLocalSearchParams();
 
-    const precioBase = articulo?.PRECIO ?? 0;
+  const esEdicion = modo === "editar" && !!idComandaArticulo;
+  const router = useRouter();
+  const cargadoRef = useRef(false);
 
-    const [cantidad, setCantidad] = useState(1);
-    const [notas, setNotas] = useState("");
-    const [descuentoPct, setDescuentoPct] = useState("");
-    const [descuentoMonto, setDescuentoMonto] = useState("");
-    const [gruposComplementos, setGruposComplementos] = useState([]);
-    const [complementosSeleccionados, setComplementosSeleccionados] = useState([]);
-    const [guardando, setGuardando] = useState(false);
-        
-    // Al volver de DetalleComplemento, leer la selección del store
-    useFocusEffect(
-        useCallback(() => {
-            const seleccion = ComplementosStore.getSeleccion();
-            if (seleccion !== null) {
-                setComplementosSeleccionados(seleccion);
-                ComplementosStore.clear();
-            }
-        }, [])
-    );
-
-    useEffect(() => {
-        if (articulo?.UUID) {
-            Database.getComplementos(articulo.UUID)
-                .then(setGruposComplementos)
-                .catch(console.error);
-        }
-    }, []);
-
-    const totalBruto = precioBase * cantidad;
-
-    // Descuento sobre el TOTAL (precio × cantidad)
-    const onChangePct = (val) => {
-        const num = val.replace(/[^0-9.]/g, "");
-        setDescuentoPct(num);
-        if (num === "" || isNaN(parseFloat(num))) {
-            setDescuentoMonto("");
-        } else {
-            const monto = (totalBruto * parseFloat(num)) / 100;
-            setDescuentoMonto(monto.toFixed(2));
-        }
-    };
-
-    const onChangeMonto = (val) => {
-        const num = val.replace(/[^0-9.]/g, "");
-        setDescuentoMonto(num);
-        if (num === "" || isNaN(parseFloat(num))) {
-            setDescuentoPct("");
-        } else {
-            const pct = (parseFloat(num) / totalBruto) * 100;
-            setDescuentoPct(pct.toFixed(2));
-        }
-    };
-
-    const descuento = useMemo(() => {
-        const d = parseFloat(descuentoMonto);
-        return isNaN(d) ? 0 : Math.min(d, totalBruto);
-    }, [descuentoMonto, totalBruto]);
-
-    const costoComplementos = useMemo(
-        () => complementosSeleccionados.reduce((acc, c) => acc + (c.PRECIO || 0) * c.cantidad, 0),
-        [complementosSeleccionados]
-    );
-    
-    const total = totalBruto - descuento + costoComplementos;
-
-    const handleAgregar = async () => {
-        if (guardando) return;
-        setGuardando(true);
-        try {
-            await Database.insertComanda({
-                id_mesa: idMesa,
-                nota: "",
-                articulos: [{
-                    ID_ARTICULO: articulo.UUID,
-                    CANTIDAD: cantidad,
-                    PRECIO_VENTA: precioBase,
-                    NOTA: notas,
-                    SUBTOTAL: totalBruto,
-                    TOTAL: total,
-                    complementos: complementosSeleccionados.map(c => ({
-                        ID_COMPLEMENTO: c.UUID,
-                        CANTIDAD: c.cantidad,
-                        PRECIO_VENTA: c.PRECIO || 0,
-                        NOTA: "",
-                        SUBTOTAL: (c.PRECIO || 0) * c.cantidad,
-                        TOTAL: (c.PRECIO || 0) * c.cantidad,
-                    })),
-                }],
-            });
-            router.back();
-        } catch (err) {
-            console.error("Error guardando comanda:", err);
-        } finally {
-            setGuardando(false);
-        }
-    };
-
-    if (!articulo) {
-        return (
-            <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: "black" }}>
-                <Text>Sin artículo</Text>
-            </SafeAreaView>
-        );
+  const articuloParam = useMemo(() => {
+    if (!articuloRaw) return null;
+    try {
+      return typeof articuloRaw === "string"
+        ? JSON.parse(articuloRaw)
+        : articuloRaw;
+    } catch {
+      return null;
     }
+  }, [articuloRaw]);
 
-    return (
-        <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: "black" }}>
+  const [articulo, setArticulo] = useState(articuloParam);
+  const [cantidad, setCantidad] = useState(1);
+  const [notas, setNotas] = useState("");
+  const [descuentoPct, setDescuentoPct] = useState("");
+  const [descuentoMonto, setDescuentoMonto] = useState("");
+  const [tieneGruposComplementos, setTieneGruposComplementos] = useState(false);
+  const [gruposComplementos, setGruposComplementos] = useState([]);
+  const [complementosSeleccionados, setComplementosSeleccionados] = useState(
+    [],
+  );
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
-            {/* ── Header con gradiente ── */}
-            <LinearGradient
-                colors={gb.gradient_blue}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.header}
-            >
-                <RecoverButton />
+  const idArticulo = String(
+    idArticuloParam || articulo?.UUID || articuloParam?.UUID || "",
+  );
+  const precioBase = Number(articulo?.PRECIO ?? 0) || 0;
 
-                <Text style={s.headerNombre}>{articulo.NOMBRE}</Text>
-                <Text style={s.headerPrecioBase}>${Number(precioBase).toFixed(2)} por unidad</Text>
-            </LinearGradient>
+  // Al volver de DetalleComplemento, aplicar selección
+  useFocusEffect(
+    useCallback(() => {
+      const seleccion = ComplementosStore.getSeleccion();
+      if (seleccion !== null) {
+        setComplementosSeleccionados(
+          (seleccion || []).map((c) => ({
+            UUID: String(c.UUID),
+            NOMBRE: c.NOMBRE,
+            PRECIO: Number(c.PRECIO) || 0,
+            cantidad: Number(c.cantidad) || 1,
+            nombreGrupo: c.nombreGrupo ?? "",
+          })),
+        );
+        ComplementosStore.clear();
+      }
+    }, []),
+  );
 
-            <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
+  useEffect(() => {
+    let activa = true;
+    cargadoRef.current = false;
 
-                {/* ── Notas de cocina ── */}
-                <View style={s.seccion}>
-                    <Text style={s.seccionTitulo}>Notas de cocina</Text>
-                    <TextInput
-                        style={s.textArea}
-                        placeholder="Ej: sin sal, término medio..."
-                        placeholderTextColor={gb.gray400}
-                        value={notas}
-                        onChangeText={setNotas}
-                        multiline
-                        numberOfLines={3}
-                    />
-                </View>
+    const cargar = async () => {
+      setCargando(true);
+      try {
+        let articuloActual = articuloParam;
+        let comps = [];
+        let cantidadInicial = 1;
+        let notasInicial = "";
+        let subtotalGuardado = null;
+        let totalGuardado = null;
+        let descuentoGuardado = null;
+        let idArticuloComanda = null;
 
-                {/* ── Complementos ── */}
-                {gruposComplementos.length > 0 && (
-                    <View style={s.seccion}>
-                        <Text style={s.seccionTitulo}>Complementos</Text>
-                        <Pressable
-                            style={s.botonComplementos}
-                            onPress={() => router.push({
-                                pathname: "/DetalleComplemento",
-                                params: {
-                                    articulo: articuloRaw,
-                                    gruposComplementos: JSON.stringify(gruposComplementos),
-                                },
-                            })}
-                        >
-                            <Ionicons name="add-circle-outline" size={normalize(20)} color={gb.blue550} />
-                            <Text style={s.botonComplementosTexto}>
-                                {complementosSeleccionados.length > 0
-                                    ? `${complementosSeleccionados.length} complemento${complementosSeleccionados.length !== 1 ? "s" : ""} seleccionado${complementosSeleccionados.length !== 1 ? "s" : ""} ✓`
-                                    : `+ Agregar complementos (${gruposComplementos.length} grupo${gruposComplementos.length !== 1 ? "s" : ""})`
-                                }
-                            </Text>
-                        </Pressable>
-                    </View>
-                )}
+        if (esEdicion) {
+          const data = await Database.getComandaArticuloCompleto(
+            Number(idComandaArticulo),
+          );
+          if (!activa) return;
+          if (data?.articulo) articuloActual = data.articulo;
+          if (data?.renglon) {
+            cantidadInicial = Number(data.renglon.CANTIDAD) || 1;
+            notasInicial = data.renglon.NOTA ?? "";
+            subtotalGuardado = Number(data.renglon.SUBTOTAL) || 0;
+            totalGuardado = Number(data.renglon.TOTAL) || 0;
+            descuentoGuardado = Number(data.renglon.DESCUENTO);
+            idArticuloComanda = data.renglon.ID_ARTICULO ?? null;
+          }
+          comps = (data?.complementos ?? []).map((c) => ({
+            UUID: String(c.UUID),
+            NOMBRE: c.NOMBRE,
+            PRECIO: Number(c.PRECIO) || 0,
+            cantidad: Number(c.cantidad) || 1,
+          }));
+        }
 
-                {/* ── Cantidad ── */}
-                <View style={s.seccion}>
-                    <Text style={s.seccionTitulo}>Cantidad</Text>
-                    <View style={s.cantidadRow}>
-                        <Text style={s.cantidadLabel}>Unidades</Text>
-                        <InputCantidad
-                            value={cantidad}
-                            onChange={setCantidad}
-                            style={s.inputCantidad}
-                        />
-                    </View>
-                </View>
+        const idArt = String(
+          idArticuloParam ||
+            idArticuloComanda ||
+            articuloActual?.UUID ||
+            articuloActual?.ID ||
+            "",
+        ).trim();
+        const grupos = idArt ? await Database.getComplementos(idArt) : [];
+        if (!activa) return;
 
-                {/* ── Descuento ── */}
-                <View style={s.seccion}>
-                    <Text style={s.seccionTitulo}>Descuento</Text>
-                    <View style={s.descuentoRow}>
-                        <View style={s.descuentoItem}>
-                            <Text style={s.descuentoLabel}>Porcentaje (%)</Text>
-                            <TextInput
-                                style={s.descuentoInput}
-                                placeholder="0.00"
-                                placeholderTextColor={gb.gray400}
-                                value={descuentoPct}
-                                onChangeText={onChangePct}
-                                keyboardType="decimal-pad"
-                            />
-                        </View>
-                        <View style={s.descuentoItem}>
-                            <Text style={s.descuentoLabel}>Monto ($)</Text>
-                            <TextInput
-                                style={s.descuentoInput}
-                                placeholder="0.00"
-                                placeholderTextColor={gb.gray400}
-                                value={descuentoMonto}
-                                onChangeText={onChangeMonto}
-                                keyboardType="decimal-pad"
-                            />
-                        </View>
-                    </View>
-                </View>
+        setArticulo(articuloActual);
+        setCantidad(cantidadInicial);
+        setNotas(notasInicial);
+        setComplementosSeleccionados(comps);
+        setGruposComplementos(grupos ?? []);
+        setTieneGruposComplementos((grupos ?? []).length > 0);
 
-                {/* ── Total ── */}
-                <View style={s.seccion}>
-                    <Text style={s.seccionTitulo}>Resumen</Text>
+        if (esEdicion && subtotalGuardado != null && totalGuardado != null) {
+          const costo = comps.reduce(
+            (acc, c) => acc + (c.PRECIO || 0) * (c.cantidad || 0),
+            0,
+          );
+          const desc =
+            Number.isFinite(descuentoGuardado) && descuentoGuardado > 0
+              ? descuentoGuardado
+              : Math.max(0, subtotalGuardado + costo - totalGuardado);
+          if (desc > 0) {
+            setDescuentoMonto(desc.toFixed(2));
+            setDescuentoPct(
+              subtotalGuardado > 0
+                ? ((desc / subtotalGuardado) * 100).toFixed(2)
+                : "",
+            );
+          }
+        }
 
-                    {/* Subtotal artículo */}
-                    <View style={s.resumenFila}>
-                        <Text style={s.resumenTextoIzq}>{articulo.NOMBRE} ×{cantidad}</Text>
-                        <Text style={s.resumenTextoDer}>${totalBruto.toFixed(2)}</Text>
-                    </View>
+        cargadoRef.current = true;
+      } catch (e) {
+        console.error("Error cargando detalle artículo:", e);
+      } finally {
+        if (activa) setCargando(false);
+      }
+    };
 
-                    {/* Complementos seleccionados */}
-                    {complementosSeleccionados.map((comp, idx) => (
-                        <View key={idx} style={s.resumenFila}>
-                            <Text style={s.resumenTextoIzq}>{comp.NOMBRE} ×{comp.cantidad}</Text>
-                            <Text style={[s.resumenTextoDer, { color: gb.green600 }]}>
-                                +${((comp.PRECIO || 0) * comp.cantidad).toFixed(2)}
-                            </Text>
-                        </View>
-                    ))}
+    cargar();
+    return () => {
+      activa = false;
+    };
+  }, [esEdicion, idComandaArticulo, idArticuloParam, articuloRaw]);
 
-                    {/* Descuento */}
-                    {descuento > 0 && (
-                        <View style={s.resumenFila}>
-                            <Text style={s.resumenTextoIzq}>Descuento</Text>
-                            <Text style={[s.resumenTextoDer, { color: gb.red600 }]}>-${descuento.toFixed(2)}</Text>
-                        </View>
-                    )}
+  const totalBruto = precioBase * cantidad;
 
-                    <View style={s.resumenDivider} />
+  const onChangePct = (val) => {
+    const num = val.replace(/[^0-9.]/g, "");
+    setDescuentoPct(num);
+    if (num === "" || isNaN(parseFloat(num))) {
+      setDescuentoMonto("");
+    } else {
+      setDescuentoMonto(((totalBruto * parseFloat(num)) / 100).toFixed(2));
+    }
+  };
 
-                    <View style={s.totalRow}>
-                        <Text style={s.totalLabel}>Total</Text>
-                        <Text style={s.totalValor}>${total.toFixed(2)}</Text>
-                    </View>
-                </View>
+  const onChangeMonto = (val) => {
+    const num = val.replace(/[^0-9.]/g, "");
+    setDescuentoMonto(num);
+    if (num === "" || isNaN(parseFloat(num))) {
+      setDescuentoPct("");
+    } else {
+      setDescuentoPct(
+        totalBruto > 0 ? ((parseFloat(num) / totalBruto) * 100).toFixed(2) : "",
+      );
+    }
+  };
 
-            </ScrollView>
+  const descuento = useMemo(() => {
+    const d = parseFloat(descuentoMonto);
+    return isNaN(d) ? 0 : Math.min(d, totalBruto);
+  }, [descuentoMonto, totalBruto]);
 
-            {/* ── Botón fijo agregar ── */}
-            <View style={s.footer}>
-                <Button
-                    gradient={guardando ? [gb.gray300, gb.gray400] : gb.gradient_blue}
-                    onPress={handleAgregar}
-                    styleContainer={s.botonAgregar}
-                    disabled={guardando}
-                >
-                    <Text style={s.botonAgregarTexto}>
-                        {guardando ? "Guardando..." : `Agregar al pedido · $${total.toFixed(2)}`}
-                    </Text>
-                </Button>
-            </View>
+  const costoComplementos = useMemo(
+    () =>
+      complementosSeleccionados.reduce(
+        (acc, c) => acc + (c.PRECIO || 0) * (c.cantidad || 0),
+        0,
+      ),
+    [complementosSeleccionados],
+  );
 
-        </SafeAreaView>
+  const total = totalBruto - descuento + costoComplementos;
+
+  const abrirComplementos = async () => {
+    const id =
+      String(idArticuloParam || articulo?.UUID || articulo?.ID || "").trim();
+    if (!id && gruposComplementos.length === 0) return;
+
+    const seleccionInicial = Object.fromEntries(
+      complementosSeleccionados
+        .filter((c) => c.UUID)
+        .map((c) => [String(c.UUID), Number(c.cantidad) || 0]),
     );
+    ComplementosStore.setSeleccionInicial(seleccionInicial);
+
+    // Preferir grupos ya cargados; si no hay, recargar desde BD
+    let grupos = gruposComplementos;
+    if (!grupos?.length && id) {
+      try {
+        grupos = await Database.getComplementos(id);
+        setGruposComplementos(grupos ?? []);
+        setTieneGruposComplementos((grupos ?? []).length > 0);
+      } catch (e) {
+        console.error("Error recargando complementos:", e);
+        grupos = [];
+      }
+    }
+    ComplementosStore.setGruposDisponibles(grupos ?? []);
+
+    router.push({
+      pathname: "/DetalleComplemento",
+      params: {
+        id_articulo: id,
+        articuloNombre: articulo?.NOMBRE ?? "",
+      },
+    });
+  };
+
+  const payloadArticulo = () => ({
+    ID_ARTICULO: articulo.UUID,
+    CANTIDAD: cantidad,
+    PRECIO_VENTA: precioBase,
+    NOTA: notas,
+    DESCUENTO: descuento,
+    SUBTOTAL: totalBruto,
+    TOTAL: total,
+    complementos: complementosSeleccionados.map((c) => ({
+      ID_COMPLEMENTO: c.UUID,
+      CANTIDAD: c.cantidad || 1,
+      PRECIO_VENTA: c.PRECIO || 0,
+      NOTA: c.NOMBRE ?? "",
+      SUBTOTAL: (c.PRECIO || 0) * (c.cantidad || 1),
+      TOTAL: (c.PRECIO || 0) * (c.cantidad || 1),
+    })),
+  });
+
+  const handleGuardar = async () => {
+    if (guardando || !articulo) return;
+    setGuardando(true);
+    try {
+      if (esEdicion) {
+        await Database.updateComandaArticulo(
+          Number(idComandaArticulo),
+          payloadArticulo(),
+        );
+      } else {
+        await Database.insertComanda({
+          id_mesa: idMesa,
+          nota: "",
+          articulos: [payloadArticulo()],
+        });
+      }
+      router.back();
+    } catch (err) {
+      console.error("Error guardando comanda:", err);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  if (cargando) {
+    return (
+      <SafeAreaView
+        edges={["bottom"]}
+        style={{
+          flex: 1,
+          backgroundColor: gb.gray50,
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator color={gb.blue550} size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!articulo) {
+    return (
+      <SafeAreaView
+        edges={["bottom"]}
+        style={{ flex: 1, backgroundColor: "black" }}
+      >
+        <Text>Sin artículo</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const mostrarComplementos =
+    tieneGruposComplementos || complementosSeleccionados.length > 0 || !!idArticulo;
+
+  return (
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: "black" }}>
+      <LinearGradient
+        colors={gb.gradient_blue}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={s.header}
+      >
+        <RecoverButton />
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <Text style={s.headerNombre} numberOfLines={1}>
+            {articulo.NOMBRE}
+          </Text>
+          <Text style={s.headerPrecioBase}>
+            ${Number(precioBase).toFixed(2)} por unidad
+          </Text>
+        </View>
+        <View style={{ width: normalize(40) }} />
+      </LinearGradient>
+
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={s.seccion}>
+          <Text style={s.seccionTitulo}>Notas de cocina</Text>
+          <TextInput
+            style={s.textArea}
+            placeholder="Ej: sin sal, término medio..."
+            placeholderTextColor={gb.gray400}
+            value={notas}
+            onChangeText={setNotas}
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+
+        {mostrarComplementos && (
+          <View style={s.seccion}>
+            <Text style={s.seccionTitulo}>Complementos</Text>
+            <Pressable style={s.botonComplementos} onPress={abrirComplementos}>
+              <Ionicons
+                name="add-circle-outline"
+                size={normalize(20)}
+                color={gb.blue550}
+              />
+              <Text style={s.botonComplementosTexto}>
+                {complementosSeleccionados.length > 0
+                  ? `${complementosSeleccionados.length} complemento${complementosSeleccionados.length !== 1 ? "s" : ""} · Editar`
+                  : "+ Seleccionar complementos"}
+              </Text>
+            </Pressable>
+
+            {complementosSeleccionados.map((comp) => (
+              <View key={comp.UUID} style={s.resumenFila}>
+                <Text style={s.resumenTextoIzq}>
+                  {comp.NOMBRE} ×{comp.cantidad}
+                </Text>
+                <Text style={[s.resumenTextoDer, { color: gb.green600 }]}>
+                  +${((comp.PRECIO || 0) * comp.cantidad).toFixed(2)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={s.seccion}>
+          <Text style={s.seccionTitulo}>Cantidad</Text>
+          <View style={s.cantidadRow}>
+            <Text style={s.cantidadLabel}>Unidades</Text>
+            <InputCantidad
+              value={cantidad}
+              onChange={setCantidad}
+              style={s.inputCantidad}
+            />
+          </View>
+        </View>
+
+        <View style={s.seccion}>
+          <Text style={s.seccionTitulo}>Descuento</Text>
+          <View style={s.descuentoRow}>
+            <View style={s.descuentoItem}>
+              <Text style={s.descuentoLabel}>Porcentaje (%)</Text>
+              <TextInput
+                style={s.descuentoInput}
+                placeholder="0.00"
+                placeholderTextColor={gb.gray400}
+                value={descuentoPct}
+                onChangeText={onChangePct}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={s.descuentoItem}>
+              <Text style={s.descuentoLabel}>Monto ($)</Text>
+              <TextInput
+                style={s.descuentoInput}
+                placeholder="0.00"
+                placeholderTextColor={gb.gray400}
+                value={descuentoMonto}
+                onChangeText={onChangeMonto}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={s.seccion}>
+          <Text style={s.seccionTitulo}>Resumen</Text>
+          <View style={s.resumenFila}>
+            <Text style={s.resumenTextoIzq}>
+              {articulo.NOMBRE} ×{cantidad}
+            </Text>
+            <Text style={s.resumenTextoDer}>${totalBruto.toFixed(2)}</Text>
+          </View>
+
+          {complementosSeleccionados.map((comp) => (
+            <View key={`res-${comp.UUID}`} style={s.resumenFila}>
+              <Text style={s.resumenTextoIzq}>
+                {comp.NOMBRE} ×{comp.cantidad}
+              </Text>
+              <Text style={[s.resumenTextoDer, { color: gb.green600 }]}>
+                +${((comp.PRECIO || 0) * comp.cantidad).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+
+          {descuento > 0 && (
+            <View style={s.resumenFila}>
+              <Text style={s.resumenTextoIzq}>Descuento</Text>
+              <Text style={[s.resumenTextoDer, { color: gb.red600 }]}>
+                -${descuento.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          <View style={s.resumenDivider} />
+
+          <View style={s.totalRow}>
+            <Text style={s.totalLabel}>Total</Text>
+            <Text style={s.totalValor}>${total.toFixed(2)}</Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      <View style={s.footer}>
+        <Button
+          gradient={guardando ? [gb.gray300, gb.gray400] : gb.gradient_blue}
+          onPress={handleGuardar}
+          styleContainer={s.botonAgregar}
+          disabled={guardando}
+        >
+          <Text style={s.botonAgregarTexto}>
+            {guardando
+              ? "Guardando..."
+              : esEdicion
+                ? `Guardar cambios · $${total.toFixed(2)}`
+                : `Agregar al pedido · $${total.toFixed(2)}`}
+          </Text>
+        </Button>
+      </View>
+    </SafeAreaView>
+  );
 };
 
 export default DetalleArticulo;

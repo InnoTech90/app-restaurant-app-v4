@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Alert, Pressable, Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
@@ -11,6 +11,7 @@ import { s } from "./styles";
 
 const Mesa = ({
   id,
+  uuid,
   nombre,
   status,
   onPress,
@@ -18,13 +19,40 @@ const Mesa = ({
   descripcion,
   index = 1,
   mesas,
+  onCambiarMesa,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [cambiarMesa, setCambiarMesa] = useState(false);
+  const [cambiando, setCambiando] = useState(false);
 
-  const changeMesa = (idMesaOrigen, idMesaDestino) => {
-    // Aquí iría la lógica para cambiar la mesa en la base de datos o estado global
-    setCambiarMesa(false);
+  // Solo mesas libres (sin comanda activa), excluyendo la actual
+  const mesasDestino = useMemo(
+    () =>
+      (mesas ?? []).filter(
+        (mesa) =>
+          mesa.UUID !== uuid &&
+          Number(mesa.TIENE_COMANDA_ACTIVA) !== 1,
+      ),
+    [mesas, uuid],
+  );
+
+  const changeMesa = async (uuidMesaDestino) => {
+    if (!uuid || !uuidMesaDestino || cambiando) return;
+    try {
+      setCambiando(true);
+      await onCambiarMesa?.(uuid, uuidMesaDestino);
+      setCambiarMesa(false);
+    } catch (e) {
+      console.error("Error al cambiar mesa:", e);
+      Alert.alert(
+        "No se pudo cambiar",
+        e?.code === "MESA_OCUPADA"
+          ? "La mesa seleccionada ya está ocupada."
+          : e?.message || "Intenta de nuevo.",
+      );
+    } finally {
+      setCambiando(false);
+    }
   };
 
   return (
@@ -45,23 +73,16 @@ const Mesa = ({
             { borderColor: gb.purple550, backgroundColor: gb.blue50 },
           ]}
         >
-          {/* sillas decorativas */}
-          <View style={[s.sillaLeft, { backgroundColor: gb.purple550 }]}></View>
-          <View
-            style={[s.sillaRight, { backgroundColor: gb.purple550 }]}
-          ></View>
-          <View style={[s.sillaTop, { backgroundColor: gb.purple550 }]}></View>
-          <View
-            style={[s.sillaBottom, { backgroundColor: gb.purple550 }]}
-          ></View>
+          <View style={[s.sillaLeft, { backgroundColor: gb.purple550 }]} />
+          <View style={[s.sillaRight, { backgroundColor: gb.purple550 }]} />
+          <View style={[s.sillaTop, { backgroundColor: gb.purple550 }]} />
+          <View style={[s.sillaBottom, { backgroundColor: gb.purple550 }]} />
           <View style={s.contenido}>
             <Text style={s.nombre}>{nombre} </Text>
             <Text style={s.ficha}>Ficha : {id} </Text>
             <Input placeholder="Nota" style={{ marginTop: 10, width: "80%" }} />
             <Button
-              onPress={() => {
-                setCambiarMesa(true);
-              }}
+              onPress={() => setCambiarMesa(true)}
               style={s.cambiarMesa}
             >
               <Text style={{ color: gb.gray50 }}>Cambiar Mesa</Text>
@@ -71,11 +92,10 @@ const Mesa = ({
         </View>
       ) : (
         <View style={s.mesa}>
-          {/* sillas decorativas */}
-          <View style={s.sillaLeft}></View>
-          <View style={s.sillaRight}></View>
-          <View style={s.sillaTop}></View>
-          <View style={s.sillaBottom}></View>
+          <View style={s.sillaLeft} />
+          <View style={s.sillaRight} />
+          <View style={s.sillaTop} />
+          <View style={s.sillaBottom} />
           <View style={s.contenido}>
             <Text style={s.nombre}>{nombre} </Text>
           </View>
@@ -84,9 +104,7 @@ const Mesa = ({
       )}
       <GeneralModal
         visible={cambiarMesa}
-        onRequestClose={() => {
-          setCambiarMesa(false);
-        }}
+        onRequestClose={() => setCambiarMesa(false)}
         headerColorGrandien={[gb.purple750, gb.purple350]}
         iconCloseColor={"white"}
         headerColorText={gb.gray50}
@@ -107,32 +125,17 @@ const Mesa = ({
           </Text>
         </View>
         <View style={s.listaMesas}>
-          {mesas.length > 1 ? (
-            mesas.map((mesa, i) => {
-              if (mesa.ID !== id) {
-                return (
-                  <View key={mesa.ID}>
-                    {mesa.ESTATUS == true ? (
-                      <Button
-                        style={s.mesaItem}
-                        onPress={() => changeMesa(id, mesa.ID)}
-                      >
-                        <Text style={s.textoMesa}>{mesa.NOMBRE}</Text>
-                      </Button>
-                    ) : (
-                      <View
-                        style={[s.mesaItem, { backgroundColor: gb.gray100 }]}
-                      >
-                        <Text style={[s.textoMesa, { color: gb.gray300 }]}>
-                          {mesa.NOMBRE} (Ocupada)
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                );
-              }
-              return null;
-            })
+          {mesasDestino.length > 0 ? (
+            mesasDestino.map((mesa) => (
+              <Button
+                key={mesa.UUID ?? mesa.ID}
+                style={s.mesaItem}
+                disabled={cambiando}
+                onPress={() => changeMesa(mesa.UUID)}
+              >
+                <Text style={s.textoMesa}>{mesa.NOMBRE}</Text>
+              </Button>
+            ))
           ) : (
             <View style={s.noDataContainer}>
               <Ionicons
@@ -141,9 +144,9 @@ const Mesa = ({
                 color={gb.gray300}
                 style={{ marginBottom: normalize(10) }}
               />
-              <Text style={s.textoMesa}>No hay otras mesas disponibles</Text>
+              <Text style={s.textoMesa}>No hay mesas libres</Text>
               <Text style={s.textoMesaDescripcion}>
-                Todas las mesas están ocupadas o no disponibles
+                Todas las demás mesas están ocupadas
               </Text>
               <Button
                 onPress={() => setCambiarMesa(false)}
@@ -158,4 +161,5 @@ const Mesa = ({
     </Pressable>
   );
 };
+
 export default Mesa;

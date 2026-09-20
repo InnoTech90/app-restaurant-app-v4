@@ -20,28 +20,76 @@ export class dataBase {
     });
   };
 
-  /**
-   * NIP del manager/owner autenticado (desde GERENTES o CONFIGURACIONES).
-   */
-  static getNipGerenteAutenticado = async (gerenteSesion) => {
-    if (!gerenteSesion?.id) return null;
+  /** NIP del dueño / negocio (CONFIGURACIONES). */
+  static getNipDueño = async () => {
+    return withDb("NipModal.getNipDueño", async (db) => {
+      const idSucursal = await AsyncStorage.getItem("qrCode");
+      let config = null;
 
-    return withDb("NipModal.getNipGerenteAutenticado", async (db) => {
-      if (gerenteSesion.tipo === "owner" || gerenteSesion.id === "owner") {
-        const idSucursal = await AsyncStorage.getItem("qrCode");
-        if (!idSucursal) return null;
-        const config = await db.getFirstAsync(
+      if (idSucursal) {
+        config = await db.getFirstAsync(
           `SELECT NIP FROM CONFIGURACIONES WHERE ID_SUCURSAL = ? LIMIT 1`,
           [idSucursal],
         );
-        return config?.NIP != null ? String(config.NIP) : null;
       }
 
-      const gerente = await db.getFirstAsync(
-        `SELECT NIP FROM GERENTES WHERE UUID = ? AND ACTIVO = 1 LIMIT 1`,
-        [gerenteSesion.id],
+      if (!config) {
+        config = await db.getFirstAsync(
+          `SELECT NIP FROM CONFIGURACIONES ORDER BY ROWID DESC LIMIT 1`,
+        );
+      }
+
+      return config?.NIP != null ? String(config.NIP) : null;
+    });
+  };
+
+  /**
+   * Valida NIP contra gerentes activos (GERENTES).
+   * @returns {{ ok: boolean, gerente?: object, reason?: string }}
+   */
+  static validarNipGerente = async (nipIngresado) => {
+    return withDb("NipModal.validarNipGerente", async (db) => {
+      const nip = String(nipIngresado ?? "").trim();
+      if (!nip) return { ok: false, reason: "empty" };
+
+      const gerentes = await db.getAllAsync(
+        `SELECT UUID, NAME, NIP FROM GERENTES
+         WHERE ACTIVO = 1 AND NIP IS NOT NULL AND TRIM(NIP) != ''`,
       );
-      return gerente?.NIP != null ? String(gerente.NIP) : null;
+
+      if (!gerentes || gerentes.length === 0) {
+        return { ok: false, reason: "no_gerentes" };
+      }
+
+      const match = gerentes.find(
+        (g) => String(g.NIP).trim() === nip,
+      );
+      if (!match) return { ok: false, reason: "invalid" };
+
+      return { ok: true, gerente: match };
+    });
+  };
+
+  /** Nombre de la sucursal activa. */
+  static getNombreSucursal = async () => {
+    return withDb("NipModal.getNombreSucursal", async (db) => {
+      const qrCode = await AsyncStorage.getItem("qrCode");
+      let sucursal = null;
+
+      if (qrCode) {
+        sucursal = await db.getFirstAsync(
+          `SELECT NOMBRE FROM SUCURSAL WHERE CODIGO_QR = ? LIMIT 1`,
+          [qrCode],
+        );
+      }
+
+      if (!sucursal) {
+        sucursal = await db.getFirstAsync(
+          `SELECT NOMBRE FROM SUCURSAL ORDER BY ROWID DESC LIMIT 1`,
+        );
+      }
+
+      return sucursal?.NOMBRE ? String(sucursal.NOMBRE) : null;
     });
   };
 }

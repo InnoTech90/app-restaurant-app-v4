@@ -229,6 +229,9 @@ export class Database {
       nip: nipNegocio,
     });
 
+    // Categorías y conceptos de gasto vienen en general.expenseGroups
+    await Database.gastosModel(data?.expenseGroups);
+
     console.log("✅ Datos generales insertados correctamente");
   }
 
@@ -433,17 +436,19 @@ export class Database {
   }
 
   /**
-   * Inserta datos de gastos
-   * Sin crear tablas - asume que CATEGORIA_GASTO, CONCEPTO_GASTO, REGISTRO_GASTO ya existen
+   * Inserta categorías (expenseGroups) y conceptos (concepts) de gasto.
+   * expenseGroup → CATEGORIA_GASTO
+   * concept → CONCEPTO_GASTO (ID_CATEGORIA = group.id)
    */
   static async gastosModel(data) {
     const db = await getDb();
 
-    // Tolera tanto data = [...] directo como data = { data: [...] }
-    const categorias = Array.isArray(data) ? data : (data?.data ?? []);
+    const categorias = Array.isArray(data)
+      ? data
+      : (data?.expenseGroups ?? data?.data ?? []);
 
-    if (categorias.length === 0) {
-      console.log("⚠️  No hay categorías de gasto para insertar");
+    if (!Array.isArray(categorias) || categorias.length === 0) {
+      console.log("⚠️  No hay expenseGroups para insertar");
       return;
     }
 
@@ -451,19 +456,39 @@ export class Database {
     let conceptosCount = 0;
 
     for (const categoria of categorias) {
+      if (!categoria?.id) continue;
+
       await db.runAsync(
-        `INSERT OR IGNORE INTO CATEGORIA_GASTO (UUID, NOMBRE, DESCRIPCION, SINCRONIZADO) VALUES (?, ?, ?, 1)`,
-        [categoria.id, categoria.name, categoria.description ?? null],
+        `INSERT INTO CATEGORIA_GASTO (UUID, NOMBRE, DESCRIPCION, SINCRONIZADO)
+         VALUES (?, ?, ?, 1)
+         ON CONFLICT(UUID) DO UPDATE SET
+           NOMBRE = excluded.NOMBRE,
+           DESCRIPCION = excluded.DESCRIPCION,
+           SINCRONIZADO = 1`,
+        [
+          categoria.id,
+          categoria.name ?? "",
+          categoria.description ?? null,
+        ],
       );
       categoriasCount++;
 
       for (const concepto of categoria.concepts || []) {
+        if (!concepto?.id) continue;
+
         await db.runAsync(
-          `INSERT OR IGNORE INTO CONCEPTO_GASTO (UUID, ID_CATEGORIA, NOMBRE, DESCRIPCION, PRECIO, SINCRONIZADO) VALUES (?, ?, ?, ?, ?, 1)`,
+          `INSERT INTO CONCEPTO_GASTO
+             (UUID, ID_CATEGORIA, NOMBRE, DESCRIPCION, PRECIO, SINCRONIZADO)
+           VALUES (?, ?, ?, ?, ?, 1)
+           ON CONFLICT(UUID) DO UPDATE SET
+             ID_CATEGORIA = excluded.ID_CATEGORIA,
+             NOMBRE = excluded.NOMBRE,
+             DESCRIPCION = excluded.DESCRIPCION,
+             SINCRONIZADO = 1`,
           [
             concepto.id,
             categoria.id,
-            concepto.name,
+            concepto.name ?? "",
             concepto.description ?? null,
             concepto.price ?? concepto.precio ?? 0,
           ],

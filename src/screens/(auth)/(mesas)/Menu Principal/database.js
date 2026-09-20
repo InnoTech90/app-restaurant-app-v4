@@ -63,6 +63,14 @@ export default class Database {
     });
   }
 
+  static async getMesa(uuid) {
+    return withDb("MenuPrincipal.getMesa", async (db) => {
+      return await db.getFirstAsync(`SELECT * FROM MESA WHERE UUID = ?`, [
+        uuid,
+      ]);
+    });
+  }
+
   static async getCliente(id) {
     return withDb("MenuPrincipal.getCliente", async (db) => {
       return await db.getFirstAsync(`SELECT * FROM CLIENTES WHERE ID = ?`, [
@@ -75,9 +83,53 @@ export default class Database {
     return withDb("MenuPrincipal.getClientes", async (db) => {
       const qrData = await AsyncStorage.getItem("qrCode");
       return await db.getAllAsync(
-        `SELECT * FROM CLIENTES WHERE SUCURSAL = ? ORDER BY NOMBRE ASC`,
+        `SELECT * FROM CLIENTES
+         WHERE SUCURSAL = ? AND (ACTIVO = 1 OR ACTIVO IS NULL)
+         ORDER BY NOMBRE ASC`,
         [qrData],
       );
+    });
+  }
+
+  static async insertCliente({ nombre, telefono, correo, direccion, descripcion }) {
+    return withDb("MenuPrincipal.insertCliente", async (db) => {
+      const qrData = await AsyncStorage.getItem("qrCode");
+      const result = await db.runAsync(
+        `INSERT INTO CLIENTES
+           (NOMBRE, TELEFONO, CORREO, DIRECCION, DESCRIPCION, DINNER_KEY, SUCURSAL, SINCRONIZADO, ACTIVO)
+         VALUES (?, ?, ?, ?, ?, 0, ?, 0, 1)`,
+        [
+          nombre,
+          telefono || null,
+          correo || null,
+          direccion || null,
+          descripcion || null,
+          qrData,
+        ],
+      );
+      const id = result?.lastInsertRowId;
+      if (!id) return null;
+      return await db.getFirstAsync(`SELECT * FROM CLIENTES WHERE ID = ?`, [id]);
+    });
+  }
+
+  static async updateCliente(id, { nombre, telefono, correo, direccion, descripcion }) {
+    return withDb("MenuPrincipal.updateCliente", async (db) => {
+      await db.runAsync(
+        `UPDATE CLIENTES
+         SET NOMBRE = ?, TELEFONO = ?, CORREO = ?, DIRECCION = ?,
+             DESCRIPCION = ?, SINCRONIZADO = 0
+         WHERE ID = ?`,
+        [
+          nombre,
+          telefono || null,
+          correo || null,
+          direccion || null,
+          descripcion || null,
+          id,
+        ],
+      );
+      return await db.getFirstAsync(`SELECT * FROM CLIENTES WHERE ID = ?`, [id]);
     });
   }
 

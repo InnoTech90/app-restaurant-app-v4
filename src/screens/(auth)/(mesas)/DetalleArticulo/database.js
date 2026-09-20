@@ -5,17 +5,52 @@ export class Database {
   /** Trae los grupos de complementos y sus complementos para un artículo */
   static async getComplementos(articuloUUID) {
     return withDb("DetalleArticulo.getComplementos", async (db) => {
-      const grupos = await db.getAllAsync(
+      const id = String(articuloUUID ?? "").trim();
+      if (!id) return [];
+
+      let grupos = await db.getAllAsync(
         `SELECT * FROM GRUPO_COMPLEMENTOS WHERE ID_ARTICULO = ? ORDER BY POSICION`,
-        [articuloUUID],
+        [id],
       );
-      for (const grupo of grupos) {
+
+      // Fallback: si mandaron el ID numérico del artículo
+      if (!grupos?.length && /^\d+$/.test(id)) {
+        const art = await db.getFirstAsync(
+          `SELECT UUID FROM ARTICULO WHERE ID = ?`,
+          [Number(id)],
+        );
+        if (art?.UUID) {
+          grupos = await db.getAllAsync(
+            `SELECT * FROM GRUPO_COMPLEMENTOS WHERE ID_ARTICULO = ? ORDER BY POSICION`,
+            [art.UUID],
+          );
+        }
+      }
+
+      // Fallback: buscar UUID del artículo por si el ID_ARTICULO en grupos usa otra forma
+      if (!grupos?.length) {
+        const art = await db.getFirstAsync(
+          `SELECT UUID, ID FROM ARTICULO WHERE UUID = ? OR ID = ? LIMIT 1`,
+          [id, id],
+        );
+        if (art?.UUID && art.UUID !== id) {
+          grupos = await db.getAllAsync(
+            `SELECT * FROM GRUPO_COMPLEMENTOS WHERE ID_ARTICULO = ? ORDER BY POSICION`,
+            [art.UUID],
+          );
+        }
+      }
+
+      for (const grupo of grupos ?? []) {
+        const grupoId = grupo.UUID ?? grupo.ID;
         grupo.complementos = await db.getAllAsync(
-          `SELECT * FROM COMPLEMENTO WHERE ID_GRUPO_COMP = ? ORDER BY POSICION`,
-          [grupo.UUID],
+          `SELECT * FROM COMPLEMENTO
+           WHERE ID_GRUPO_COMP = ? OR ID_GRUPO_COMP = ?
+           ORDER BY POSICION`,
+          [String(grupo.UUID ?? ""), String(grupoId ?? "")],
         );
       }
-      return grupos;
+      return grupos ?? [];
     });
   }
   static async insertComanda(data) {
@@ -73,9 +108,10 @@ export class Database {
                     CANTIDAD,
                     PRECIO_VENTA,
                     NOTA,
+                    DESCUENTO,
                     SUBTOTAL,
                     TOTAL
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id_comanda,
             articulo.ID_ARTICULO ?? null,
@@ -83,6 +119,7 @@ export class Database {
             articulo.CANTIDAD ?? 0,
             articulo.PRECIO_VENTA ?? 0,
             articulo.NOTA ?? "",
+            articulo.DESCUENTO ?? 0,
             articulo.SUBTOTAL ?? 0,
             articulo.TOTAL ?? 0,
           ],
@@ -113,6 +150,93 @@ export class Database {
             ],
           );
         }
+      }
+    });
+  }
+
+  static async getComandaArticuloCompleto(idComandaArticulo) {
+    return withDb("DetalleArticulo.getComandaArticuloCompleto", async (db) => {
+      const renglon = await db.getFirstAsync(
+        `SELECT * FROM COMANDA_ARTICULO WHERE ID = ?`,
+        [idComandaArticulo],
+      );
+      if (!renglon) return null;
+
+      const articulo = await db.getFirstAsync(
+        `SELECT * FROM ARTICULO WHERE UUID = ?`,
+        [renglon.ID_ARTICULO],
+      );
+
+      const compRows = await db.getAllAsync(
+        `SELECT cc.*,
+                COALESCE(c.NOMBRE, gc.NOMBRE, cc.NOTA) as COMP_NOMBRE,
+                COALESCE(c.PRECIO, cc.PRECIO_VENTA, 0) as COMP_PRECIO,
+                COALESCE(c.UUID, gc.UUID, cc.ID_COMPLEMENTO) as COMP_UUID
+         FROM COMANDA_COMPLEMENTO cc
+         LEFT JOIN COMPLEMENTO c ON cc.ID_COMPLEMENTO = c.UUID
+         LEFT JOIN GRUPO_COMPLEMENTOS gc ON cc.ID_COMPLEMENTO = gc.UUID
+         WHERE cc.ID_COMANDA_ARTICULO = ?`,
+        [idComandaArticulo],
+      );
+
+      return {
+        renglon,
+        articulo: articulo ?? null,
+        complementos: compRows.map((cr) => ({
+          UUID: String(cr.COMP_UUID ?? cr.ID_COMPLEMENTO ?? ""),
+          NOMBRE: cr.COMP_NOMBRE ?? "—",
+          PRECIO: Number(cr.COMP_PRECIO ?? cr.PRECIO_VENTA ?? 0) || 0,
+          cantidad: Number(cr.CANTIDAD ?? 1) || 1,
+        })),
+      };
+    });
+  }
+
+  static async updateComandaArticulo(idComandaArticulo, articulo) {
+    return withDb("DetalleArticulo.updateComandaArticulo", async (db) => {
+      await db.runAsync(
+        `UPDATE COMANDA_ARTICULO
+         SET CANTIDAD = ?, PRECIO_VENTA = ?, NOTA = ?, DESCUENTO = ?, SUBTOTAL = ?, TOTAL = ?
+         WHERE ID = ?`,
+        [
+          articulo.CANTIDAD ?? 0,
+          articulo.PRECIO_VENTA ?? 0,
+          articulo.NOTA ?? "",
+          articulo.DESCUENTO ?? 0,
+          articulo.SUBTOTAL ?? 0,
+          articulo.TOTAL ?? 0,
+          idComandaArticulo,
+        ],
+      );
+
+      await db.runAsync(
+        `DELETE FROM COMANDA_COMPLEMENTO WHERE ID_COMANDA_ARTICULO = ?`,
+        [idComandaArticulo],
+      );
+
+      for (const complemento of articulo.complementos ?? []) {
+        await db.runAsync(
+          `INSERT INTO COMANDA_COMPLEMENTO (
+            ID_COMANDA_ARTICULO,
+            ID_COMPLEMENTO,
+            CANTIDAD_CANCELADOS,
+            CANTIDAD,
+            PRECIO_VENTA,
+            NOTA,
+            SUBTOTAL,
+            TOTAL
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            idComandaArticulo,
+            complemento.ID_COMPLEMENTO ?? null,
+            0,
+            complemento.CANTIDAD ?? 0,
+            complemento.PRECIO_VENTA ?? 0,
+            complemento.NOTA ?? "",
+            complemento.SUBTOTAL ?? 0,
+            complemento.TOTAL ?? 0,
+          ],
+        );
       }
     });
   }

@@ -53,6 +53,8 @@ const PantallaDeCarga = () => {
         ...prev,
         general: true,
         metodo_pago: true,
+        // expenseGroups viajan en general y ya se insertan en gastosModel
+        gastos: true,
       }));
       return data;
     } catch (err) {
@@ -94,15 +96,6 @@ const PantallaDeCarga = () => {
       setEndpointsCargados((prev) => ({ ...prev, menu: true }));
     } catch (err) {
       mostrarError(err, "menu");
-    }
-  };
-
-  const getGastos = async () => {
-    try {
-      await integracionPantallaDeCarga.gastos();
-      setEndpointsCargados((prev) => ({ ...prev, gastos: true }));
-    } catch (err) {
-      mostrarError(err, "gastos");
     }
   };
 
@@ -155,7 +148,6 @@ const PantallaDeCarga = () => {
           getClientes(),
           getInventory(),
           getMenu(),
-          getGastos(),
         ]);
         await getConfiguraciones(generalData);
         await getHistorialCaja();
@@ -170,7 +162,7 @@ const PantallaDeCarga = () => {
 
   useEffect(() => {
     if (Object.values(endpontsCargados).every((cargado) => cargado === true)) {
-      reouter.replace("/LoginGerente");
+      reouter.replace("/Inicio");
     }
   }, [endpontsCargados, reouter]);
 

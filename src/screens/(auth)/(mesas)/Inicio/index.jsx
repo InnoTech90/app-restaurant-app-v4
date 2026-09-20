@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,6 +9,10 @@ import {
   obtenerMensajeErrorRed,
   verificarConexionInternet,
 } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
+import {
+  clearAuthHeaderTitulo,
+  setAuthHeaderTitulo,
+} from "../../../../utils/authHeaderTitle";
 import { initializeSchema } from "../../../../utils/db";
 import { gb } from "../../../globalStyles";
 import { Database } from "./database";
@@ -22,6 +26,16 @@ const Inicio = () => {
   useEffect(() => {
     getMesas();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.multiRemove([
+        "MesaSeleccionada",
+        "MesaSeleccionadaNombre",
+      ]).catch(() => {});
+      clearAuthHeaderTitulo();
+    }, []),
+  );
 
   const getMesas = async () => {
     try {
@@ -63,7 +77,17 @@ const Inicio = () => {
 
   const seleccionarMesa = async (mesa) => {
     await AsyncStorage.setItem("MesaSeleccionada", mesa.UUID);
+    await AsyncStorage.setItem(
+      "MesaSeleccionadaNombre",
+      mesa.NOMBRE ?? "",
+    );
+    await setAuthHeaderTitulo("Menu");
     router.push(`/Menu Principal?id_mesa=${mesa.UUID}`);
+  };
+
+  const cambiarMesa = async (uuidOrigen, uuidDestino) => {
+    await Database.cambiarMesa(uuidOrigen, uuidDestino);
+    await getMesas();
   };
 
   return (
@@ -86,14 +110,16 @@ const Inicio = () => {
         <View style={s.mesasContainer}>
           {mesas.map((mesa, index) => (
             <Mesa
-              key={mesa.ID}
+              key={mesa.UUID ?? mesa.ID}
               id={mesa.ID}
+              uuid={mesa.UUID}
               nombre={mesa.NOMBRE}
               descripcion={mesa.DESCRIPCION}
               status={mesa.TIENE_COMANDA_ACTIVA === 1}
               onPress={() => seleccionarMesa(mesa)}
               index={index + 1}
               mesas={mesas}
+              onCambiarMesa={cambiarMesa}
             />
           ))}
         </View>

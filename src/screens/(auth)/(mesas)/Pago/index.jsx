@@ -16,6 +16,7 @@ import Button from "../../../../components/atoms/Button/Button";
 import GeneralModal from "../../../../components/atoms/GeneralModal/GeneralModal";
 import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverButton";
 import ModalDividirCuenta from "../../../../components/Molecules/ModalDividirCuenta/ModalDividirCuenta";
+import MesasNavButtons from "../../../../components/Molecules/MesasNavButtons/MesasNavButtons";
 import ModalSeleccionCliente from "../../../../components/Molecules/ModalSeleccionCliente/ModalSeleccionCliente";
 import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import PagoAdicionales from "../../../../components/Molecules/PagoAdicionales/PagoAdicionales";
@@ -24,6 +25,7 @@ import PagoDesglose from "../../../../components/Molecules/PagoDesglose/PagoDesg
 import PagoInfoComanda from "../../../../components/Molecules/PagoInfoComanda/PagoInfoComanda";
 import PagoMetodosPago from "../../../../components/Molecules/PagoMetodosPago/PagoMetodosPago";
 import PagoMontoRecibido from "../../../../components/Molecules/PagoMontoRecibido/PagoMontoRecibido";
+import { setAuthHeaderTitulo } from "../../../../utils/authHeaderTitle";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
@@ -138,6 +140,7 @@ const Pago = () => {
 
   useFocusEffect(
     useCallback(() => {
+      setAuthHeaderTitulo("Pagar");
       const cargar = async () => {
         try {
           await obtenerCamposDefault();
@@ -172,6 +175,19 @@ const Pago = () => {
   );
   const canPrint =
     tieneMetodoPago && (parseFloat(montoRecibido) || 0) >= total && total > 0;
+
+  const comandaPayload = comanda
+    ? {
+        comanda,
+        articulos: articulosComanda,
+        totalComanda: subtotal,
+      }
+    : null;
+
+  const irClientes = () => {
+    setAuthHeaderTitulo("Clientes");
+    setOpenModalCliente(true);
+  };
 
   const ejecutarImpresion = async () => {
     if (!comanda || !tieneMetodoPago) return;
@@ -316,10 +332,39 @@ const Pago = () => {
           nuevaCantidad > renglon.CANTIDAD
             ? "INCREMENTAR_ARTICULO"
             : "DISMINUIR_ARTICULO";
+        const costoComps = (renglon.complementos ?? []).reduce(
+          (acc, c) =>
+            acc +
+            Number(
+              c.TOTAL ??
+                (c.CANTIDAD ?? 0) *
+                  (c.PRECIO_VENTA ?? c.COMP_PRECIO ?? c.complemento?.PRECIO ?? 0),
+            ),
+          0,
+        );
+        const descGuardado = Number(renglon.DESCUENTO);
+        const subtotalAnterior =
+          Number(renglon.SUBTOTAL) ||
+          (renglon.CANTIDAD ?? 0) * (renglon.PRECIO_VENTA ?? 0);
+        const descuento =
+          Number.isFinite(descGuardado) && descGuardado > 0
+            ? descGuardado
+            : Math.max(
+                0,
+                subtotalAnterior + costoComps - (Number(renglon.TOTAL) || 0),
+              );
+        const nuevoSubtotal = nuevaCantidad * (renglon.PRECIO_VENTA ?? 0);
+        const nuevoTotal = Math.max(0, nuevoSubtotal - descuento + costoComps);
+
         await Database.actualizarCantidadArticulo(
           renglon.ID,
           nuevaCantidad,
           renglon.PRECIO_VENTA,
+          {
+            subtotal: nuevoSubtotal,
+            total: nuevoTotal,
+            descuento,
+          },
         );
         await Database.registrarMovimiento(
           renglon.ID_COMANDA,
@@ -332,7 +377,9 @@ const Pago = () => {
               ? {
                   ...a,
                   CANTIDAD: nuevaCantidad,
-                  TOTAL: nuevaCantidad * (renglon.PRECIO_VENTA ?? 0),
+                  SUBTOTAL: nuevoSubtotal,
+                  TOTAL: nuevoTotal,
+                  DESCUENTO: descuento,
                 }
               : a,
           ),
@@ -705,7 +752,10 @@ const Pago = () => {
       {/* ── MODAL CLIENTE ─────────────────────────────────── */}
       <ModalSeleccionCliente
         visible={openModalCliente}
-        onClose={() => setOpenModalCliente(false)}
+        onClose={() => {
+          setOpenModalCliente(false);
+          setAuthHeaderTitulo("Pagar");
+        }}
         clientes={clientes}
         clienteSeleccionado={cliente}
         busqueda={buscadorCliente}
@@ -724,6 +774,7 @@ const Pago = () => {
                 : prev,
             );
             setOpenModalCliente(false);
+            setAuthHeaderTitulo("Pagar");
           } catch (error) {
             console.error("Error asignando cliente:", error);
           }
@@ -753,6 +804,16 @@ const Pago = () => {
           </Button>
         </View>
       </GeneralModal>
+
+      {comanda && (
+        <MesasNavButtons
+          tabActiva="pagar"
+          idMesa={idMesa}
+          comandaPayload={comandaPayload}
+          tieneCliente={!!(cliente?.ID ?? comanda?.ID_CLIENTE)}
+          onPressCliente={irClientes}
+        />
+      )}
     </SafeAreaView>
   );
 };

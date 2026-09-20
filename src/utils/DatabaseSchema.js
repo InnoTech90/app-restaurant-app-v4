@@ -498,6 +498,7 @@ export const DatabaseSchema = {
           CANTIDAD INTEGER,
           PRECIO_VENTA REAL,
           NOTA NVARCHAR,
+          DESCUENTO REAL DEFAULT 0,
           SUBTOTAL REAL,
           TOTAL REAL,
           IMPRESO INTEGER DEFAULT 0,

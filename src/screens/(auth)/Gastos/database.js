@@ -1,54 +1,35 @@
 import { getDb } from "../../../utils/db";
 
+const toFechaIso = (fecha) => {
+  if (fecha instanceof Date) return fecha.toISOString();
+  if (fecha) return new Date(fecha).toISOString();
+  return new Date().toISOString();
+};
+
 export class Database {
-    /**
-     * Trae todas las categorías de gasto con la cantidad de conceptos asociados.
-     * Es la query principal de la vista (equivalente a getMateriasPrimas en Inventarios).
-     */
-    static async getGastos() {
-        const db = await getDb();
-        return await db.getAllAsync(
-            `SELECT
-                CG.ID,
-                CG.UUID,
-                CG.NOMBRE,
-                CG.DESCRIPCION,
-                CG.SINCRONIZADO,
-                COUNT(CN.ID) AS NUM_CONCEPTOS
-             FROM CATEGORIA_GASTO CG
-             LEFT JOIN CONCEPTO_GASTO CN ON CN.ID_CATEGORIA = CG.UUID
-             GROUP BY CG.ID
-             ORDER BY CG.NOMBRE ASC`
-        );
+  /**
+   * Jerarquía: categoría → conceptos → registros (gastos).
+   * TOTAL por concepto y por categoría (suma de montos).
+   */
+  static async getGastosConConceptos() {
+    const db = await getDb();
+    try {
+      await db.runAsync(
+        `ALTER TABLE REGISTRO_GASTO ADD COLUMN SINCRONIZADO INTEGER DEFAULT 0`,
+      );
+    } catch (_) {
+      /* columna ya existe */
     }
 
-    /** Conceptos de una categoría (para la vista detalle / agregar) */
-    static async getConceptosByCategoria(idCategoria) {
-        const db = await getDb();
-        return await db.getAllAsync(
-            `SELECT * FROM CONCEPTO_GASTO WHERE ID_CATEGORIA = ? ORDER BY NOMBRE ASC`,
-            [idCategoria]
-        );
-    }
-
-    /**
-     * Trae todas las categorías con sus conceptos, total acumulado y flag de pendientes.
-     * TIENE_PENDIENTES = 1 si algún REGISTRO_GASTO del concepto no está sincronizado.
-     */
-    static async getGastosConConceptos() {
-        const db = await getDb();
-        // Migración defensiva: añade SINCRONIZADO si la tabla no la tiene aún
-        try {
-            await db.runAsync(`ALTER TABLE REGISTRO_GASTO ADD COLUMN SINCRONIZADO INTEGER DEFAULT 0`);
-        } catch (_) { /* columna ya existe */ }
-        const categorias = await db.getAllAsync(
-            `SELECT ID, UUID, NOMBRE, DESCRIPCION, SINCRONIZADO
+    const categorias = await db.getAllAsync(
+      `SELECT ID, UUID, NOMBRE, DESCRIPCION, SINCRONIZADO
              FROM CATEGORIA_GASTO
-             ORDER BY NOMBRE ASC`
-        );
-        for (const cat of categorias) {
-            cat.conceptos = await db.getAllAsync(
-                `SELECT
+             ORDER BY NOMBRE ASC`,
+    );
+
+    for (const cat of categorias) {
+      cat.conceptos = await db.getAllAsync(
+        `SELECT
                     CN.ID,
                     CN.UUID,
                     CN.NOMBRE,
@@ -62,40 +43,88 @@ export class Database {
                  WHERE CN.ID_CATEGORIA = ?
                  GROUP BY CN.ID
                  ORDER BY CN.NOMBRE ASC`,
-                [cat.UUID]
-            );
-        }
-        return categorias;
+        [cat.UUID],
+      );
+
+      let totalCat = 0;
+      for (const concepto of cat.conceptos) {
+        totalCat += Number(concepto.TOTAL ?? 0);
+        concepto.registros = await db.getAllAsync(
+          `SELECT ID, ID_CONCEPTO, MONTO, FECHA, NOTA, SINCRONIZADO
+                     FROM REGISTRO_GASTO
+                     WHERE ID_CONCEPTO = ?
+                     ORDER BY FECHA DESC, ID DESC`,
+          [concepto.UUID],
+        );
+      }
+      cat.TOTAL = totalCat;
     }
 
-    /** Historial de registros de un concepto de gasto */
-    static async getRegistrosByConcepto(idConcepto) {
-        const db = await getDb();
-        return await db.getAllAsync(
-            `SELECT ID, MONTO, FECHA, NOTA
+    return categorias;
+  }
+
+  static async getRegistrosByConcepto(idConcepto) {
+    const db = await getDb();
+    return await db.getAllAsync(
+      `SELECT ID, ID_CONCEPTO, MONTO, FECHA, NOTA, SINCRONIZADO
              FROM REGISTRO_GASTO
              WHERE ID_CONCEPTO = ?
-             ORDER BY ID DESC`,
-            [idConcepto]
-        );
-    }
+             ORDER BY FECHA DESC, ID DESC`,
+      [idConcepto],
+    );
+  }
 
-    /** Inserta un registro de pago de gasto (SINCRONIZADO = 0, fecha en ISO 8601) */
-    static async insertRegistro({ idConcepto, monto, nota }) {
-        const db = await getDb();
-        const fecha = new Date().toISOString();
-        await db.runAsync(
-            `INSERT INTO REGISTRO_GASTO (ID_CONCEPTO, MONTO, FECHA, NOTA, SINCRONIZADO)
+  static async getRegistroById(id) {
+    const db = await getDb();
+    return await db.getFirstAsync(
+      `SELECT
+                R.ID,
+                R.ID_CONCEPTO,
+                R.MONTO,
+                R.FECHA,
+                R.NOTA,
+                R.SINCRONIZADO,
+                CN.NOMBRE AS NOMBRE_CONCEPTO,
+                CG.NOMBRE AS NOMBRE_CATEGORIA
+             FROM REGISTRO_GASTO R
+             JOIN CONCEPTO_GASTO CN ON CN.UUID = R.ID_CONCEPTO
+             JOIN CATEGORIA_GASTO CG ON CG.UUID = CN.ID_CATEGORIA
+             WHERE R.ID = ?`,
+      [id],
+    );
+  }
+
+  static async insertRegistro({ idConcepto, monto, nota, fecha }) {
+    if (!idConcepto) throw new Error("idConcepto es requerido");
+    const db = await getDb();
+    await db.runAsync(
+      `INSERT INTO REGISTRO_GASTO (ID_CONCEPTO, MONTO, FECHA, NOTA, SINCRONIZADO)
              VALUES (?, ?, ?, ?, 0)`,
-            [idConcepto, monto, fecha, nota || null]
-        );
-    }
+      [idConcepto, monto, toFechaIso(fecha), nota || null],
+    );
+  }
 
-    /** Registros pendientes de sincronizar con UUID de grupo y concepto */
-    static async getRegistrosPendientes() {
-        const db = await getDb();
-        return await db.getAllAsync(
-            `SELECT
+  static async updateRegistro({ id, monto, nota, fecha }) {
+    if (!id) throw new Error("id de registro es requerido");
+    const db = await getDb();
+    await db.runAsync(
+      `UPDATE REGISTRO_GASTO
+             SET MONTO = ?, FECHA = ?, NOTA = ?, SINCRONIZADO = 0
+             WHERE ID = ?`,
+      [monto, toFechaIso(fecha), nota || null, id],
+    );
+  }
+
+  static async deleteRegistro(id) {
+    if (!id) throw new Error("id de registro es requerido");
+    const db = await getDb();
+    await db.runAsync(`DELETE FROM REGISTRO_GASTO WHERE ID = ?`, [id]);
+  }
+
+  static async getRegistrosPendientes() {
+    const db = await getDb();
+    return await db.getAllAsync(
+      `SELECT
                 R.ID,
                 R.MONTO,
                 R.FECHA,
@@ -105,29 +134,17 @@ export class Database {
              FROM REGISTRO_GASTO R
              JOIN CONCEPTO_GASTO CN ON CN.UUID = R.ID_CONCEPTO
              JOIN CATEGORIA_GASTO CG ON CG.UUID = CN.ID_CATEGORIA
-             WHERE R.SINCRONIZADO = 0`
-        );
-    }
+             WHERE R.SINCRONIZADO = 0`,
+    );
+  }
 
-    /** Marca un lote de registros como SINCRONIZADO = 1 */
-    static async marcarRegistrosSincronizados(ids) {
-        if (!ids || ids.length === 0) return;
-        const db = await getDb();
-        const placeholders = ids.map(() => "?").join(",");
-        await db.runAsync(
-            `UPDATE REGISTRO_GASTO SET SINCRONIZADO = 1 WHERE ID IN (${placeholders})`,
-            ids
-        );
-    }
-
-    /** Inserta una nueva categoría de gasto creada localmente (SINCRONIZADO = 0) */
-    static async insertGasto({ nombre, descripcion }) {
-        const db = await getDb();
-        const uuid = `local-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        await db.runAsync(
-            `INSERT INTO CATEGORIA_GASTO (UUID, NOMBRE, DESCRIPCION, SINCRONIZADO)
-             VALUES (?, ?, ?, 0)`,
-            [uuid, nombre, descripcion || null]
-        );
-    }
+  static async marcarRegistrosSincronizados(ids) {
+    if (!ids || ids.length === 0) return;
+    const db = await getDb();
+    const placeholders = ids.map(() => "?").join(",");
+    await db.runAsync(
+      `UPDATE REGISTRO_GASTO SET SINCRONIZADO = 1 WHERE ID IN (${placeholders})`,
+      ids,
+    );
+  }
 }

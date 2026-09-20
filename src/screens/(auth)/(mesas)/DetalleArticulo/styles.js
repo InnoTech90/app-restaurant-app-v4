@@ -88,6 +88,44 @@ export const s = StyleSheet.create({
         fontWeight: "700",
         color: gb.blue550,
     },
+    grupoComplemento: {
+        marginBottom: normalize(12),
+    },
+    grupoComplementoTitulo: {
+        fontSize: normalize(13),
+        fontWeight: "700",
+        color: gb.gray700,
+        marginBottom: normalize(6),
+    },
+    complementoRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingVertical: normalize(10),
+        borderBottomWidth: 1,
+        borderBottomColor: gb.gray200,
+    },
+    complementoRowUltimo: {
+        borderBottomWidth: 0,
+    },
+    complementoInfo: {
+        flex: 1,
+        marginRight: normalize(12),
+    },
+    complementoNombre: {
+        fontSize: normalize(14),
+        fontWeight: "600",
+        color: gb.gray800,
+    },
+    complementoPrecio: {
+        fontSize: normalize(12),
+        color: gb.green600,
+        fontWeight: "600",
+        marginTop: normalize(2),
+    },
+    inputCantidadComp: {
+        width: normalize(130),
+    },
     // ── Cantidad ────────────────────────────────────────────
     cantidadRow: {
         flexDirection: "row",

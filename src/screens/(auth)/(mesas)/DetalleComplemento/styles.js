@@ -63,11 +63,16 @@ export const s = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
         paddingVertical: normalize(10),
+        paddingHorizontal: normalize(4),
         borderBottomWidth: 1,
         borderBottomColor: gb.gray200,
+        borderRadius: normalize(8),
     },
     complementoRowUltimo: {
         borderBottomWidth: 0,
+    },
+    complementoRowSeleccionado: {
+        backgroundColor: gb.green50,
     },
     complementoInfo: {
         flex: 1,
