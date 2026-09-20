@@ -14,7 +14,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import InputCantidad from "../../../../components/atoms/InputCantidad/InputCantidad";
 import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverButton";
+import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
+import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { gb } from "../../../globalStyles";
 import { ComplementosStore } from "../complementosStore";
 import { Database } from "./database";
@@ -56,6 +58,18 @@ const DetalleArticulo = () => {
   );
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [config, setConfig] = useState(null);
+
+  const {
+    modalNipEdicion,
+    cerrarNipEdicion,
+    solicitarEdicion,
+    confirmarNipEdicion,
+  } = useEdicionTicket(config);
+
+  useEffect(() => {
+    Database.getConfiguraciones().then(setConfig).catch(console.error);
+  }, []);
 
   const idArticulo = String(
     idArticuloParam || articulo?.UUID || articuloParam?.UUID || "",
@@ -172,30 +186,43 @@ const DetalleArticulo = () => {
   const totalBruto = precioBase * cantidad;
 
   const onChangePct = (val) => {
-    const num = val.replace(/[^0-9.]/g, "");
-    setDescuentoPct(num);
+    let num = val.replace(/[^0-9.]/g, "");
     if (num === "" || isNaN(parseFloat(num))) {
+      setDescuentoPct("");
       setDescuentoMonto("");
-    } else {
-      setDescuentoMonto(((totalBruto * parseFloat(num)) / 100).toFixed(2));
+      return;
     }
+    let pct = parseFloat(num);
+    if (pct > 100) {
+      pct = 100;
+      num = "100";
+    }
+    setDescuentoPct(num);
+    setDescuentoMonto(((totalBruto * pct) / 100).toFixed(2));
   };
 
   const onChangeMonto = (val) => {
-    const num = val.replace(/[^0-9.]/g, "");
-    setDescuentoMonto(num);
+    let num = val.replace(/[^0-9.]/g, "");
     if (num === "" || isNaN(parseFloat(num))) {
+      setDescuentoMonto("");
       setDescuentoPct("");
-    } else {
-      setDescuentoPct(
-        totalBruto > 0 ? ((parseFloat(num) / totalBruto) * 100).toFixed(2) : "",
-      );
+      return;
     }
+    let monto = parseFloat(num);
+    if (totalBruto > 0 && monto > totalBruto) {
+      monto = totalBruto;
+      num = totalBruto.toFixed(2);
+    }
+    setDescuentoMonto(num);
+    setDescuentoPct(
+      totalBruto > 0 ? Math.min(100, (monto / totalBruto) * 100).toFixed(2) : "",
+    );
   };
 
   const descuento = useMemo(() => {
     const d = parseFloat(descuentoMonto);
-    return isNaN(d) ? 0 : Math.min(d, totalBruto);
+    if (isNaN(d)) return 0;
+    return Math.min(d, totalBruto);
   }, [descuentoMonto, totalBruto]);
 
   const costoComplementos = useMemo(
@@ -209,38 +236,40 @@ const DetalleArticulo = () => {
 
   const total = totalBruto - descuento + costoComplementos;
 
-  const abrirComplementos = async () => {
-    const id =
-      String(idArticuloParam || articulo?.UUID || articulo?.ID || "").trim();
-    if (!id && gruposComplementos.length === 0) return;
+  const abrirComplementos = () => {
+    solicitarEdicion(async () => {
+      const id = String(
+        idArticuloParam || articulo?.UUID || articulo?.ID || "",
+      ).trim();
+      if (!id && gruposComplementos.length === 0) return;
 
-    const seleccionInicial = Object.fromEntries(
-      complementosSeleccionados
-        .filter((c) => c.UUID)
-        .map((c) => [String(c.UUID), Number(c.cantidad) || 0]),
-    );
-    ComplementosStore.setSeleccionInicial(seleccionInicial);
+      const seleccionInicial = Object.fromEntries(
+        complementosSeleccionados
+          .filter((c) => c.UUID)
+          .map((c) => [String(c.UUID), Number(c.cantidad) || 0]),
+      );
+      ComplementosStore.setSeleccionInicial(seleccionInicial);
 
-    // Preferir grupos ya cargados; si no hay, recargar desde BD
-    let grupos = gruposComplementos;
-    if (!grupos?.length && id) {
-      try {
-        grupos = await Database.getComplementos(id);
-        setGruposComplementos(grupos ?? []);
-        setTieneGruposComplementos((grupos ?? []).length > 0);
-      } catch (e) {
-        console.error("Error recargando complementos:", e);
-        grupos = [];
+      let grupos = gruposComplementos;
+      if (!grupos?.length && id) {
+        try {
+          grupos = await Database.getComplementos(id);
+          setGruposComplementos(grupos ?? []);
+          setTieneGruposComplementos((grupos ?? []).length > 0);
+        } catch (e) {
+          console.error("Error recargando complementos:", e);
+          grupos = [];
+        }
       }
-    }
-    ComplementosStore.setGruposDisponibles(grupos ?? []);
+      ComplementosStore.setGruposDisponibles(grupos ?? []);
 
-    router.push({
-      pathname: "/DetalleComplemento",
-      params: {
-        id_articulo: id,
-        articuloNombre: articulo?.NOMBRE ?? "",
-      },
+      router.push({
+        pathname: "/DetalleComplemento",
+        params: {
+          id_articulo: id,
+          articuloNombre: articulo?.NOMBRE ?? "",
+        },
+      });
     });
   };
 
@@ -262,28 +291,38 @@ const DetalleArticulo = () => {
     })),
   });
 
-  const handleGuardar = async () => {
+  const handleGuardar = () => {
     if (guardando || !articulo) return;
-    setGuardando(true);
-    try {
-      if (esEdicion) {
-        await Database.updateComandaArticulo(
-          Number(idComandaArticulo),
-          payloadArticulo(),
-        );
-      } else {
-        await Database.insertComanda({
-          id_mesa: idMesa,
-          nota: "",
-          articulos: [payloadArticulo()],
-        });
+    solicitarEdicion(async () => {
+      setGuardando(true);
+      try {
+        if (esEdicion) {
+          await Database.updateComandaArticulo(
+            Number(idComandaArticulo),
+            payloadArticulo(),
+          );
+        } else {
+          await Database.insertComanda({
+            id_mesa: idMesa,
+            nota: "",
+            articulos: [payloadArticulo()],
+          });
+        }
+        router.back();
+      } catch (err) {
+        console.error("Error guardando comanda:", err);
+      } finally {
+        setGuardando(false);
       }
-      router.back();
-    } catch (err) {
-      console.error("Error guardando comanda:", err);
-    } finally {
-      setGuardando(false);
-    }
+    });
+  };
+
+  const handleCambiarCantidad = (val) => {
+    solicitarEdicion(() => setCantidad(val));
+  };
+
+  const autorizarEdicion = () => {
+    solicitarEdicion(() => {});
   };
 
   if (cargando) {
@@ -348,6 +387,7 @@ const DetalleArticulo = () => {
             placeholderTextColor={gb.gray400}
             value={notas}
             onChangeText={setNotas}
+            onFocus={autorizarEdicion}
             multiline
             numberOfLines={3}
           />
@@ -388,7 +428,7 @@ const DetalleArticulo = () => {
             <Text style={s.cantidadLabel}>Unidades</Text>
             <InputCantidad
               value={cantidad}
-              onChange={setCantidad}
+              onChange={handleCambiarCantidad}
               style={s.inputCantidad}
             />
           </View>
@@ -405,6 +445,7 @@ const DetalleArticulo = () => {
                 placeholderTextColor={gb.gray400}
                 value={descuentoPct}
                 onChangeText={onChangePct}
+                onFocus={autorizarEdicion}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -416,6 +457,7 @@ const DetalleArticulo = () => {
                 placeholderTextColor={gb.gray400}
                 value={descuentoMonto}
                 onChangeText={onChangeMonto}
+                onFocus={autorizarEdicion}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -476,6 +518,13 @@ const DetalleArticulo = () => {
           </Text>
         </Button>
       </View>
+
+      <NipModal
+        visible={modalNipEdicion}
+        titulo="Editar ticket"
+        onSubmit={confirmarNipEdicion}
+        onClose={cerrarNipEdicion}
+      />
     </SafeAreaView>
   );
 };

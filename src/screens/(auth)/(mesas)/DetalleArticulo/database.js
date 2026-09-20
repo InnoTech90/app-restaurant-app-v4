@@ -57,9 +57,11 @@ export class Database {
     const id_sucursal = await AsyncStorage.getItem("qrCode");
     const device_key = await AsyncStorage.getItem("deviceKey");
     return withDb("DetalleArticulo.insertComanda", async (db) => {
-      // Buscar comanda abierta (ESTATUS=0) para esta mesa
+      // Buscar comanda abierta (ESTATUS=0 o impresa=4) para esta mesa
       const comandaExistente = await db.getFirstAsync(
-        `SELECT ID FROM COMANDA WHERE ID_MESA = ? AND ESTATUS = 0 AND ACTIVO = 1 LIMIT 1`,
+        `SELECT ID FROM COMANDA
+         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND COALESCE(ACTIVO, 1) = 1
+         LIMIT 1`,
         [data.id_mesa],
       );
 
@@ -83,8 +85,9 @@ export class Database {
                     NOTA,
                     FICHA,
                     ESTATUS,
-                    SINCRONIZADO
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    SINCRONIZADO,
+                    ACTIVO
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             data.id_mesa,
             id_sucursal,
@@ -93,9 +96,15 @@ export class Database {
             nextFicha,
             0,
             0,
+            1,
           ],
         );
         id_comanda = comandaResult.lastInsertRowId;
+
+        await db.runAsync(
+          `UPDATE MESA SET ESTATUS = 1, ID_COMANDA = ? WHERE UUID = ?`,
+          [id_comanda, data.id_mesa],
+        );
       }
 
       // Insertar cada artículo en la comanda
@@ -238,6 +247,12 @@ export class Database {
           ],
         );
       }
+    });
+  }
+
+  static async getConfiguraciones() {
+    return withDb("DetalleArticulo.getConfiguraciones", async (db) => {
+      return await db.getFirstAsync(`SELECT * FROM CONFIGURACIONES LIMIT 1`);
     });
   }
 }

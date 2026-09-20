@@ -26,6 +26,7 @@ import PagoInfoComanda from "../../../../components/Molecules/PagoInfoComanda/Pa
 import PagoMetodosPago from "../../../../components/Molecules/PagoMetodosPago/PagoMetodosPago";
 import PagoMontoRecibido from "../../../../components/Molecules/PagoMontoRecibido/PagoMontoRecibido";
 import { setAuthHeaderTitulo } from "../../../../utils/authHeaderTitle";
+import { EdicionTicketStore } from "../../../../utils/edicionTicketStore";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
@@ -81,13 +82,33 @@ const Pago = () => {
   } = useEdicionTicket(configuraciones);
 
   const edicionBloqueada = cuentaImpresa || !puedeEditar;
+  // Tras imprimir la cuenta, el pedido se bloquea pero el cobro (método/monto/cliente) sigue editable
+  const cobroBloqueado = !cuentaImpresa && !puedeEditar;
 
   const desbloquearComanda = async () => {
     if (!comanda?.ID) return;
     await Database.setComandaAbierta(comanda.ID);
-    await AsyncStorage.removeItem(`pago_monto_${comanda.ID}`);
+    await AsyncStorage.multiRemove([
+      `pago_monto_${comanda.ID}`,
+      `pago_metodo_${comanda.ID}`,
+    ]);
     setCuentaImpresa(false);
     setComanda((prev) => (prev ? { ...prev, ESTATUS: 0 } : prev));
+  };
+
+  const sameMetodoId = (a, b) =>
+    a != null && b != null && Number(a) === Number(b);
+
+  const persistirCobro = async (idComanda, metodoId, monto) => {
+    if (!idComanda) return;
+    const ops = [];
+    if (metodoId != null) {
+      ops.push([`pago_metodo_${idComanda}`, String(metodoId)]);
+    }
+    if (monto != null) {
+      ops.push([`pago_monto_${idComanda}`, String(monto)]);
+    }
+    if (ops.length) await AsyncStorage.multiSet(ops);
   };
 
   const obtenerCamposDefault = async () => {
@@ -111,7 +132,7 @@ const Pago = () => {
     setClientes(clientesDb);
 
     // Defaults de finanzas desde configuraciones
-    setMetodoPagoId(configuracionesDb?.ID_FORMATO_PAGO ?? null);
+    let metodoInicial = configuracionesDb?.ID_FORMATO_PAGO ?? null;
     setImpuestosPct(String(configuracionesDb?.IMPUESTOS ?? 0));
     setDescuento(String(configuracionesDb?.DESCUENTOS ?? 0));
     setDescuentoEsPct(!!configuracionesDb?.DESCUENTOS_ES_PCT);
@@ -121,12 +142,23 @@ const Pago = () => {
     // Restaurar estado de bloqueo si la comanda ya fue impresa
     const yaImpresa = comandaData?.ESTATUS === 4;
     setCuentaImpresa(yaImpresa);
-    if (yaImpresa && comandaData?.ID) {
-      const montoGuardado = await AsyncStorage.getItem(
+    if (comandaData?.ID) {
+      const [metodoGuardado, montoGuardado] = await AsyncStorage.multiGet([
+        `pago_metodo_${comandaData.ID}`,
         `pago_monto_${comandaData.ID}`,
-      );
-      if (montoGuardado) setMontoRecibido(montoGuardado);
+      ]);
+      if (metodoGuardado?.[1] != null && metodoGuardado[1] !== "") {
+        metodoInicial = Number(metodoGuardado[1]);
+      }
+      if (yaImpresa && montoGuardado?.[1]) {
+        setMontoRecibido(montoGuardado[1]);
+      }
     }
+
+    const metodoExiste = formatosPagoDb.some((f) =>
+      sameMetodoId(f.ID, metodoInicial),
+    );
+    setMetodoPagoId(metodoExiste ? Number(metodoInicial) : null);
 
     if (comandaData?.ID) {
       const arts = await Database.getArticulosComanda(comandaData.ID);
@@ -170,11 +202,14 @@ const Pago = () => {
   const total =
     subtotal + montoImpuestos - montoDescuento + montoPropina + montoCostoEnvio;
   const cambio = Math.max(0, (parseFloat(montoRecibido) || 0) - total);
-  const tieneMetodoPago = formatosPago.some(
-    (formato) => formato.ID === metodoPagoId,
+  const metodoPagoSeleccionado = formatosPago.find((formato) =>
+    sameMetodoId(formato.ID, metodoPagoId),
   );
-  const canPrint =
-    tieneMetodoPago && (parseFloat(montoRecibido) || 0) >= total && total > 0;
+  const tieneMetodoPago = !!metodoPagoSeleccionado;
+  const esEfectivo = /efectivo/i.test(
+    String(metodoPagoSeleccionado?.NOMBRE ?? ""),
+  );
+  const canPrint = tieneMetodoPago && total > 0;
 
   const comandaPayload = comanda
     ? {
@@ -216,7 +251,7 @@ const Pago = () => {
       );
 
       await Database.setComandaImpresa(comanda.ID);
-      await AsyncStorage.setItem(`pago_monto_${comanda.ID}`, montoRecibido);
+      await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
       setCuentaImpresa(true);
       setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
 
@@ -230,7 +265,7 @@ const Pago = () => {
       console.warn("Error inesperado al imprimir cuenta:", e?.message ?? e);
       try {
         await Database.setComandaImpresa(comanda.ID);
-        await AsyncStorage.setItem(`pago_monto_${comanda.ID}`, montoRecibido);
+        await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
         setCuentaImpresa(true);
         setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
         Alert.alert(
@@ -250,12 +285,20 @@ const Pago = () => {
   };
 
   const finalizarVenta = async () => {
-    if (!comanda?.ID || finalizando || !tieneMetodoPago) return;
+    if (!comanda?.ID || finalizando) return;
+    if (!tieneMetodoPago) {
+      Alert.alert(
+        "Método de pago",
+        "Selecciona un método de pago para finalizar la venta.",
+      );
+      return;
+    }
     const comandaId = comanda.ID;
     setFinalizando(true);
     try {
-      const metodoPagoNombre =
-        formatosPago.find((f) => f.ID === metodoPagoId)?.NOMBRE ?? null;
+      const metodoPagoNombre = metodoPagoSeleccionado?.NOMBRE ?? null;
+      const montoCobrado =
+        Number(montoRecibido) > 0 ? Number(montoRecibido) : total;
       const resultado = await Database.finalizarComanda(comandaId, {
         formatoPago: metodoPagoNombre,
         subtotal,
@@ -264,14 +307,18 @@ const Pago = () => {
         costoEnvio: montoCostoEnvio,
         impuestos: montoImpuestos,
         total,
-        montoRecibido: parseFloat(montoRecibido) || 0,
+        montoRecibido: montoCobrado,
         idMetodoPago: metodoPagoId,
       });
       if (resultado?.code === "CAJA_CERRADA") {
         setMostrarCajaCerrada(true);
         return;
       }
-      await AsyncStorage.removeItem(`pago_monto_${comandaId}`);
+      await AsyncStorage.multiRemove([
+        `pago_monto_${comandaId}`,
+        `pago_metodo_${comandaId}`,
+      ]);
+      EdicionTicketStore.clear();
 
       const hayInternet = await verificarConexionInternet();
       if (hayInternet) {
@@ -298,6 +345,13 @@ const Pago = () => {
   };
 
   const solicitarFinalizarVenta = () => {
+    if (!tieneMetodoPago) {
+      Alert.alert(
+        "Método de pago",
+        "Selecciona un método de pago para finalizar la venta.",
+      );
+      return;
+    }
     if (!comanda?.ID_CLIENTE && !cliente) {
       Alert.alert(
         "Cliente no asignado",
@@ -529,10 +583,10 @@ const Pago = () => {
             fecha={fecha}
             hora={hora}
             onAbrirModalCliente={
-              edicionBloqueada ? undefined : () => setOpenModalCliente(true)
+              cobroBloqueado ? undefined : () => setOpenModalCliente(true)
             }
             onQuitarCliente={() => {}}
-            disabled={edicionBloqueada}
+            disabled={cobroBloqueado}
           />
           <PagoArticulos
             articulos={articulos}
@@ -548,9 +602,22 @@ const Pago = () => {
             formatosPago={formatosPago}
             metodoPagoId={metodoPagoId}
             onSeleccionar={
-              edicionBloqueada ? undefined : (id) => setMetodoPagoId(id)
+              cobroBloqueado
+                ? undefined
+                : (id) => {
+                    setMetodoPagoId(id);
+                    const metodo = formatosPago.find((f) =>
+                      sameMetodoId(f.ID, id),
+                    );
+                    if (!/efectivo/i.test(String(metodo?.NOMBRE ?? ""))) {
+                      setMontoRecibido("");
+                    }
+                    if (comanda?.ID && id != null) {
+                      persistirCobro(comanda.ID, id, montoRecibido);
+                    }
+                  }
             }
-            disabled={edicionBloqueada}
+            disabled={cobroBloqueado}
           />
           <PagoAdicionales
             impuestosPct={impuestosPct}
@@ -569,7 +636,20 @@ const Pago = () => {
             }
             descuento={descuento}
             descuentoEsPct={descuentoEsPct}
-            onDescuentoChange={edicionBloqueada ? undefined : setDescuento}
+            onDescuentoChange={
+              edicionBloqueada
+                ? undefined
+                : (v) => {
+                    if (descuentoEsPct) {
+                      const n = parseFloat(String(v).replace(/[^0-9.]/g, ""));
+                      if (!isNaN(n) && n > 100) {
+                        setDescuento("100");
+                        return;
+                      }
+                    }
+                    setDescuento(v);
+                  }
+            }
             onDescuentoToggle={
               edicionBloqueada
                 ? undefined
@@ -600,22 +680,29 @@ const Pago = () => {
             montoCostoEnvio={montoCostoEnvio}
             total={total}
             onDividirCuenta={
-              edicionBloqueada ? undefined : () => setOpenModalDividir(true)
+              cobroBloqueado ? undefined : () => setOpenModalDividir(true)
             }
           />
-          <PagoMontoRecibido
-            total={total}
-            montoRecibido={montoRecibido}
-            cambio={cambio}
-            onChangeMonto={setMontoRecibido}
-            onFocus={() =>
-              setTimeout(
-                () => scrollRef.current?.scrollToEnd({ animated: true }),
-                100,
-              )
-            }
-            disabled={edicionBloqueada}
-          />
+          {esEfectivo && (
+            <PagoMontoRecibido
+              total={total}
+              montoRecibido={montoRecibido}
+              cambio={cambio}
+              onChangeMonto={(valor) => {
+                setMontoRecibido(valor);
+                if (comanda?.ID) {
+                  persistirCobro(comanda.ID, metodoPagoId, valor);
+                }
+              }}
+              onFocus={() =>
+                setTimeout(
+                  () => scrollRef.current?.scrollToEnd({ animated: true }),
+                  100,
+                )
+              }
+              disabled={cobroBloqueado}
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -653,11 +740,12 @@ const Pago = () => {
                 flex: 1,
                 borderRadius: normalize(10),
                 overflow: "hidden",
+                opacity: finalizando ? 0.6 : 1,
               }}
               style={s.btnImprimir}
               gradient={["#388E3C", "#4CAF50"]}
               onPress={solicitarFinalizarVenta}
-              disabled={finalizando || !tieneMetodoPago}
+              disabled={finalizando}
             >
               <Ionicons
                 name="checkmark-circle-outline"
@@ -713,6 +801,14 @@ const Pago = () => {
             );
             // Auto-rellenar monto recibido con el total
             setMontoRecibido(String(total.toFixed(2)));
+            if (filas?.[0]?.formaPago != null) {
+              setMetodoPagoId(Number(filas[0].formaPago));
+              await persistirCobro(
+                comanda.ID,
+                filas[0].formaPago,
+                total.toFixed(2),
+              );
+            }
             setOpenModalDividir(false);
           } catch (error) {
             console.error("Error guardando pago dividido:", error);

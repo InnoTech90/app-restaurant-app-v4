@@ -18,12 +18,14 @@ export class Database {
       const mesas = await db.getAllAsync(`
                 SELECT
                     M.*,
+                    C.ID AS ID_COMANDA_ACTIVA,
+                    C.FICHA AS FICHA_COMANDA,
                     CASE WHEN C.ID IS NOT NULL THEN 1 ELSE 0 END AS TIENE_COMANDA_ACTIVA
                 FROM MESA M
                 LEFT JOIN COMANDA C
                     ON C.ID_MESA = M.UUID
                     AND C.ESTATUS IN (0, 4)
-                    AND C.ACTIVO = 1
+                    AND COALESCE(C.ACTIVO, 1) = 1
                 ORDER BY M.ID
             `);
       return mesas;
@@ -60,6 +62,15 @@ export class Database {
     }
   }
 
+  static async actualizarNotaMesa(uuidMesa, nota) {
+    return withDb("Inicio.actualizarNotaMesa", async (db) => {
+      await db.runAsync(`UPDATE MESA SET NOTA = ? WHERE UUID = ?`, [
+        nota ?? "",
+        uuidMesa,
+      ]);
+    });
+  }
+
   /**
    * Mueve la comanda abierta de una mesa a otra libre.
    */
@@ -74,7 +85,7 @@ export class Database {
 
       const destinoOcupada = await db.getFirstAsync(
         `SELECT ID FROM COMANDA
-         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND ACTIVO = 1
+         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND COALESCE(ACTIVO, 1) = 1
          LIMIT 1`,
         [uuidMesaDestino],
       );
@@ -86,7 +97,7 @@ export class Database {
 
       const comanda = await db.getFirstAsync(
         `SELECT ID FROM COMANDA
-         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND ACTIVO = 1
+         WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND COALESCE(ACTIVO, 1) = 1
          LIMIT 1`,
         [uuidMesaOrigen],
       );

@@ -185,8 +185,12 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
             await BluetoothEscposPrinter.printerAlign(ALIGN.LEFT);
             await BluetoothEscposPrinter.printText(SEP, {});
             if (pagoDividido.length === 0) {
+                const montoPago =
+                    (totales.montoRecibido ?? 0) > 0
+                        ? totales.montoRecibido
+                        : (totales.total ?? 0);
                 await BluetoothEscposPrinter.printText(
-                    padLine(`Pago (${metodoPago ?? '-'})`, fmt$(totales.montoRecibido)) + '\n', {}
+                    padLine(`Pago (${metodoPago ?? '-'})`, fmt$(montoPago)) + '\n', {}
                 );
                 if ((totales.cambio ?? 0) > 0) {
                     await BluetoothEscposPrinter.printText(

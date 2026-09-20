@@ -1,7 +1,14 @@
 import { useCallback, useState } from "react";
+import { EdicionTicketStore } from "./edicionTicketStore";
 
+/**
+ * Si HABILITAR_EDICION_TICKET está activo → no pide NIP.
+ * Si está desactivado → pide NIP en el primer movimiento y autoriza la sesión.
+ */
 export function useEdicionTicket(config) {
-  const [edicionAutorizada, setEdicionAutorizada] = useState(false);
+  const [edicionAutorizada, setEdicionAutorizada] = useState(() =>
+    EdicionTicketStore.isAutorizado(),
+  );
   const [modalNipEdicion, setModalNipEdicion] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
 
@@ -10,13 +17,22 @@ export function useEdicionTicket(config) {
       ? true
       : !!config.HABILITAR_EDICION_TICKET;
 
-  const puedeEditar = habilitarEdicion || edicionAutorizada;
+  const autorizado = habilitarEdicion || edicionAutorizada;
+  const puedeEditar = autorizado;
   const requiereNipEdicion = !habilitarEdicion;
+
+  const marcarAutorizado = useCallback(() => {
+    EdicionTicketStore.setAutorizado(true);
+    setEdicionAutorizada(true);
+  }, []);
 
   const solicitarEdicion = useCallback(
     (accion) => {
-      if (habilitarEdicion || edicionAutorizada) {
-        accion();
+      if (habilitarEdicion || EdicionTicketStore.isAutorizado()) {
+        if (!edicionAutorizada && EdicionTicketStore.isAutorizado()) {
+          setEdicionAutorizada(true);
+        }
+        accion?.();
         return;
       }
       setAccionPendiente(() => accion);
@@ -26,13 +42,14 @@ export function useEdicionTicket(config) {
   );
 
   const confirmarNipEdicion = useCallback(async () => {
-    setEdicionAutorizada(true);
+    marcarAutorizado();
     setModalNipEdicion(false);
     if (accionPendiente) {
-      accionPendiente();
+      const accion = accionPendiente;
       setAccionPendiente(null);
+      accion?.();
     }
-  }, [accionPendiente]);
+  }, [accionPendiente, marcarAutorizado]);
 
   const cerrarNipEdicion = useCallback(() => {
     setModalNipEdicion(false);
@@ -40,7 +57,12 @@ export function useEdicionTicket(config) {
   }, []);
 
   const desbloquearEdicion = useCallback(() => {
-    if (habilitarEdicion || edicionAutorizada) return;
+    if (habilitarEdicion || EdicionTicketStore.isAutorizado()) {
+      if (!edicionAutorizada && EdicionTicketStore.isAutorizado()) {
+        setEdicionAutorizada(true);
+      }
+      return;
+    }
     setAccionPendiente(null);
     setModalNipEdicion(true);
   }, [habilitarEdicion, edicionAutorizada]);

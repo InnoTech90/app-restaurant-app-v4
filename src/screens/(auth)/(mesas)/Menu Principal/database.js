@@ -141,4 +141,10 @@ export default class Database {
       );
     });
   }
+
+  static async getConfiguraciones() {
+    return withDb("MenuPrincipal.getConfiguraciones", async (db) => {
+      return await db.getFirstAsync(`SELECT * FROM CONFIGURACIONES LIMIT 1`);
+    });
+  }
 }

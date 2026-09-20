@@ -49,4 +49,10 @@ export class Database {
       return grupos ?? [];
     });
   }
+
+  static async getConfiguraciones() {
+    return withDb("DetalleComplemento.getConfiguraciones", async (db) => {
+      return await db.getFirstAsync(`SELECT * FROM CONFIGURACIONES LIMIT 1`);
+    });
+  }
 }

@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
-import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
+import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
 import Input from "../../atoms/Input/Input";
@@ -87,7 +87,11 @@ const NipModal = ({ visible, onClose, onSubmit, titulo, modo = "dueño" }) => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          <Ionicons name="shield-checkmark" size={40} color={gb.gray50} />
+          <Ionicons
+            name="shield-checkmark"
+            size={normalize(isTablet ? 36 : 32)}
+            color={gb.gray50}
+          />
         </LinearGradient>
         <Text style={s.titleModal}>{titulo}</Text>
         <Text style={s.subTitleModal}>{subtitulo}</Text>

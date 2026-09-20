@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
-import Input from "../../atoms/Input/Input";
 import Tooltip from "../../atoms/Tooltip/Tooltip";
 import { s } from "./styles";
 
@@ -17,22 +16,32 @@ const Mesa = ({
   onPress,
   onLongPress,
   descripcion,
-  index = 1,
+  ficha,
+  nota: notaProp = "",
   mesas,
   onCambiarMesa,
+  onGuardarNota,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [cambiarMesa, setCambiarMesa] = useState(false);
   const [cambiando, setCambiando] = useState(false);
+  const [nota, setNota] = useState(notaProp ?? "");
+
+  useEffect(() => {
+    setNota(notaProp ?? "");
+  }, [notaProp]);
+
+  const ocupada = !!status;
 
   // Solo mesas libres (sin comanda activa), excluyendo la actual
   const mesasDestino = useMemo(
     () =>
-      (mesas ?? []).filter(
-        (mesa) =>
-          mesa.UUID !== uuid &&
-          Number(mesa.TIENE_COMANDA_ACTIVA) !== 1,
-      ),
+      (mesas ?? []).filter((mesa) => {
+        if (mesa.UUID === uuid) return false;
+        const tieneComanda = Number(mesa.TIENE_COMANDA_ACTIVA) === 1;
+        const estatusOcupada = Number(mesa.ESTATUS) === 1;
+        return !tieneComanda && !estatusOcupada;
+      }),
     [mesas, uuid],
   );
 
@@ -55,6 +64,15 @@ const Mesa = ({
     }
   };
 
+  const guardarNota = async () => {
+    if (!uuid || !onGuardarNota) return;
+    try {
+      await onGuardarNota(uuid, nota ?? "");
+    } catch (e) {
+      console.error("Error guardando nota de mesa:", e);
+    }
+  };
+
   return (
     <Pressable
       onPress={onPress}
@@ -66,42 +84,61 @@ const Mesa = ({
       delayLongPress={700}
       style={s.mesaContainer}
     >
-      {status ? (
+      <View style={[s.mesa, ocupada && s.mesaOcupada]}>
         <View
-          style={[
-            s.mesa,
-            { borderColor: gb.purple550, backgroundColor: gb.blue50 },
-          ]}
-        >
-          <View style={[s.sillaLeft, { backgroundColor: gb.purple550 }]} />
-          <View style={[s.sillaRight, { backgroundColor: gb.purple550 }]} />
-          <View style={[s.sillaTop, { backgroundColor: gb.purple550 }]} />
-          <View style={[s.sillaBottom, { backgroundColor: gb.purple550 }]} />
-          <View style={s.contenido}>
-            <Text style={s.nombre}>{nombre} </Text>
-            <Text style={s.ficha}>Ficha : {id} </Text>
-            <Input placeholder="Nota" style={{ marginTop: 10, width: "80%" }} />
-            <Button
-              onPress={() => setCambiarMesa(true)}
-              style={s.cambiarMesa}
-            >
-              <Text style={{ color: gb.gray50 }}>Cambiar Mesa</Text>
-            </Button>
-          </View>
-          <Tooltip visible={showTooltip}>{descripcion}</Tooltip>
+          style={[s.sillaLeft, ocupada && { backgroundColor: gb.purple550 }]}
+        />
+        <View
+          style={[s.sillaRight, ocupada && { backgroundColor: gb.purple550 }]}
+        />
+        <View
+          style={[s.sillaTop, ocupada && { backgroundColor: gb.purple550 }]}
+        />
+        <View
+          style={[s.sillaBottom, ocupada && { backgroundColor: gb.purple550 }]}
+        />
+        <View style={s.contenido}>
+          <Text style={s.nombre} numberOfLines={1}>
+            {nombre}
+          </Text>
+          {ocupada ? (
+            <>
+              <Text style={s.ficha} numberOfLines={1}>
+                Folio #{ficha ?? id ?? "—"}
+              </Text>
+              <TextInput
+                style={s.notaInput}
+                placeholder="Nota"
+                placeholderTextColor={gb.gray400}
+                value={nota}
+                onChangeText={setNota}
+                onBlur={guardarNota}
+                onPressIn={(e) => e?.stopPropagation?.()}
+                numberOfLines={1}
+              />
+              <Pressable
+                style={s.cambiarMesa}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  setCambiarMesa(true);
+                }}
+                hitSlop={6}
+              >
+                <Ionicons
+                  name="swap-horizontal"
+                  size={normalize(12)}
+                  color={gb.gray50}
+                />
+                <Text style={s.cambiarMesaTexto}>Cambiar</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={s.estadoLibre}>Libre</Text>
+          )}
         </View>
-      ) : (
-        <View style={s.mesa}>
-          <View style={s.sillaLeft} />
-          <View style={s.sillaRight} />
-          <View style={s.sillaTop} />
-          <View style={s.sillaBottom} />
-          <View style={s.contenido}>
-            <Text style={s.nombre}>{nombre} </Text>
-          </View>
-          <Tooltip visible={showTooltip}>{descripcion}</Tooltip>
-        </View>
-      )}
+        <Tooltip visible={showTooltip}>{descripcion}</Tooltip>
+      </View>
+
       <GeneralModal
         visible={cambiarMesa}
         onRequestClose={() => setCambiarMesa(false)}
@@ -121,7 +158,7 @@ const Mesa = ({
             style={{ marginRight: normalize(5) }}
           />
           <Text style={s.mesaActualFolio}>
-            {nombre} - Ficha {id}
+            {nombre} · Folio #{ficha ?? id ?? "—"}
           </Text>
         </View>
         <View style={s.listaMesas}>

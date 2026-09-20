@@ -49,36 +49,41 @@ const PrinterCard = ({
   const linked = !!item.ID_IMPRESORA;
   return (
     <View style={s.card}>
-      {/* Icono */}
-      <View style={[s.iconBox, linked && s.iconBoxLinked]}>
-        <Ionicons
-          name="print"
-          size={normalize(24)}
-          color={linked ? gb.green500 : gb.blue550}
-        />
-      </View>
-
-      {/* Info */}
-      <View style={s.cardInfo}>
-        <Text style={s.cardNombre}>{item.NOMBRE}</Text>
-        <View style={s.statusRow}>
-          <View
-            style={[
-              s.statusDot,
-              { backgroundColor: linked ? gb.green500 : gb.gray400 },
-            ]}
+      <View style={s.cardTop}>
+        {/* Icono */}
+        <View style={[s.iconBox, linked && s.iconBoxLinked]}>
+          <Ionicons
+            name="print"
+            size={normalize(24)}
+            color={linked ? gb.green500 : gb.blue550}
           />
-          <Text
-            style={[s.statusText, { color: linked ? gb.green500 : gb.gray400 }]}
-          >
-            {linked ? "Vinculada" : "Sin vincular"}
-          </Text>
         </View>
-        {linked && (
-          <Text style={s.macText} numberOfLines={1}>
-            {item.ID_IMPRESORA}
-          </Text>
-        )}
+
+        {/* Info */}
+        <View style={s.cardInfo}>
+          <Text style={s.cardNombre}>{item.NOMBRE}</Text>
+          <View style={s.statusRow}>
+            <View
+              style={[
+                s.statusDot,
+                { backgroundColor: linked ? gb.green500 : gb.gray400 },
+              ]}
+            />
+            <Text
+              style={[
+                s.statusText,
+                { color: linked ? gb.green500 : gb.gray400 },
+              ]}
+            >
+              {linked ? "Vinculada" : "Sin vincular"}
+            </Text>
+          </View>
+          {linked && (
+            <Text style={s.macText} numberOfLines={1}>
+              {item.ID_IMPRESORA}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Acciones */}
@@ -459,12 +464,16 @@ const Impresoras = () => {
           key={`impresoras-${listColumns}`}
           columnWrapperStyle={
             listColumns > 1
-              ? { gap: normalize(12), alignItems: "stretch" }
+              ? {
+                  gap: normalize(12),
+                  alignItems: "stretch",
+                  marginBottom: normalize(4),
+                }
               : undefined
           }
           contentContainerStyle={[
             s.listContent,
-            puntos.length === 0 && { flex: 1 },
+            puntos.length === 0 && { flexGrow: 1 },
           ]}
           style={{ flex: 1, backgroundColor: gb.gray50 }}
           refreshControl={

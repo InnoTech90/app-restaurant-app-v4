@@ -34,6 +34,7 @@ const Inicio = () => {
         "MesaSeleccionadaNombre",
       ]).catch(() => {});
       clearAuthHeaderTitulo();
+      getMesas();
     }, []),
   );
 
@@ -90,6 +91,13 @@ const Inicio = () => {
     await getMesas();
   };
 
+  const guardarNotaMesa = async (uuidMesa, nota) => {
+    await Database.actualizarNotaMesa(uuidMesa, nota);
+    setMesas((prev) =>
+      prev.map((m) => (m.UUID === uuidMesa ? { ...m, NOTA: nota } : m)),
+    );
+  };
+
   return (
     <SafeAreaView
       edges={["bottom"]}
@@ -115,11 +123,17 @@ const Inicio = () => {
               uuid={mesa.UUID}
               nombre={mesa.NOMBRE}
               descripcion={mesa.DESCRIPCION}
-              status={mesa.TIENE_COMANDA_ACTIVA === 1}
+              ficha={mesa.FICHA_COMANDA}
+              nota={mesa.NOTA ?? ""}
+              status={
+                Number(mesa.TIENE_COMANDA_ACTIVA) === 1 ||
+                Number(mesa.ESTATUS) === 1
+              }
               onPress={() => seleccionarMesa(mesa)}
               index={index + 1}
               mesas={mesas}
               onCambiarMesa={cambiarMesa}
+              onGuardarNota={guardarNotaMesa}
             />
           ))}
         </View>

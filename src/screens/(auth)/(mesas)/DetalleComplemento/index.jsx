@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverButton";
+import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
+import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { gb } from "../../../globalStyles";
 import { ComplementosStore } from "../complementosStore";
 import { Database } from "./database";
@@ -78,10 +80,24 @@ const DetalleComplemento = () => {
   const idArticulo = paramToString(idArticuloParam).trim();
   const router = useRouter();
 
-  const [inicial] = useState(leerEstadoInicial);
-  const [gruposComplementos, setGruposComplementos] = useState(inicial.grupos);
-  const [seleccion, setSeleccion] = useState(inicial.seleccion);
-  const [cargando, setCargando] = useState(inicial.grupos.length === 0);
+  const estadoInicial = useMemo(() => leerEstadoInicial(), []);
+  const [gruposComplementos, setGruposComplementos] = useState(
+    estadoInicial.grupos,
+  );
+  const [seleccion, setSeleccion] = useState(estadoInicial.seleccion);
+  const [cargando, setCargando] = useState(estadoInicial.grupos.length === 0);
+  const [config, setConfig] = useState(null);
+
+  const {
+    modalNipEdicion,
+    cerrarNipEdicion,
+    solicitarEdicion,
+    confirmarNipEdicion,
+  } = useEdicionTicket(config);
+
+  useEffect(() => {
+    Database.getConfiguraciones().then(setConfig).catch(console.error);
+  }, []);
 
   useEffect(() => {
     let activa = true;
@@ -122,10 +138,12 @@ const DetalleComplemento = () => {
   const estaSeleccionado = (uuid) => (seleccion[String(uuid)] ?? 0) > 0;
 
   const toggle = (uuid) => {
-    setSeleccion((prev) => ({
-      ...prev,
-      [String(uuid)]: (prev[String(uuid)] ?? 0) > 0 ? 0 : 1,
-    }));
+    solicitarEdicion(() => {
+      setSeleccion((prev) => ({
+        ...prev,
+        [String(uuid)]: (prev[String(uuid)] ?? 0) > 0 ? 0 : 1,
+      }));
+    });
   };
 
   const totalSeleccionados = useMemo(
@@ -134,17 +152,19 @@ const DetalleComplemento = () => {
   );
 
   const handleGuardar = () => {
-    const complementosSeleccionados = opciones
-      .filter((o) => estaSeleccionado(o.UUID))
-      .map((o) => ({
-        UUID: o.UUID,
-        NOMBRE: o.NOMBRE,
-        PRECIO: o.PRECIO,
-        cantidad: 1,
-        nombreGrupo: o.nombreGrupo,
-      }));
-    ComplementosStore.setSeleccion(complementosSeleccionados);
-    router.back();
+    solicitarEdicion(() => {
+      const complementosSeleccionados = opciones
+        .filter((o) => estaSeleccionado(o.UUID))
+        .map((o) => ({
+          UUID: o.UUID,
+          NOMBRE: o.NOMBRE,
+          PRECIO: o.PRECIO,
+          cantidad: 1,
+          nombreGrupo: o.nombreGrupo,
+        }));
+      ComplementosStore.setSeleccion(complementosSeleccionados);
+      router.back();
+    });
   };
 
   return (
@@ -241,6 +261,13 @@ const DetalleComplemento = () => {
           </Text>
         </Button>
       </View>
+
+      <NipModal
+        visible={modalNipEdicion}
+        titulo="Editar ticket"
+        onSubmit={confirmarNipEdicion}
+        onClose={cerrarNipEdicion}
+      />
     </SafeAreaView>
   );
 };

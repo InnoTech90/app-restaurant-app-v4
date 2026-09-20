@@ -70,6 +70,13 @@ export default class Database {
         `UPDATE COMANDA SET ESTATUS = 2, ACTIVO = 0 WHERE ID = ?`,
         [idComanda],
       );
+      await db.runAsync(
+        `UPDATE MESA
+         SET ESTATUS = 0, ID_COMANDA = NULL
+         WHERE ID_COMANDA = ?
+            OR UUID = (SELECT ID_MESA FROM COMANDA WHERE ID = ?)`,
+        [idComanda, idComanda],
+      );
     });
   }
 

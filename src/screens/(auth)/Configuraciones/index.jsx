@@ -478,7 +478,7 @@ export default function Configuraciones() {
             icon="create-outline"
             iconColor={gb.red600}
             titulo="Habilitar edición de ticket"
-            subtitulo="Permite modificar la comanda sin solicitar NIP"
+            subtitulo="Si está activo, permite editar la comanda sin NIP. Si está desactivado, pide NIP en cualquier cambio (productos, complementos, descuentos, etc.)"
           >
             <Switch
               value={!!config.HABILITAR_EDICION_TICKET}

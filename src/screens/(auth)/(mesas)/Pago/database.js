@@ -218,8 +218,11 @@ export default class Database {
         [idComanda, pagos.idMetodoPago, pagos.montoRecibido],
       );
       await db.runAsync(
-        `UPDATE MESA SET ESTATUS = 0, ID_COMANDA = NULL WHERE ID_COMANDA = ?`,
-        [idComanda],
+        `UPDATE MESA
+         SET ESTATUS = 0, ID_COMANDA = NULL
+         WHERE ID_COMANDA = ?
+            OR UUID = (SELECT ID_MESA FROM COMANDA WHERE ID = ?)`,
+        [idComanda, idComanda],
       );
       return { ok: true };
     });
@@ -331,16 +334,23 @@ export default class Database {
             [idComanda, pago.FORMA_PAGO, pago.TOTAL],
           );
         }
-      } else if (datos.idMetodoPago && datos.montoRecibido) {
+      } else if (datos.idMetodoPago != null) {
+        const montoPago =
+          Number(datos.montoRecibido) > 0
+            ? Number(datos.montoRecibido)
+            : Number(datos.total) || 0;
         await db.runAsync(
           `INSERT INTO COMANDA_PAGOS (ID_COMANDA, ID_METODO_PAGO, CANTIDAD) VALUES (?, ?, ?)`,
-          [idComanda, datos.idMetodoPago, datos.montoRecibido],
+          [idComanda, datos.idMetodoPago, montoPago],
         );
       }
 
       await db.runAsync(
-        `UPDATE MESA SET ESTATUS = 0, ID_COMANDA = NULL WHERE ID_COMANDA = ?`,
-        [idComanda],
+        `UPDATE MESA
+         SET ESTATUS = 0, ID_COMANDA = NULL
+         WHERE ID_COMANDA = ?
+            OR UUID = (SELECT ID_MESA FROM COMANDA WHERE ID = ?)`,
+        [idComanda, idComanda],
       );
       return { ok: true };
     });

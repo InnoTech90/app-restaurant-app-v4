@@ -33,7 +33,9 @@ const PagoMetodosPago = ({ formatosPago, metodoPagoId, onSeleccionar, disabled }
             <View style={[s.body, disabled && { opacity: 0.5 }]}>
                 <View style={s.grid}>
                     {formatosPago.map((formato) => {
-                        const activo = metodoPagoId === formato.ID;
+                        const activo =
+                            metodoPagoId != null &&
+                            Number(metodoPagoId) === Number(formato.ID);
                         return (
                             <Button
                                 key={formato.ID}
