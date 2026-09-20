@@ -454,13 +454,16 @@ const Gastos = () => {
       <NipModal
         visible={modalAcceso}
         titulo={tituloModal}
+        modo="acceso"
+        keywords={["expenses"]}
         onSubmit={onAccesoCorrecto}
         onClose={onAccesoCancelado}
       />
 
       <NipModal
         visible={modalNipCrud}
-        modo="gerente"
+        modo="acceso"
+        keywords={["expenses"]}
         titulo={accionPendiente?.titulo ?? "Gastos"}
         onClose={() => {
           setModalNipCrud(false);

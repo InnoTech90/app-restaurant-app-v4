@@ -12,12 +12,24 @@ import { s } from "./styles";
 
 /**
  * Valida NIP.
- * modo="dueño" → CONFIGURACIONES.NIP (default)
- * modo="gerente" → GERENTES.NIP
+ * modo="dueño"   → solo CONFIGURACIONES.NIP
+ * modo="gerente" → solo GERENTES.NIP (sin checar permisos)
+ * modo="acceso"  → dueño siempre; gerente solo con keywords (default si pasas keywords)
  */
-const NipModal = ({ visible, onClose, onSubmit, titulo, modo = "dueño" }) => {
+const NipModal = ({
+  visible,
+  onClose,
+  onSubmit,
+  titulo,
+  modo = "dueño",
+  keywords,
+}) => {
   const [nip, setNip] = useState("");
   const [nombreSucursal, setNombreSucursal] = useState(null);
+
+  const keywordsList = Array.isArray(keywords) ? keywords : null;
+  const modoEfectivo =
+    keywordsList != null && modo === "dueño" ? "acceso" : modo;
 
   useEffect(() => {
     if (!visible) {
@@ -36,7 +48,7 @@ const NipModal = ({ visible, onClose, onSubmit, titulo, modo = "dueño" }) => {
   }, [visible]);
 
   const verificarNip = async () => {
-    if (modo === "gerente") {
+    if (modoEfectivo === "gerente") {
       const result = await dataBase.validarNipGerente(nip);
       if (result.reason === "no_gerentes") {
         alert(
@@ -56,6 +68,25 @@ const NipModal = ({ visible, onClose, onSubmit, titulo, modo = "dueño" }) => {
       return;
     }
 
+    if (modoEfectivo === "acceso") {
+      const result = await dataBase.validarNipAcceso(nip, keywordsList ?? []);
+      if (result.reason === "empty") {
+        alert("Ingresa el NIP.");
+        return;
+      }
+      if (result.reason === "sin_permiso") {
+        alert("No tiene permisos para acceder a esta opción.");
+        return;
+      }
+      if (!result.ok) {
+        alert("NIP incorrecto");
+        return;
+      }
+      await onSubmit(result);
+      return;
+    }
+
+    // modo dueño
     const nipDueño = await dataBase.getNipDueño();
     if (nipDueño == null || String(nipDueño).trim() === "") {
       alert(
@@ -65,18 +96,20 @@ const NipModal = ({ visible, onClose, onSubmit, titulo, modo = "dueño" }) => {
     }
 
     if (String(nip).trim() === String(nipDueño).trim()) {
-      await onSubmit();
+      await onSubmit({ tipo: "owner" });
     } else {
       alert("NIP incorrecto");
     }
   };
 
   const subtitulo =
-    modo === "gerente"
+    modoEfectivo === "gerente"
       ? "Ingresa el NIP del gerente para continuar"
-      : nombreSucursal
-        ? `Ingresa el NIP de ${nombreSucursal} para continuar`
-        : "Ingresa el NIP de la sucursal para continuar";
+      : modoEfectivo === "acceso"
+        ? "Ingresa el NIP del dueño o de un gerente autorizado"
+        : nombreSucursal
+          ? `Ingresa el NIP de ${nombreSucursal} para continuar`
+          : "Ingresa el NIP de la sucursal para continuar";
 
   return (
     <GeneralModal visible={visible} onRequestClose={onClose}>

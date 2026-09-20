@@ -162,7 +162,7 @@ export const s = StyleSheet.create({
   },
   historialItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
     gap: normalize(10),
     backgroundColor: gb.gray50,
     borderRadius: normalize(10),
@@ -174,19 +174,27 @@ export const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  historialIndicador: {
-    width: normalize(6),
-    height: normalize(40),
-    borderRadius: normalize(3),
-  },
   historialFecha: {
     fontSize: normalize(12),
     color: gb.gray600,
   },
+  historialFechaLabel: {
+    fontSize: normalize(10),
+    fontWeight: "700",
+    color: gb.gray400,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
   historialDevice: {
     fontSize: normalize(11),
     color: gb.gray400,
-    marginTop: normalize(2),
+    marginTop: normalize(4),
+  },
+  historialIndicador: {
+    width: normalize(6),
+    alignSelf: "stretch",
+    minHeight: normalize(40),
+    borderRadius: normalize(3),
   },
   historialMonto: {
     fontSize: normalize(14),

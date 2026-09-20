@@ -352,20 +352,6 @@ const Pago = () => {
       );
       return;
     }
-    if (!comanda?.ID_CLIENTE && !cliente) {
-      Alert.alert(
-        "Cliente no asignado",
-        "Asigna un cliente a esta comanda antes de finalizar la venta.",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Asignar cliente",
-            onPress: () => setOpenModalCliente(true),
-          },
-        ],
-      );
-      return;
-    }
     finalizarVenta();
   };
 
@@ -682,6 +668,7 @@ const Pago = () => {
             onDividirCuenta={
               cobroBloqueado ? undefined : () => setOpenModalDividir(true)
             }
+            tieneDivision={filasGuardadas.length > 0}
           />
           {esEfectivo && (
             <PagoMontoRecibido
@@ -788,6 +775,12 @@ const Pago = () => {
         formatosPago={formatosPago}
         formatoPagoDefault={metodoPagoId}
         filasGuardadas={filasGuardadas}
+        disabled={cobroBloqueado}
+        onLimpiar={async () => {
+          if (!comanda?.ID) return;
+          await Database.limpiarPagoCuentaDividida(comanda.ID);
+          setFilasGuardadas([]);
+        }}
         onGuardar={async (filas) => {
           if (!comanda?.ID) return;
           try {
@@ -799,7 +792,6 @@ const Pago = () => {
                 CANTIDAD: f.cantidad,
               })),
             );
-            // Auto-rellenar monto recibido con el total
             setMontoRecibido(String(total.toFixed(2)));
             if (filas?.[0]?.formaPago != null) {
               setMetodoPagoId(Number(filas[0].formaPago));
@@ -821,6 +813,8 @@ const Pago = () => {
         visible={openNipModal}
         onClose={() => setOpenNipModal(false)}
         titulo="Imprimir cuenta"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={async () => {
           setOpenNipModal(false);
           await ejecutarImpresion();
@@ -832,6 +826,8 @@ const Pago = () => {
         visible={openNipEditarModal}
         onClose={() => setOpenNipEditarModal(false)}
         titulo="Editar comanda"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={async () => {
           setOpenNipEditarModal(false);
           await desbloquearComanda();
@@ -841,6 +837,8 @@ const Pago = () => {
       <NipModal
         visible={modalNipEdicion}
         titulo="Editar ticket"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={confirmarNipEdicion}
         onClose={cerrarNipEdicion}
       />

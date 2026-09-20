@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Device from "expo-device";
 import { getDb } from "../../../utils/db";
 
 const normalizeNip = (value) => {
@@ -7,8 +8,21 @@ const normalizeNip = (value) => {
   return Number.isFinite(n) ? n : null;
 };
 
+/** Nombre legible del dispositivo físico (expo-device). */
+const obtenerNombreDispositivoLocal = () => {
+  const candidatos = [
+    Device.deviceName,
+    Device.modelName,
+    [Device.brand, Device.modelName].filter(Boolean).join(" "),
+  ];
+  for (const c of candidatos) {
+    const nombre = String(c ?? "").trim();
+    if (nombre) return nombre;
+  }
+  return "Dispositivo";
+};
+
 const CONFIGURACIONES_DEFAULTS = {
-  nombreDispositivo: "Dispositivo",
   abiertoPedidos: 1,
   imprimirFicha: 1,
   soloProductosNuevos: 0,
@@ -40,21 +54,49 @@ export class Database {
   /**
    * Asegura fila en CONFIGURACIONES para la sucursal.
    * Siempre crea la fila (aunque el NIP aún no venga); actualiza NIP cuando sí llega.
+   * Actualiza NOMBRE_DISPOCITIVO si viene nombre real o si aún está el default.
    */
-  static async persistNipConfiguracion(db, { idSucursal, nip }) {
+  static async persistNipConfiguracion(
+    db,
+    { idSucursal, nip, nombreDispositivo } = {},
+  ) {
     if (!idSucursal) return;
 
     const nipValor = normalizeNip(nip);
+    const nombre =
+      String(nombreDispositivo ?? "").trim() ||
+      obtenerNombreDispositivoLocal();
+
     const existing = await db.getFirstAsync(
-      `SELECT ID_SUCURSAL FROM CONFIGURACIONES WHERE ID_SUCURSAL = ?`,
+      `SELECT ID_SUCURSAL, NOMBRE_DISPOCITIVO FROM CONFIGURACIONES WHERE ID_SUCURSAL = ?`,
       [idSucursal],
     );
 
     if (existing) {
+      const updates = [];
+      const params = [];
+
       if (nipValor != null) {
+        updates.push("NIP = ?");
+        params.push(nipValor);
+      }
+
+      const nombreActual = String(existing.NOMBRE_DISPOCITIVO ?? "").trim();
+      if (
+        nombre &&
+        (!nombreActual ||
+          nombreActual === "Dispositivo" ||
+          (nombreDispositivo && nombreActual !== nombre))
+      ) {
+        updates.push("NOMBRE_DISPOCITIVO = ?");
+        params.push(nombre);
+      }
+
+      if (updates.length > 0) {
+        params.push(idSucursal);
         await db.runAsync(
-          `UPDATE CONFIGURACIONES SET NIP = ? WHERE ID_SUCURSAL = ?`,
-          [nipValor, idSucursal],
+          `UPDATE CONFIGURACIONES SET ${updates.join(", ")} WHERE ID_SUCURSAL = ?`,
+          params,
         );
       }
       return;
@@ -70,7 +112,7 @@ export class Database {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         idSucursal,
-        d.nombreDispositivo,
+        nombre,
         d.abiertoPedidos,
         d.imprimirFicha,
         d.soloProductosNuevos,
@@ -128,12 +170,22 @@ export class Database {
       }
     }
 
-    // Insertar dispositivo
+    // Insertar / actualizar dispositivo
+    const nombreDevice =
+      String(device?.name ?? "").trim() || obtenerNombreDispositivoLocal();
+
     await db.runAsync(
-      `INSERT OR IGNORE INTO DEVICE (UUID, NOMBRE, DEVICE_KEY, RECIBE_PEDIDOS, ESTATUS, ACTIVO) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO DEVICE (UUID, NOMBRE, DEVICE_KEY, RECIBE_PEDIDOS, ESTATUS, ACTIVO)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(UUID) DO UPDATE SET
+         NOMBRE = excluded.NOMBRE,
+         DEVICE_KEY = excluded.DEVICE_KEY,
+         RECIBE_PEDIDOS = excluded.RECIBE_PEDIDOS,
+         ESTATUS = excluded.ESTATUS,
+         ACTIVO = excluded.ACTIVO`,
       [
         device.id,
-        device.name,
+        nombreDevice,
         device.deviceKey,
         device.flagReceivesOrders ? 1 : 0,
         device.status,
@@ -227,6 +279,7 @@ export class Database {
     await Database.persistNipConfiguracion(db, {
       idSucursal,
       nip: nipNegocio,
+      nombreDispositivo: nombreDevice,
     });
 
     // Categorías y conceptos de gasto vienen en general.expenseGroups

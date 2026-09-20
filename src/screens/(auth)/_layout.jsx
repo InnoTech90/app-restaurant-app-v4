@@ -15,7 +15,7 @@ import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
 } from "../../utils/exportDatabase";
-import { requiereNipDueño } from "../../utils/gerentePermisos";
+import { requiereNipAcceso } from "../../utils/gerentePermisos";
 import {
   autorizarSeccion,
   revocarOtrasSecciones,
@@ -54,16 +54,24 @@ export default function AuthLayout() {
     visible: false,
     titulo: "",
     accion: null,
+    keywords: null,
+    modo: "dueño",
   });
 
   const enPantallaLibre = segments.includes("PantallaDeCarga");
 
-  const pedirNip = (titulo, accion) => {
-    setNipModal({ visible: true, titulo, accion });
+  const pedirNip = (titulo, accion, { keywords = null, modo = "dueño" } = {}) => {
+    setNipModal({ visible: true, titulo, accion, keywords, modo });
   };
 
   const cerrarNipModal = () => {
-    setNipModal({ visible: false, titulo: "", accion: null });
+    setNipModal({
+      visible: false,
+      titulo: "",
+      accion: null,
+      keywords: null,
+      modo: "dueño",
+    });
   };
 
   const onNipCorrecto = async () => {
@@ -110,10 +118,14 @@ export default function AuthLayout() {
         return;
       }
 
-      pedirNip("Cerrar sesión", () => {
-        revocarTodasLasSecciones();
-        contextoAutenticacion.desautenticar();
-      });
+      pedirNip(
+        "Cerrar sesión",
+        () => {
+          revocarTodasLasSecciones();
+          contextoAutenticacion.desautenticar();
+        },
+        { modo: "acceso", keywords: [] },
+      );
     } catch (error) {
       console.error("Error verificando ventas antes de cerrar sesión:", error);
       Alert.alert(
@@ -254,9 +266,12 @@ export default function AuthLayout() {
       navigation.navigate(screen.name);
     };
 
-    // Sin permiso de keyword → NIP del dueño.
-    if (requiereNipDueño(null, screen)) {
-      pedirNip(screen.title, navegar);
+    // Pantallas con keywords: NIP dueño (siempre) o gerente con permiso.
+    if (requiereNipAcceso(screen)) {
+      pedirNip(screen.title, navegar, {
+        modo: "acceso",
+        keywords: screen.keywords ?? [],
+      });
       return;
     }
 
@@ -271,7 +286,10 @@ export default function AuthLayout() {
     }
 
     if (necesitaNip) {
-      pedirNip(screen.title, navegar);
+      pedirNip(screen.title, navegar, {
+        modo: "acceso",
+        keywords: screen.keywords ?? [],
+      });
     } else {
       navegar();
     }
@@ -357,6 +375,8 @@ export default function AuthLayout() {
       <NipModal
         visible={nipModal.visible}
         titulo={nipModal.titulo}
+        modo={nipModal.modo}
+        keywords={nipModal.keywords}
         onClose={cerrarNipModal}
         onSubmit={onNipCorrecto}
       />

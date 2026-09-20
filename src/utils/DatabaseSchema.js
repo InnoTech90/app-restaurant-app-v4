@@ -381,6 +381,7 @@ export const DatabaseSchema = {
           ID_SUCURSAL NVARCHAR,
           NOMBRE_DISPOCITIVO NVARCHAR,
           FECHA DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FECHA_CIERRE DATETIME,
           ESTATUS INTEGER,
           MONTO REAL
         )

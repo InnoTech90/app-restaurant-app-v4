@@ -13,6 +13,19 @@ import { gb } from "../../globalStyles";
 import { Database } from "./dataBase";
 import { s } from "./styles";
 
+/** SQLite CURRENT_TIMESTAMP guarda UTC sin zona; convertir a hora local para mostrar. */
+const formatearFechaHoraLocal = (fechaStr) => {
+  if (!fechaStr) return "—";
+  const raw = String(fechaStr).trim();
+  const normalizada = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const sinZona = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(normalizada);
+  const fecha = new Date(sinZona ? `${normalizada}Z` : normalizada);
+  if (Number.isNaN(fecha.getTime())) return raw;
+
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())} ${pad(fecha.getHours())}:${pad(fecha.getMinutes())}:${pad(fecha.getSeconds())}`;
+};
+
 const Caja = () => {
   const [montoInicial, setMontoInicial] = useState("500");
   const [modalEditar, setModalEditar] = useState(false);
@@ -147,7 +160,27 @@ const Caja = () => {
                   ]}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.historialFecha}>{item.FECHA}</Text>
+                  <Text style={s.historialFechaLabel}>Apertura</Text>
+                  <Text style={s.historialFecha}>
+                    {formatearFechaHoraLocal(item.FECHA)}
+                  </Text>
+                  {item.ESTATUS !== 1 && (
+                    <>
+                      <Text
+                        style={[
+                          s.historialFechaLabel,
+                          { marginTop: normalize(4) },
+                        ]}
+                      >
+                        Cierre
+                      </Text>
+                      <Text style={s.historialFecha}>
+                        {item.FECHA_CIERRE
+                          ? formatearFechaHoraLocal(item.FECHA_CIERRE)
+                          : "—"}
+                      </Text>
+                    </>
+                  )}
                   <Text style={s.historialDevice}>
                     {item.NOMBRE_DISPOCITIVO}
                   </Text>

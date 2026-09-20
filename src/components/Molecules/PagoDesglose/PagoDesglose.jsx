@@ -21,6 +21,7 @@ const PagoDesglose = ({
     montoCostoEnvio,
     total,
     onDividirCuenta,
+    tieneDivision = false,
 }) => (
     <View style={s.wrapper}>
         <Card
@@ -80,7 +81,9 @@ const PagoDesglose = ({
                     onPress={onDividirCuenta}
                 >
                     <Ionicons name="git-branch-outline" size={normalize(18)} color={gb.purple550} />
-                    <Text style={s.btnDividirTexto}>Dividir cuenta</Text>
+                    <Text style={s.btnDividirTexto}>
+                        {tieneDivision ? "Editar división" : "Dividir cuenta"}
+                    </Text>
                 </Button>
             </View>
         </Card>

@@ -265,6 +265,8 @@ const DetalleComplemento = () => {
       <NipModal
         visible={modalNipEdicion}
         titulo="Editar ticket"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={confirmarNipEdicion}
         onClose={cerrarNipEdicion}
       />

@@ -1,11 +1,19 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { withDb } from "../../../utils/db";
+import { runDatabaseMigrations } from "../../../utils/databaseMigrations";
 
 export class Database {
+  static async asegurarMigraciones() {
+    return withDb("Caja.asegurarMigraciones", async (db) => {
+      await runDatabaseMigrations(db);
+    });
+  }
+
   static async getHistorial() {
     const qrData = await AsyncStorage.getItem("qrCode");
 
     return withDb("Caja.getHistorial", async (db) => {
+      await runDatabaseMigrations(db);
       return await db.getAllAsync(
         `
                 SELECT *
@@ -20,14 +28,21 @@ export class Database {
 
   static async getNombreDispocitivo() {
     return withDb("Caja.getNombreDispositivo", async (db) => {
-      const result = await db.getAllAsync(
-        `
-                SELECT NOMBRE_DISPOCITIVO
-                FROM CONFIGURACIONES
-                `,
+      const config = await db.getFirstAsync(
+        `SELECT NOMBRE_DISPOCITIVO FROM CONFIGURACIONES LIMIT 1`,
       );
+      const nombreConfig = String(config?.NOMBRE_DISPOCITIVO ?? "").trim();
+      if (nombreConfig && nombreConfig !== "Dispositivo") {
+        return nombreConfig;
+      }
 
-      return result.length > 0 ? result[0].NOMBRE_DISPOCITIVO : null;
+      const device = await db.getFirstAsync(
+        `SELECT NOMBRE FROM DEVICE
+         WHERE ACTIVO = 1 AND NOMBRE IS NOT NULL AND TRIM(NOMBRE) != ''
+         LIMIT 1`,
+      );
+      const nombreDevice = String(device?.NOMBRE ?? "").trim();
+      return nombreDevice || nombreConfig || null;
     });
   }
 
@@ -53,10 +68,12 @@ export class Database {
 
   static async cerrarCaja(id) {
     return withDb("Caja.cerrarCaja", async (db) => {
+      await runDatabaseMigrations(db);
       await db.runAsync(
         `
                 UPDATE HISTORIAL_CAJA
-                SET ESTATUS = 0
+                SET ESTATUS = 0,
+                    FECHA_CIERRE = CURRENT_TIMESTAMP
                 WHERE ID = ?
                 `,
         [id],

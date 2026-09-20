@@ -557,11 +557,15 @@ export default function Configuraciones() {
         visible={modalNipGeneral}
         onClose={() => setModalNipGeneral(false)}
         titulo="Sincronizar app"
+        modo="acceso"
+        keywords={["settings"]}
         onSubmit={sincronizarDatosGenerales}
       />
       <NipModal
         visible={nipModal.visible}
         titulo={nipModal.titulo}
+        modo="acceso"
+        keywords={["settings"]}
         onClose={cerrarNipModal}
         onSubmit={onNipCorrecto}
       />

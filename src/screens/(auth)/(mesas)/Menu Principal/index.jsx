@@ -410,7 +410,7 @@ const MenuPrincipal = () => {
           <Select
             placeholder="Todos los grupos"
             options={[
-              { label: "Todos", value: null },
+              { label: "Todos los grupos", value: null },
               ...grupos.map((g) => ({ label: g.NOMBRE, value: g.UUID })),
             ]}
             value={grupoSeleccionado}
@@ -679,6 +679,8 @@ const MenuPrincipal = () => {
       <NipModal
         visible={modalNipEdicion}
         titulo="Editar ticket"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={confirmarNipEdicion}
         onClose={cerrarNipEdicion}
       />

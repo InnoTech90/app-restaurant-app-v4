@@ -582,6 +582,8 @@ const Ventas = () => {
       <NipModal
         visible={modalAcceso}
         titulo="Acceso a ventas"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={onAccesoCorrecto}
         onClose={onAccesoCancelado}
       />
@@ -591,6 +593,8 @@ const Ventas = () => {
       <NipModal
         visible={modalNip}
         titulo="Limpiar Ventas"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={limpiarVentas}
         onClose={() => setModalNip(false)}
       />

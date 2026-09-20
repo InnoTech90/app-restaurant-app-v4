@@ -272,6 +272,16 @@ export default class Database {
     });
   }
 
+  /** Elimina el pago dividido de una comanda */
+  static async limpiarPagoCuentaDividida(idComanda) {
+    return withDb("Pago.limpiarPagoCuentaDividida", async (db) => {
+      await db.runAsync(
+        `DELETE FROM COMANDA_PAGO_CUENTA_DIVIDIDA WHERE ID_COMANDA = ?`,
+        [idComanda],
+      );
+    });
+  }
+
   /** Persiste cada fila de pago dividido (borra las anteriores de la misma comanda primero) */
   static async guardarPagoCuentaDividida(idComanda, filas) {
     return withDb("Pago.guardarPagoCuentaDividida", async (db) => {

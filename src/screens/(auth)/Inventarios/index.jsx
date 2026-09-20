@@ -296,6 +296,8 @@ const Inventarios = () => {
       <NipModal
         visible={modalAcceso}
         titulo={tituloModal}
+        modo="acceso"
+        keywords={["inventory"]}
         onSubmit={onAccesoCorrecto}
         onClose={onAccesoCancelado}
       />

@@ -35,6 +35,13 @@ export async function runDatabaseMigrations(db) {
 
   await ensureColumn(
     db,
+    "HISTORIAL_CAJA",
+    "FECHA_CIERRE",
+    "ALTER TABLE HISTORIAL_CAJA ADD COLUMN FECHA_CIERRE DATETIME",
+  );
+
+  await ensureColumn(
+    db,
     "COMANDA",
     "IMPUESTOS",
     "ALTER TABLE COMANDA ADD COLUMN IMPUESTOS REAL DEFAULT 0",
