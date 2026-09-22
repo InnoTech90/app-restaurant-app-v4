@@ -31,9 +31,15 @@ const Ticket = () => {
   const [cancelando, setCancelando] = useState(false);
   const [modalSinImpresora, setModalSinImpresora] = useState(false);
   const [config, setConfig] = useState(null);
+  const [comandaDb, setComandaDb] = useState(comandaData?.comanda ?? null);
 
-  const comanda = comandaData?.comanda;
-  const bloqueada = comanda?.ESTATUS === 4;
+  const comanda = comandaDb ?? comandaData?.comanda;
+  const bloqueada = Number(comanda?.ESTATUS) === 4;
+  const preparacionImpresa =
+    Number(comanda?.CONT_IMPRESO) > 0 ||
+    (articulos.length > 0 &&
+      articulos.every((a) => Number(a.IMPRESO) === 1));
+  const soloLectura = bloqueada || preparacionImpresa;
 
   const {
     puedeEditar,
@@ -45,7 +51,7 @@ const Ticket = () => {
     desbloquearEdicion,
   } = useEdicionTicket(config);
 
-  const edicionBloqueada = bloqueada || !puedeEditar;
+  const edicionBloqueada = soloLectura || !puedeEditar;
 
   useEffect(() => {
     Database.getConfiguraciones().then(setConfig).catch(console.error);
@@ -61,9 +67,17 @@ const Ticket = () => {
       setAuthHeaderTitulo("Comanda");
       if (!comanda?.ID) return;
       let activa = true;
-      Database.getArticulosComanda(comanda.ID)
-        .then((lista) => {
-          if (activa) setArticulos(lista ?? []);
+      Promise.all([
+        Database.getArticulosComanda(comanda.ID),
+        Database.getComanda(comanda.ID),
+      ])
+        .then(([lista, comandaActual]) => {
+          if (!activa) return;
+          setArticulos(lista ?? []);
+          if (comandaActual) {
+            setComandaDb(comandaActual);
+            if (comandaActual.NOTA != null) setNota(comandaActual.NOTA);
+          }
         })
         .catch(console.error);
       return () => {
@@ -178,6 +192,7 @@ const Ticket = () => {
   const { fecha, hora } = formatearFecha(comanda?.FECHA);
 
   const handleCancelar = () => {
+    if (soloLectura) return;
     solicitarEdicion(() => {
       Alert.alert(
         "Cancelar comanda",
@@ -205,6 +220,7 @@ const Ticket = () => {
   };
 
   const handleCambiarCantidad = (renglon, nuevaCantidad) => {
+    if (soloLectura) return;
     solicitarEdicion(async () => {
       try {
         const tipo =
@@ -251,6 +267,7 @@ const Ticket = () => {
   };
 
   const handleEliminarArticulo = (renglon) => {
+    if (soloLectura) return;
     solicitarEdicion(() => {
       Alert.alert(
         "Eliminar artículo",
@@ -280,7 +297,7 @@ const Ticket = () => {
   };
 
   const handleNotaBlur = () => {
-    if (!comanda) return;
+    if (!comanda || soloLectura) return;
     solicitarEdicion(async () => {
       try {
         await Database.actualizarNota(comanda.ID, nota);
@@ -292,14 +309,14 @@ const Ticket = () => {
 
   const handleNotaChange = (texto) => {
     if (edicionBloqueada) {
-      if (requiereNipEdicion && !bloqueada) desbloquearEdicion();
+      if (requiereNipEdicion && !soloLectura) desbloquearEdicion();
       return;
     }
     setNota(texto);
   };
 
   const handleImprimir = async () => {
-    if (imprimiendo || !comanda) return;
+    if (imprimiendo || !comanda || soloLectura) return;
     setImprimiendo(true);
     try {
       // sinPrecios=true: ticket de cocina/barra, nunca mostrar precios
@@ -308,8 +325,16 @@ const Ticket = () => {
         setModalSinImpresora(true);
         return;
       }
+      if (!resultado) return;
+
       await Database.imprimirTicket(comanda.ID);
       await Database.registrarMovimiento(comanda.ID, null, "IMPRESION_TICKET");
+      const [lista, comandaActual] = await Promise.all([
+        Database.getArticulosComanda(comanda.ID),
+        Database.getComanda(comanda.ID),
+      ]);
+      setArticulos(lista ?? []);
+      if (comandaActual) setComandaDb(comandaActual);
     } catch (e) {
       console.error("Error imprimiendo ticket:", e);
     } finally {
@@ -326,8 +351,9 @@ const Ticket = () => {
 
   const handleEditarArticulo = (renglon) => {
     if (!renglon?.articulo && !renglon?.ID_ARTICULO) return;
+    if (soloLectura) return;
     if (edicionBloqueada) {
-      if (requiereNipEdicion && !bloqueada) desbloquearEdicion();
+      if (requiereNipEdicion) desbloquearEdicion();
       return;
     }
     solicitarEdicion(() => {
@@ -357,6 +383,7 @@ const Ticket = () => {
         <Pressable
           style={s.articuloInfo}
           onPress={() => handleEditarArticulo(renglon)}
+          disabled={soloLectura}
         >
           <Text style={s.articuloNombre} numberOfLines={2}>
             {renglon.articulo?.NOMBRE ?? "—"}
@@ -365,7 +392,9 @@ const Ticket = () => {
             <Text style={s.articuloPrecio}>
               ${(renglon.PRECIO_VENTA ?? 0).toFixed(2)} c/u
             </Text>
-            <Text style={s.articuloEditarHint}> · Editar</Text>
+            {!soloLectura && (
+              <Text style={s.articuloEditarHint}> · Editar</Text>
+            )}
           </View>
         </Pressable>
         <InputCantidad
@@ -395,6 +424,7 @@ const Ticket = () => {
         <Pressable
           style={s.ajustesLista}
           onPress={() => handleEditarArticulo(renglon)}
+          disabled={soloLectura}
         >
           {comps.length > 0 && (
             <View style={s.ajusteBloque}>
@@ -477,12 +507,12 @@ const Ticket = () => {
           style={s.btnCancelar}
           styleContainer={s.btnCancelarContainer}
           onPress={handleCancelar}
-          disabled={cancelando}
+          disabled={cancelando || soloLectura}
         >
           <Ionicons
             name="trash-outline"
             size={normalize(15)}
-            color={gb.gray50}
+            color={soloLectura ? gb.gray300 : gb.gray50}
           />
         </Button>
       </LinearGradient>
@@ -531,7 +561,35 @@ const Ticket = () => {
         </View>
       )}
 
-      {!bloqueada && requiereNipEdicion && !puedeEditar && (
+      {!bloqueada && preparacionImpresa && (
+        <View
+          style={{
+            backgroundColor: gb.yellow100 ?? "#FFF2C5",
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: normalize(14),
+            paddingVertical: normalize(8),
+            gap: normalize(8),
+          }}
+        >
+          <Ionicons
+            name="eye-outline"
+            size={normalize(16)}
+            color={gb.orange600}
+          />
+          <Text
+            style={{
+              fontSize: normalize(12),
+              color: gb.orange600,
+              fontWeight: "600",
+            }}
+          >
+            Preparación impresa — solo visualización
+          </Text>
+        </View>
+      )}
+
+      {!soloLectura && requiereNipEdicion && !puedeEditar && (
         <View
           style={{
             backgroundColor: gb.red100 ?? "#FDECEC",
@@ -608,19 +666,23 @@ const Ticket = () => {
         <Button
           styleContainer={s.btnImprimirContainer}
           style={s.btnImprimir}
-          gradient={bloqueada ? [gb.gray300, gb.gray200] : gb.gradient_blue}
+          gradient={soloLectura ? [gb.gray300, gb.gray200] : gb.gradient_blue}
           onPress={handleImprimir}
-          disabled={imprimiendo || bloqueada}
+          disabled={imprimiendo || soloLectura}
         >
           <Ionicons
             name="print-outline"
             size={normalize(20)}
-            color={bloqueada ? gb.gray500 : gb.gray50}
+            color={soloLectura ? gb.gray500 : gb.gray50}
           />
           <Text
-            style={[s.btnImprimirTexto, bloqueada && { color: gb.gray500 }]}
+            style={[s.btnImprimirTexto, soloLectura && { color: gb.gray500 }]}
           >
-            {imprimiendo ? "Imprimiendo..." : "Imprimir preparación"}
+            {imprimiendo
+              ? "Imprimiendo..."
+              : preparacionImpresa
+                ? "Preparación ya impresa"
+                : "Imprimir preparación"}
           </Text>
         </Button>
       </View>

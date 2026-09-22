@@ -14,8 +14,21 @@ export default class VentasDatabase {
                 c.FICHA,
                 c.FECHA,
                 c.ESTATUS,
-                c.TOTAL,
-                c.SUBTOTAL,
+                CASE
+                  WHEN c.TOTAL IS NOT NULL AND c.TOTAL > 0 THEN c.TOTAL
+                  ELSE COALESCE((
+                    SELECT SUM(ca.TOTAL) FROM COMANDA_ARTICULO ca
+                    WHERE ca.ID_COMANDA = c.ID
+                  ), 0)
+                END AS TOTAL,
+                CASE
+                  WHEN c.SUBTOTAL IS NOT NULL AND c.SUBTOTAL > 0 THEN c.SUBTOTAL
+                  ELSE COALESCE((
+                    SELECT SUM(COALESCE(ca.SUBTOTAL, ca.TOTAL, 0))
+                    FROM COMANDA_ARTICULO ca
+                    WHERE ca.ID_COMANDA = c.ID
+                  ), 0)
+                END AS SUBTOTAL,
                 c.DESCUENTO,
                 c.PROPINA,
                 c.COSTO_ENVIO,
@@ -80,7 +93,33 @@ export default class VentasDatabase {
         }),
       );
 
-      return { comanda, articulos: articulosConComplementos };
+      const pagos = await db.getAllAsync(
+        `SELECT cp.*, mp.NOMBRE AS METODO_NOMBRE
+         FROM COMANDA_PAGOS cp
+         LEFT JOIN METODO_PAGO mp ON cp.ID_METODO_PAGO = mp.ID
+         WHERE cp.ID_COMANDA = ?
+         ORDER BY cp.ID ASC`,
+        [idComanda],
+      );
+
+      const pagoDividido = await db.getAllAsync(
+        `SELECT * FROM COMANDA_PAGO_CUENTA_DIVIDIDA
+         WHERE ID_COMANDA = ?
+         ORDER BY ID ASC`,
+        [idComanda],
+      );
+
+      const formatosPago = await db.getAllAsync(
+        `SELECT * FROM METODO_PAGO WHERE ACTIVO = 1 ORDER BY ID ASC`,
+      );
+
+      return {
+        comanda,
+        articulos: articulosConComplementos,
+        pagos: pagos ?? [],
+        pagoDividido: pagoDividido ?? [],
+        formatosPago: formatosPago ?? [],
+      };
     });
   }
 

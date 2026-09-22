@@ -31,6 +31,17 @@ export const s = StyleSheet.create({
         color: gb.blue100,
         marginTop: normalize(2),
     },
+    btnCancelarContainer: {
+        borderRadius: normalize(20),
+        overflow: "hidden",
+    },
+    btnCancelar: {
+        width: normalize(40),
+        height: normalize(40),
+        backgroundColor: gb.red600 + "CC",
+        alignItems: "center",
+        justifyContent: "center",
+    },
     // -- Scroll
     scroll: {
         flex: 1,

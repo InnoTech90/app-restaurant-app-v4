@@ -97,6 +97,39 @@ export default class Database {
     });
   }
 
+  /** Cancela la comanda y libera la mesa. */
+  static async cancelarComanda(idComanda) {
+    return withDb("Pago.cancelarComanda", async (db) => {
+      const totales = await db.getFirstAsync(
+        `SELECT
+           COALESCE(SUM(COALESCE(SUBTOTAL, TOTAL, 0)), 0) AS SUBTOTAL,
+           COALESCE(SUM(COALESCE(TOTAL, 0)), 0) AS TOTAL
+         FROM COMANDA_ARTICULO
+         WHERE ID_COMANDA = ?`,
+        [idComanda],
+      );
+
+      await db.runAsync(
+        `UPDATE COMANDA SET
+           ESTATUS = 2,
+           ACTIVO = 0,
+           SUBTOTAL = CASE
+             WHEN SUBTOTAL IS NULL OR SUBTOTAL = 0 THEN ? ELSE SUBTOTAL END,
+           TOTAL = CASE
+             WHEN TOTAL IS NULL OR TOTAL = 0 THEN ? ELSE TOTAL END
+         WHERE ID = ?`,
+        [totales?.SUBTOTAL ?? 0, totales?.TOTAL ?? 0, idComanda],
+      );
+      await db.runAsync(
+        `UPDATE MESA
+         SET ESTATUS = 0, ID_COMANDA = NULL
+         WHERE ID_COMANDA = ?
+            OR UUID = (SELECT ID_MESA FROM COMANDA WHERE ID = ?)`,
+        [idComanda, idComanda],
+      );
+    });
+  }
+
   static async getCliente(id) {
     return withDb("Pago.getCliente", async (db) => {
       return await db.getFirstAsync(`SELECT * FROM CLIENTES WHERE ID = ?`, [

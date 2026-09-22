@@ -13,6 +13,7 @@ const Mesa = ({
   uuid,
   nombre,
   status,
+  impresa = false,
   onPress,
   onLongPress,
   descripcion,
@@ -32,6 +33,7 @@ const Mesa = ({
   }, [notaProp]);
 
   const ocupada = !!status;
+  const colorAcento = impresa ? gb.orange600 : gb.purple550;
 
   // Solo mesas libres (sin comanda activa), excluyendo la actual
   const mesasDestino = useMemo(
@@ -84,18 +86,24 @@ const Mesa = ({
       delayLongPress={700}
       style={s.mesaContainer}
     >
-      <View style={[s.mesa, ocupada && s.mesaOcupada]}>
+      <View
+        style={[
+          s.mesa,
+          ocupada && s.mesaOcupada,
+          ocupada && impresa && s.mesaImpresa,
+        ]}
+      >
         <View
-          style={[s.sillaLeft, ocupada && { backgroundColor: gb.purple550 }]}
+          style={[s.sillaLeft, ocupada && { backgroundColor: colorAcento }]}
         />
         <View
-          style={[s.sillaRight, ocupada && { backgroundColor: gb.purple550 }]}
+          style={[s.sillaRight, ocupada && { backgroundColor: colorAcento }]}
         />
         <View
-          style={[s.sillaTop, ocupada && { backgroundColor: gb.purple550 }]}
+          style={[s.sillaTop, ocupada && { backgroundColor: colorAcento }]}
         />
         <View
-          style={[s.sillaBottom, ocupada && { backgroundColor: gb.purple550 }]}
+          style={[s.sillaBottom, ocupada && { backgroundColor: colorAcento }]}
         />
         <View style={s.contenido}>
           <Text style={s.nombre} numberOfLines={1}>
@@ -106,6 +114,9 @@ const Mesa = ({
               <Text style={s.ficha} numberOfLines={1}>
                 Folio #{ficha ?? id ?? "—"}
               </Text>
+              {impresa ? (
+                <Text style={s.estadoImpresa}>Cuenta impresa</Text>
+              ) : null}
               <TextInput
                 style={s.notaInput}
                 placeholder="Nota"
@@ -117,7 +128,10 @@ const Mesa = ({
                 numberOfLines={1}
               />
               <Pressable
-                style={s.cambiarMesa}
+                style={[
+                  s.cambiarMesa,
+                  impresa && { backgroundColor: gb.orange600 },
+                ]}
                 onPress={(e) => {
                   e?.stopPropagation?.();
                   setCambiarMesa(true);

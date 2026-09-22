@@ -360,11 +360,7 @@ const MenuPrincipal = () => {
       {/* Header — mismo patrón que Ticket */}
       <LinearGradient
         style={s.header}
-        colors={
-          comandaActiva?.comanda?.ESTATUS === 4
-            ? ["#FB8C00", "#FFA726"]
-            : gb.gradient_blue
-        }
+        colors={gb.gradient_blue}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
@@ -378,6 +374,34 @@ const MenuPrincipal = () => {
         </View>
         <View style={s.headerSpacer} />
       </LinearGradient>
+
+      {comandaActiva?.comanda?.ESTATUS === 4 && (
+        <View
+          style={{
+            backgroundColor: gb.orange100 ?? "#FFF3CD",
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: normalize(14),
+            paddingVertical: normalize(8),
+            gap: normalize(8),
+          }}
+        >
+          <Ionicons
+            name="lock-closed-outline"
+            size={normalize(16)}
+            color={gb.orange600 ?? "#856404"}
+          />
+          <Text
+            style={{
+              fontSize: normalize(12),
+              color: gb.orange600 ?? "#856404",
+              fontWeight: "600",
+            }}
+          >
+            Cuenta impresa — ve a Pago para confirmar o editar
+          </Text>
+        </View>
+      )}
 
       {clienteSeleccionado && (
         <View style={s.clienteStrip}>

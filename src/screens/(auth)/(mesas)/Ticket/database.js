@@ -56,6 +56,14 @@ export default class Database {
     });
   }
 
+  static async getComanda(idComanda) {
+    return withDb("Ticket.getComanda", async (db) => {
+      return await db.getFirstAsync(`SELECT * FROM COMANDA WHERE ID = ?`, [
+        idComanda,
+      ]);
+    });
+  }
+
   static async getCliente(id) {
     return withDb("Ticket.getCliente", async (db) => {
       return await db.getFirstAsync(`SELECT * FROM CLIENTES WHERE ID = ?`, [
@@ -66,9 +74,25 @@ export default class Database {
 
   static async cancelarComanda(idComanda) {
     return withDb("Ticket.cancelarComanda", async (db) => {
-      await db.runAsync(
-        `UPDATE COMANDA SET ESTATUS = 2, ACTIVO = 0 WHERE ID = ?`,
+      const totales = await db.getFirstAsync(
+        `SELECT
+           COALESCE(SUM(COALESCE(SUBTOTAL, TOTAL, 0)), 0) AS SUBTOTAL,
+           COALESCE(SUM(COALESCE(TOTAL, 0)), 0) AS TOTAL
+         FROM COMANDA_ARTICULO
+         WHERE ID_COMANDA = ?`,
         [idComanda],
+      );
+
+      await db.runAsync(
+        `UPDATE COMANDA SET
+           ESTATUS = 2,
+           ACTIVO = 0,
+           SUBTOTAL = CASE
+             WHEN SUBTOTAL IS NULL OR SUBTOTAL = 0 THEN ? ELSE SUBTOTAL END,
+           TOTAL = CASE
+             WHEN TOTAL IS NULL OR TOTAL = 0 THEN ? ELSE TOTAL END
+         WHERE ID = ?`,
+        [totales?.SUBTOTAL ?? 0, totales?.TOTAL ?? 0, idComanda],
       );
       await db.runAsync(
         `UPDATE MESA

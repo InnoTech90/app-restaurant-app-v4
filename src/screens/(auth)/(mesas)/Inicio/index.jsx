@@ -129,6 +129,7 @@ const Inicio = () => {
                 Number(mesa.TIENE_COMANDA_ACTIVA) === 1 ||
                 Number(mesa.ESTATUS) === 1
               }
+              impresa={Number(mesa.ESTATUS_COMANDA) === 4}
               onPress={() => seleccionarMesa(mesa)}
               index={index + 1}
               mesas={mesas}

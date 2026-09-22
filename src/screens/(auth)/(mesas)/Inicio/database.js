@@ -20,6 +20,7 @@ export class Database {
                     M.*,
                     C.ID AS ID_COMANDA_ACTIVA,
                     C.FICHA AS FICHA_COMANDA,
+                    C.ESTATUS AS ESTATUS_COMANDA,
                     CASE WHEN C.ID IS NOT NULL THEN 1 ELSE 0 END AS TIENE_COMANDA_ACTIVA
                 FROM MESA M
                 LEFT JOIN COMANDA C

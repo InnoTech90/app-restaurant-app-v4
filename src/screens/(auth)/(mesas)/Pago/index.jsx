@@ -67,6 +67,9 @@ const Pago = () => {
   const [imprimiendo, setImprimiendo] = useState(false);
   const [cuentaImpresa, setCuentaImpresa] = useState(false);
   const [openNipEditarModal, setOpenNipEditarModal] = useState(false);
+  const [openNipCancelarModal, setOpenNipCancelarModal] = useState(false);
+  const [mostrarCancelar, setMostrarCancelar] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   const [mostrarCajaCerrada, setMostrarCajaCerrada] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const router = useRouter();
@@ -94,6 +97,41 @@ const Pago = () => {
     ]);
     setCuentaImpresa(false);
     setComanda((prev) => (prev ? { ...prev, ESTATUS: 0 } : prev));
+    setMostrarCancelar(true);
+  };
+
+  const solicitarCancelarCuenta = () => {
+    if (cancelando || !comanda?.ID) return;
+    Alert.alert(
+      "Cancelar cuenta",
+      "¿Estás seguro de que deseas cancelar esta cuenta? Esta acción no se puede deshacer.",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Sí, cancelar",
+          style: "destructive",
+          onPress: () => setOpenNipCancelarModal(true),
+        },
+      ],
+    );
+  };
+
+  const confirmarCancelarCuenta = async () => {
+    if (cancelando || !comanda?.ID) return;
+    setCancelando(true);
+    setOpenNipCancelarModal(false);
+    try {
+      await Database.cancelarComanda(comanda.ID);
+      await AsyncStorage.multiRemove([
+        `pago_monto_${comanda.ID}`,
+        `pago_metodo_${comanda.ID}`,
+      ]);
+      router.replace("/Inicio");
+    } catch (e) {
+      console.error("Error cancelando cuenta:", e);
+      Alert.alert("Error", "No se pudo cancelar la cuenta. Intenta de nuevo.");
+      setCancelando(false);
+    }
   };
 
   const sameMetodoId = (a, b) =>
@@ -131,13 +169,16 @@ const Pago = () => {
     setConfiguraciones(configuracionesDb);
     setClientes(clientesDb);
 
-    // Defaults de finanzas desde configuraciones
+    // Adicional de pago: siempre inicia en 0 (el usuario digita al enfocar).
     let metodoInicial = configuracionesDb?.ID_FORMATO_PAGO ?? null;
-    setImpuestosPct(String(configuracionesDb?.IMPUESTOS ?? 0));
-    setDescuento(String(configuracionesDb?.DESCUENTOS ?? 0));
-    setDescuentoEsPct(!!configuracionesDb?.DESCUENTOS_ES_PCT);
-    setCostoEnvio(String(configuracionesDb?.COSTO_ENVIO ?? 0));
-    setCostoEnvioEsPct(!!configuracionesDb?.COSTO_ENVIO_ES_PCT);
+    setImpuestosPct("0");
+    setPropina("0");
+    setPropinaEsPct(true);
+    setDescuento("0");
+    setDescuentoEsPct(true);
+    setCostoEnvio("0");
+    setCostoEnvioEsPct(false);
+    setDesglosarImpuestos(false);
 
     // Restaurar estado de bloqueo si la comanda ya fue impresa
     const yaImpresa = comandaData?.ESTATUS === 4;
@@ -253,6 +294,7 @@ const Pago = () => {
       await Database.setComandaImpresa(comanda.ID);
       await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
       setCuentaImpresa(true);
+      setMostrarCancelar(false);
       setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
 
       if (!impresionOk) {
@@ -267,6 +309,7 @@ const Pago = () => {
         await Database.setComandaImpresa(comanda.ID);
         await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
         setCuentaImpresa(true);
+        setMostrarCancelar(false);
         setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
         Alert.alert(
           "No se pudo imprimir",
@@ -495,6 +538,22 @@ const Pago = () => {
             Folio #{comanda?.FICHA == 0 ? 0 : comanda?.FICHA} · {fecha} {hora}
           </Text>
         </View>
+        {mostrarCancelar ? (
+          <Button
+            style={s.btnCancelar}
+            styleContainer={s.btnCancelarContainer}
+            onPress={solicitarCancelarCuenta}
+            disabled={cancelando}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={normalize(15)}
+              color={gb.gray50}
+            />
+          </Button>
+        ) : (
+          <View style={{ width: normalize(40) }} />
+        )}
       </LinearGradient>
 
       {!cuentaImpresa && requiereNipEdicion && !puedeEditar && (
@@ -832,6 +891,15 @@ const Pago = () => {
           setOpenNipEditarModal(false);
           await desbloquearComanda();
         }}
+      />
+
+      <NipModal
+        visible={openNipCancelarModal}
+        onClose={() => setOpenNipCancelarModal(false)}
+        titulo="Cancelar cuenta"
+        modo="acceso"
+        keywords={[]}
+        onSubmit={confirmarCancelarCuenta}
       />
 
       <NipModal

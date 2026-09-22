@@ -22,6 +22,11 @@ const TogglePctMonto = ({ esPct, onToggle }) => (
     </View>
 );
 
+const esCero = (v) => {
+    const n = parseFloat(String(v ?? "").replace(",", "."));
+    return !String(v ?? "").trim() || (!Number.isNaN(n) && n === 0);
+};
+
 const FilaAdicional = ({ label, valor, onCambiar, esPct, onTogglePct, sufijo }) => (
     <View style={s.row}>
         <Text style={s.label}>{label}</Text>
@@ -34,9 +39,18 @@ const FilaAdicional = ({ label, valor, onCambiar, esPct, onTogglePct, sufijo }) 
                     style={s.input}
                     value={valor}
                     onChangeText={onCambiar}
+                    onFocus={() => {
+                        if (!onCambiar) return;
+                        if (esCero(valor)) onCambiar("");
+                    }}
+                    onBlur={() => {
+                        if (!onCambiar) return;
+                        if (!String(valor ?? "").trim()) onCambiar("0");
+                    }}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     placeholderTextColor={gb.gray300}
+                    selectTextOnFocus
                 />
                 <Text style={s.inputSufijo}>{sufijo}</Text>
             </View>

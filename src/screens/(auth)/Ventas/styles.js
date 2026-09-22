@@ -142,6 +142,30 @@ export const s = StyleSheet.create({
         paddingHorizontal: normalize(20),
         flex: 1
     },
+    footerReimprimir: {
+        backgroundColor: gb.gray50,
+        borderTopWidth: 1,
+        borderTopColor: gb.gray200,
+        paddingHorizontal: normalize(16),
+        paddingTop: normalize(10),
+        paddingBottom: normalize(14),
+    },
+    btnReimprimirContainer: {
+        borderRadius: normalize(10),
+        overflow: "hidden",
+    },
+    btnReimprimir: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: normalize(14),
+        gap: normalize(8),
+    },
+    btnReimprimirTexto: {
+        fontSize: normalize(15),
+        fontWeight: "700",
+        color: gb.gray50,
+    },
     modalContainer: {
         justifyContent: "center",
         alignItems: "center",

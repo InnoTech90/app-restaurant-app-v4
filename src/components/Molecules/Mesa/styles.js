@@ -34,6 +34,11 @@ export const s = StyleSheet.create({
         backgroundColor: gb.blue50,
         height: isTablet ? normalize(200) : normalize(175),
     },
+    mesaImpresa: {
+        borderColor: gb.orange600,
+        backgroundColor: gb.yellow50,
+        height: isTablet ? normalize(215) : normalize(190),
+    },
     sillaLeft: {
         position: "absolute",
         left: -SILLA_OFFSET,
@@ -101,6 +106,14 @@ export const s = StyleSheet.create({
         marginTop: normalize(2),
         textTransform: "uppercase",
         letterSpacing: 0.4,
+    },
+    estadoImpresa: {
+        fontSize: normalize(10),
+        fontWeight: "700",
+        color: gb.orange600,
+        marginTop: normalize(2),
+        textTransform: "uppercase",
+        letterSpacing: 0.3,
     },
     estadoLibre: {
         fontSize: normalize(11),
