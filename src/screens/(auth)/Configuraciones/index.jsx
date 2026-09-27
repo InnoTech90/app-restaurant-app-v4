@@ -494,7 +494,7 @@ export default function Configuraciones() {
             icon="shield-checkmark-outline"
             iconColor={gb.red600}
             titulo="Modo restrictivo"
-            subtitulo="Limita funciones avanzadas en este dispositivo"
+            subtitulo="Con el modo activo, Caja, Mi restaurante, Gastos, Inventarios, Configuraciones, Editar cuenta y el adicional de pago piden NIP y el permiso del gerente. Si está apagado, no pide NIP, pero sin permiso no deja entrar."
             border={false}
           >
             <Switch

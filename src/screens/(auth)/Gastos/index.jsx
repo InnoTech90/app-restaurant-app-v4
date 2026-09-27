@@ -207,6 +207,7 @@ const Gastos = () => {
     seccion: "gastos",
     configFlag: "MODO_RESTRICTIVO",
     tituloModal: "Gastos",
+    keywords: ["expenses"],
   });
 
   const [categorias, setCategorias] = useState([]);

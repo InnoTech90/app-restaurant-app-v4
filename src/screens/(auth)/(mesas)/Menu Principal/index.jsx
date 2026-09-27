@@ -27,8 +27,6 @@ import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import {
   setAuthHeaderTitulo,
 } from "../../../../utils/authHeaderTitle";
-import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
-import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import { gb } from "../../../globalStyles";
 import Database from "./database";
 import { s } from "./styles";
@@ -54,21 +52,12 @@ const MenuPrincipal = () => {
   const [formCorreo, setFormCorreo] = useState("");
   const [formDireccion, setFormDireccion] = useState("");
   const [formDescripcion, setFormDescripcion] = useState("");
-  const [config, setConfig] = useState(null);
   const navigationLockRef = useRef(false);
   const router = useRouter();
   const { id_mesa: idMesa, abrirCliente } = useLocalSearchParams();
 
-  const {
-    modalNipEdicion,
-    cerrarNipEdicion,
-    solicitarEdicion,
-    confirmarNipEdicion,
-  } = useEdicionTicket(config);
-
   useEffect(() => {
     cargarMenu();
-    Database.getConfiguraciones().then(setConfig).catch(console.error);
   }, []);
 
   useFocusEffect(
@@ -342,16 +331,14 @@ const MenuPrincipal = () => {
   }
   const agregarArticulo = (articulo) => {
     if (comandaActiva?.comanda?.ESTATUS === 4) return;
-    solicitarEdicion(() => {
-      if (navigationLockRef.current) return;
-      navigationLockRef.current = true;
-      router.push({
-        pathname: "/DetalleArticulo",
-        params: {
-          articulo: JSON.stringify(articulo, null, 2),
-          id_mesa: idMesa,
-        },
-      });
+    if (navigationLockRef.current) return;
+    navigationLockRef.current = true;
+    router.push({
+      pathname: "/DetalleArticulo",
+      params: {
+        articulo: JSON.stringify(articulo, null, 2),
+        id_mesa: idMesa,
+      },
     });
   };
 
@@ -699,15 +686,6 @@ const MenuPrincipal = () => {
           </>
         )}
       </GeneralModal>
-
-      <NipModal
-        visible={modalNipEdicion}
-        titulo="Editar ticket"
-        modo="acceso"
-        keywords={["sales"]}
-        onSubmit={confirmarNipEdicion}
-        onClose={cerrarNipEdicion}
-      />
     </SafeAreaView>
   );
 };

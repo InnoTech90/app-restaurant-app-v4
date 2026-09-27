@@ -29,6 +29,7 @@ import { setAuthHeaderTitulo } from "../../../../utils/authHeaderTitle";
 import { EdicionTicketStore } from "../../../../utils/edicionTicketStore";
 import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
+import { sesionPuedeEntrar } from "../../../../utils/gerentePermisos";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { gb } from "../../../globalStyles";
 import { integracionVentas } from "../../Ventas/integracion";
@@ -67,12 +68,15 @@ const Pago = () => {
   const [imprimiendo, setImprimiendo] = useState(false);
   const [cuentaImpresa, setCuentaImpresa] = useState(false);
   const [openNipEditarModal, setOpenNipEditarModal] = useState(false);
+  const [openNipAdicional, setOpenNipAdicional] = useState(false);
   const [openNipCancelarModal, setOpenNipCancelarModal] = useState(false);
   const [mostrarCancelar, setMostrarCancelar] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [mostrarCajaCerrada, setMostrarCajaCerrada] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const router = useRouter();
+  const campoAdicionalAbierto = useRef(false);
+  const accionAdicionalRef = useRef(null);
 
   const {
     puedeEditar,
@@ -80,13 +84,50 @@ const Pago = () => {
     modalNipEdicion,
     cerrarNipEdicion,
     solicitarEdicion,
+    editarCampo,
+    cerrarCampo,
     confirmarNipEdicion,
-    desbloquearEdicion,
   } = useEdicionTicket(configuraciones);
 
-  const edicionBloqueada = cuentaImpresa || !puedeEditar;
-  // Tras imprimir la cuenta, el pedido se bloquea pero el cobro (método/monto/cliente) sigue editable
-  const cobroBloqueado = !cuentaImpresa && !puedeEditar;
+  // Tras imprimir la cuenta, el cobro sigue sin NIP. Antes, cualquier cambio pide NIP si la edición está restringida.
+  const ejecutarCobro = (accion) => {
+    if (cuentaImpresa) {
+      accion();
+      return;
+    }
+    solicitarEdicion(accion);
+  };
+
+  const aplicarAdicional = async (accion, { campo = false } = {}) => {
+    if (cuentaImpresa) return;
+
+    if (configuraciones?.MODO_RESTRICTIVO) {
+      if (campo && campoAdicionalAbierto.current) {
+        accion();
+        return;
+      }
+      accionAdicionalRef.current = () => {
+        if (campo) campoAdicionalAbierto.current = true;
+        accion();
+      };
+      setOpenNipAdicional(true);
+      return;
+    }
+
+    const permitido = await sesionPuedeEntrar({ keywords: ["sales"] });
+    if (!permitido) {
+      Alert.alert(
+        "Sin permiso",
+        "No tiene permisos para modificar el adicional de pago.",
+      );
+      return;
+    }
+    accion();
+  };
+
+  const cerrarAdicional = () => {
+    campoAdicionalAbierto.current = false;
+  };
 
   const desbloquearComanda = async () => {
     if (!comanda?.ID) return;
@@ -490,20 +531,19 @@ const Pago = () => {
   };
 
   const cambiarNota = (texto) => {
-    if (edicionBloqueada) {
-      if (requiereNipEdicion && !cuentaImpresa) desbloquearEdicion();
-      return;
-    }
-    setNota(texto);
-    if (notaDebounceRef.current) clearTimeout(notaDebounceRef.current);
-    notaDebounceRef.current = setTimeout(async () => {
-      if (!comanda?.ID) return;
-      try {
-        await Database.actualizarNota(comanda.ID, texto);
-      } catch (error) {
-        console.error("Error guardando nota:", error);
-      }
-    }, 600);
+    if (cuentaImpresa) return;
+    editarCampo(() => {
+      setNota(texto);
+      if (notaDebounceRef.current) clearTimeout(notaDebounceRef.current);
+      notaDebounceRef.current = setTimeout(async () => {
+        if (!comanda?.ID) return;
+        try {
+          await Database.actualizarNota(comanda.ID, texto);
+        } catch (error) {
+          console.error("Error guardando nota:", error);
+        }
+      }, 600);
+    });
   };
 
   const extraerFecha = (fechaStr) => {
@@ -589,23 +629,9 @@ const Pago = () => {
                 fontWeight: "600",
               }}
             >
-              Edición protegida — ingresa tu NIP para modificar la comanda
+              Cada cambio de la comanda pide NIP
             </Text>
           </View>
-          <Button
-            onPress={desbloquearEdicion}
-            style={{ paddingHorizontal: normalize(10), paddingVertical: normalize(6) }}
-          >
-            <Text
-              style={{
-                color: gb.gray50,
-                fontSize: normalize(11),
-                fontWeight: "700",
-              }}
-            >
-              Desbloquear
-            </Text>
-          </Button>
         </View>
       )}
 
@@ -627,88 +653,98 @@ const Pago = () => {
             cliente={cliente}
             fecha={fecha}
             hora={hora}
-            onAbrirModalCliente={
-              cobroBloqueado ? undefined : () => setOpenModalCliente(true)
+            onAbrirModalCliente={() =>
+              ejecutarCobro(() => setOpenModalCliente(true))
             }
             onQuitarCliente={() => {}}
-            disabled={cobroBloqueado}
+            disabled={false}
           />
           <PagoArticulos
             articulos={articulos}
             nota={nota}
-            onCambiarCantidad={edicionBloqueada ? undefined : cambiarCantidad}
-            onEliminarArticulo={edicionBloqueada ? undefined : eliminarArticulo}
-            onNotaChange={edicionBloqueada ? undefined : cambiarNota}
-            onNotaBlur={() => {}}
-            disabled={edicionBloqueada}
+            onCambiarCantidad={cuentaImpresa ? undefined : cambiarCantidad}
+            onEliminarArticulo={cuentaImpresa ? undefined : eliminarArticulo}
+            onNotaChange={cuentaImpresa ? undefined : cambiarNota}
+            onNotaBlur={cerrarCampo}
+            disabled={cuentaImpresa}
           />
 
           <PagoMetodosPago
             formatosPago={formatosPago}
             metodoPagoId={metodoPagoId}
-            onSeleccionar={
-              cobroBloqueado
-                ? undefined
-                : (id) => {
-                    setMetodoPagoId(id);
-                    const metodo = formatosPago.find((f) =>
-                      sameMetodoId(f.ID, id),
-                    );
-                    if (!/efectivo/i.test(String(metodo?.NOMBRE ?? ""))) {
-                      setMontoRecibido("");
-                    }
-                    if (comanda?.ID && id != null) {
-                      persistirCobro(comanda.ID, id, montoRecibido);
-                    }
-                  }
+            onSeleccionar={(id) =>
+              ejecutarCobro(() => {
+                setMetodoPagoId(id);
+                const metodo = formatosPago.find((f) =>
+                  sameMetodoId(f.ID, id),
+                );
+                if (!/efectivo/i.test(String(metodo?.NOMBRE ?? ""))) {
+                  setMontoRecibido("");
+                }
+                if (comanda?.ID && id != null) {
+                  persistirCobro(comanda.ID, id, montoRecibido);
+                }
+              })
             }
-            disabled={cobroBloqueado}
+            disabled={false}
           />
           <PagoAdicionales
             impuestosPct={impuestosPct}
-            onImpuestosChange={edicionBloqueada ? undefined : setImpuestosPct}
+            onImpuestosChange={
+              cuentaImpresa ? undefined : (v) => aplicarAdicional(() => setImpuestosPct(v), { campo: true })
+            }
             desglosarImpuestos={desglosarImpuestos}
             onToggleDesglosar={
-              edicionBloqueada
+              cuentaImpresa
                 ? undefined
-                : () => setDesglosarImpuestos((prev) => !prev)
+                : () => aplicarAdicional(() => setDesglosarImpuestos((prev) => !prev))
             }
             propina={propina}
             propinaEsPct={propinaEsPct}
-            onPropinaChange={edicionBloqueada ? undefined : setPropina}
+            onPropinaChange={
+              cuentaImpresa ? undefined : (v) => aplicarAdicional(() => setPropina(v), { campo: true })
+            }
             onPropinaToggle={
-              edicionBloqueada ? undefined : (esPct) => setPropinaEsPct(esPct)
+              cuentaImpresa
+                ? undefined
+                : (esPct) => aplicarAdicional(() => setPropinaEsPct(esPct))
             }
             descuento={descuento}
             descuentoEsPct={descuentoEsPct}
             onDescuentoChange={
-              edicionBloqueada
+              cuentaImpresa
                 ? undefined
-                : (v) => {
-                    if (descuentoEsPct) {
-                      const n = parseFloat(String(v).replace(/[^0-9.]/g, ""));
-                      if (!isNaN(n) && n > 100) {
-                        setDescuento("100");
-                        return;
+                : (v) =>
+                    aplicarAdicional(() => {
+                      if (descuentoEsPct) {
+                        const n = parseFloat(String(v).replace(/[^0-9.]/g, ""));
+                        if (!isNaN(n) && n > 100) {
+                          setDescuento("100");
+                          return;
+                        }
                       }
-                    }
-                    setDescuento(v);
-                  }
+                      setDescuento(v);
+                    }, { campo: true })
             }
             onDescuentoToggle={
-              edicionBloqueada
+              cuentaImpresa
                 ? undefined
-                : (esPct) => setDescuentoEsPct(esPct)
+                : (esPct) => aplicarAdicional(() => setDescuentoEsPct(esPct))
             }
             costoEnvio={costoEnvio}
             costoEnvioEsPct={costoEnvioEsPct}
-            onCostoEnvioChange={edicionBloqueada ? undefined : setCostoEnvio}
-            onCostoEnvioToggle={
-              edicionBloqueada
+            onCostoEnvioChange={
+              cuentaImpresa
                 ? undefined
-                : (esPct) => setCostoEnvioEsPct(esPct)
+                : (v) => aplicarAdicional(() => setCostoEnvio(v), { campo: true })
             }
-            disabled={edicionBloqueada}
+            onCostoEnvioToggle={
+              cuentaImpresa
+                ? undefined
+                : (esPct) => aplicarAdicional(() => setCostoEnvioEsPct(esPct))
+            }
+            disabled={cuentaImpresa}
+            onCerrarCampo={cerrarAdicional}
           />
           <PagoDesglose
             subtotal={subtotal}
@@ -724,8 +760,8 @@ const Pago = () => {
             costoEnvioEsPct={costoEnvioEsPct}
             montoCostoEnvio={montoCostoEnvio}
             total={total}
-            onDividirCuenta={
-              cobroBloqueado ? undefined : () => setOpenModalDividir(true)
+            onDividirCuenta={() =>
+              ejecutarCobro(() => setOpenModalDividir(true))
             }
             tieneDivision={filasGuardadas.length > 0}
           />
@@ -735,18 +771,23 @@ const Pago = () => {
               montoRecibido={montoRecibido}
               cambio={cambio}
               onChangeMonto={(valor) => {
-                setMontoRecibido(valor);
-                if (comanda?.ID) {
-                  persistirCobro(comanda.ID, metodoPagoId, valor);
-                }
+                const aplicar = () => {
+                  setMontoRecibido(valor);
+                  if (comanda?.ID) {
+                    persistirCobro(comanda.ID, metodoPagoId, valor);
+                  }
+                };
+                if (cuentaImpresa) aplicar();
+                else editarCampo(aplicar);
               }}
+              onBlur={cerrarCampo}
               onFocus={() =>
                 setTimeout(
                   () => scrollRef.current?.scrollToEnd({ animated: true }),
                   100,
                 )
               }
-              disabled={cobroBloqueado}
+              disabled={false}
             />
           )}
         </ScrollView>
@@ -764,12 +805,20 @@ const Pago = () => {
               }}
               style={s.btnImprimir}
               gradient={[gb.gray300, gb.gray200]}
-              onPress={() => {
-                if (configuraciones?.HABILITAR_EDICION_TICKET) {
-                  desbloquearComanda();
-                } else {
+              onPress={async () => {
+                if (configuraciones?.MODO_RESTRICTIVO) {
                   setOpenNipEditarModal(true);
+                  return;
                 }
+                const permitido = await sesionPuedeEntrar({ keywords: ["sales"] });
+                if (!permitido) {
+                  Alert.alert(
+                    "Sin permiso",
+                    "No tiene permisos para editar la cuenta.",
+                  );
+                  return;
+                }
+                await desbloquearComanda();
               }}
             >
               <Ionicons
@@ -778,7 +827,7 @@ const Pago = () => {
                 color={gb.gray700}
               />
               <Text style={[s.btnImprimirTexto, { color: gb.gray700 }]}>
-                Editar comanda
+                Editar Cuenta
               </Text>
             </Button>
             <Button
@@ -834,7 +883,7 @@ const Pago = () => {
         formatosPago={formatosPago}
         formatoPagoDefault={metodoPagoId}
         filasGuardadas={filasGuardadas}
-        disabled={cobroBloqueado}
+        disabled={false}
         onLimpiar={async () => {
           if (!comanda?.ID) return;
           await Database.limpiarPagoCuentaDividida(comanda.ID);
@@ -890,6 +939,23 @@ const Pago = () => {
         onSubmit={async () => {
           setOpenNipEditarModal(false);
           await desbloquearComanda();
+        }}
+      />
+
+      <NipModal
+        visible={openNipAdicional}
+        onClose={() => {
+          setOpenNipAdicional(false);
+          accionAdicionalRef.current = null;
+        }}
+        titulo="Adicional de pago"
+        modo="acceso"
+        keywords={["sales"]}
+        onSubmit={async () => {
+          setOpenNipAdicional(false);
+          const accion = accionAdicionalRef.current;
+          accionAdicionalRef.current = null;
+          await accion?.();
         }}
       />
 

@@ -99,7 +99,13 @@ const DetalleVentas = () => {
     try {
       const mesa = { NOMBRE: comanda.MESA_NOMBRE ?? "—" };
       const cliente = comanda.CLIENTE_NOMBRE
-        ? { NOMBRE: comanda.CLIENTE_NOMBRE }
+        ? {
+            NOMBRE: comanda.CLIENTE_NOMBRE,
+            DIRECCION: comanda.CLIENTE_DIRECCION,
+            TELEFONO: comanda.CLIENTE_TELEFONO,
+            NOTAS: comanda.CLIENTE_NOTAS,
+            DESCRIPCION: comanda.CLIENTE_DESCRIPCION,
+          }
         : null;
 
       const articulosPrint = articulos.map((art) => ({

@@ -38,6 +38,7 @@ const Inventarios = () => {
     seccion: "inventarios",
     configFlag: "MODO_RESTRICTIVO",
     tituloModal: "Inventarios",
+    keywords: ["inventory"],
   });
 
   const [items, setItems] = useState([]);

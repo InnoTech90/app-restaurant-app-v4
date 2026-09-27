@@ -64,6 +64,8 @@ const DetalleArticulo = () => {
     modalNipEdicion,
     cerrarNipEdicion,
     solicitarEdicion,
+    editarCampo,
+    cerrarCampo,
     confirmarNipEdicion,
   } = useEdicionTicket(config);
 
@@ -186,6 +188,14 @@ const DetalleArticulo = () => {
   const totalBruto = precioBase * cantidad;
 
   const onChangePct = (val) => {
+    if (!esEdicion) {
+      aplicarDescuentoPct(val);
+      return;
+    }
+    editarCampo(() => aplicarDescuentoPct(val));
+  };
+
+  const aplicarDescuentoPct = (val) => {
     let num = val.replace(/[^0-9.]/g, "");
     if (num === "" || isNaN(parseFloat(num))) {
       setDescuentoPct("");
@@ -202,6 +212,14 @@ const DetalleArticulo = () => {
   };
 
   const onChangeMonto = (val) => {
+    if (!esEdicion) {
+      aplicarDescuentoMonto(val);
+      return;
+    }
+    editarCampo(() => aplicarDescuentoMonto(val));
+  };
+
+  const aplicarDescuentoMonto = (val) => {
     let num = val.replace(/[^0-9.]/g, "");
     if (num === "" || isNaN(parseFloat(num))) {
       setDescuentoMonto("");
@@ -236,8 +254,7 @@ const DetalleArticulo = () => {
 
   const total = totalBruto - descuento + costoComplementos;
 
-  const abrirComplementos = () => {
-    solicitarEdicion(async () => {
+  const abrirComplementos = async () => {
       const id = String(
         idArticuloParam || articulo?.UUID || articulo?.ID || "",
       ).trim();
@@ -270,7 +287,6 @@ const DetalleArticulo = () => {
           articuloNombre: articulo?.NOMBRE ?? "",
         },
       });
-    });
   };
 
   const payloadArticulo = () => ({
@@ -291,38 +307,36 @@ const DetalleArticulo = () => {
     })),
   });
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     if (guardando || !articulo) return;
-    solicitarEdicion(async () => {
-      setGuardando(true);
-      try {
-        if (esEdicion) {
-          await Database.updateComandaArticulo(
-            Number(idComandaArticulo),
-            payloadArticulo(),
-          );
-        } else {
-          await Database.insertComanda({
-            id_mesa: idMesa,
-            nota: "",
-            articulos: [payloadArticulo()],
-          });
-        }
-        router.back();
-      } catch (err) {
-        console.error("Error guardando comanda:", err);
-      } finally {
-        setGuardando(false);
+    setGuardando(true);
+    try {
+      if (esEdicion) {
+        await Database.updateComandaArticulo(
+          Number(idComandaArticulo),
+          payloadArticulo(),
+        );
+      } else {
+        await Database.insertComanda({
+          id_mesa: idMesa,
+          nota: "",
+          articulos: [payloadArticulo()],
+        });
       }
-    });
+      router.back();
+    } catch (err) {
+      console.error("Error guardando comanda:", err);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const handleCambiarCantidad = (val) => {
+    if (!esEdicion) {
+      setCantidad(val);
+      return;
+    }
     solicitarEdicion(() => setCantidad(val));
-  };
-
-  const autorizarEdicion = () => {
-    solicitarEdicion(() => {});
   };
 
   if (cargando) {
@@ -386,8 +400,14 @@ const DetalleArticulo = () => {
             placeholder="Ej: sin sal, término medio..."
             placeholderTextColor={gb.gray400}
             value={notas}
-            onChangeText={setNotas}
-            onFocus={autorizarEdicion}
+            onChangeText={(texto) => {
+              if (!esEdicion) {
+                setNotas(texto);
+                return;
+              }
+              editarCampo(() => setNotas(texto));
+            }}
+            onBlur={cerrarCampo}
             multiline
             numberOfLines={3}
           />
@@ -445,7 +465,7 @@ const DetalleArticulo = () => {
                 placeholderTextColor={gb.gray400}
                 value={descuentoPct}
                 onChangeText={onChangePct}
-                onFocus={autorizarEdicion}
+                onBlur={esEdicion ? cerrarCampo : undefined}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -457,7 +477,7 @@ const DetalleArticulo = () => {
                 placeholderTextColor={gb.gray400}
                 value={descuentoMonto}
                 onChangeText={onChangeMonto}
-                onFocus={autorizarEdicion}
+                onBlur={esEdicion ? cerrarCampo : undefined}
                 keyboardType="decimal-pad"
               />
             </View>

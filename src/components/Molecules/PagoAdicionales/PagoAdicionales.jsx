@@ -27,7 +27,7 @@ const esCero = (v) => {
     return !String(v ?? "").trim() || (!Number.isNaN(n) && n === 0);
 };
 
-const FilaAdicional = ({ label, valor, onCambiar, esPct, onTogglePct, sufijo }) => (
+const FilaAdicional = ({ label, valor, onCambiar, esPct, onTogglePct, sufijo, onCerrar }) => (
     <View style={s.row}>
         <Text style={s.label}>{label}</Text>
         <View style={{ flexDirection: "row", gap: normalize(6) }}>
@@ -43,10 +43,14 @@ const FilaAdicional = ({ label, valor, onCambiar, esPct, onTogglePct, sufijo }) 
                         if (!onCambiar) return;
                         if (esCero(valor)) onCambiar("");
                     }}
-                    onBlur={() => {
-                        if (!onCambiar) return;
-                        if (!String(valor ?? "").trim()) onCambiar("0");
-                    }}
+            onBlur={() => {
+                if (!onCambiar) {
+                    onCerrar?.();
+                    return;
+                }
+                if (!String(valor ?? "").trim()) onCambiar("0");
+                onCerrar?.();
+            }}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     placeholderTextColor={gb.gray300}
@@ -75,6 +79,7 @@ const PagoAdicionales = ({
     costoEnvioEsPct,
     onCostoEnvioChange,
     onCostoEnvioToggle,
+    onCerrarCampo,
     disabled,
 }) => (
     <View style={s.wrapper}>
@@ -90,6 +95,7 @@ const PagoAdicionales = ({
                     label="Impuestos"
                     valor={impuestosPct}
                     onCambiar={disabled ? undefined : onImpuestosChange}
+                    onCerrar={onCerrarCampo}
                     sufijo="%"
                 />
                 <Pressable style={s.checkboxRow} onPress={disabled ? undefined : onToggleDesglosar}>
@@ -104,6 +110,7 @@ const PagoAdicionales = ({
                     label="Propina"
                     valor={propina}
                     onCambiar={disabled ? undefined : onPropinaChange}
+                    onCerrar={onCerrarCampo}
                     esPct={propinaEsPct}
                     onTogglePct={disabled ? undefined : onPropinaToggle}
                     sufijo={propinaEsPct ? "%" : "$"}
@@ -112,6 +119,7 @@ const PagoAdicionales = ({
                     label="Descuento"
                     valor={descuento}
                     onCambiar={disabled ? undefined : onDescuentoChange}
+                    onCerrar={onCerrarCampo}
                     esPct={descuentoEsPct}
                     onTogglePct={disabled ? undefined : onDescuentoToggle}
                     sufijo={descuentoEsPct ? "%" : "$"}
@@ -120,6 +128,7 @@ const PagoAdicionales = ({
                     label="Costo de envío"
                     valor={costoEnvio}
                     onCambiar={disabled ? undefined : onCostoEnvioChange}
+                    onCerrar={onCerrarCampo}
                     esPct={costoEnvioEsPct}
                     onTogglePct={disabled ? undefined : onCostoEnvioToggle}
                     sufijo={costoEnvioEsPct ? "%" : "$"}

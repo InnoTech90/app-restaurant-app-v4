@@ -5,21 +5,22 @@ import {
     isBluetoothEscposDisponible,
     MENSAJE_BT_NO_DISPONIBLE,
 } from '../../../../utils/bluetoothEscpos';
+import { withDb } from '../../../../utils/db';
+import { construirLineasCuenta, padLine } from '../Ticket/Plantillas/cuenta';
 import Database from './database';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Utilidades
-// ─────────────────────────────────────────────────────────────────────────────
-const COL_WIDTH = 32;
-const SEP = '--------------------------------\n';
-const fmt$ = (val) => `$${(val ?? 0).toFixed(2)}`;
+const getEncabezadoTicket = () =>
+    withDb('Pago.encabezadoTicket', async (db) => {
+        const negocio = await db.getFirstAsync(
+            `SELECT NOMBRE_NEGOCIO, DIRECCION, TELEFONO FROM NEGOCIO LIMIT 1`,
+        );
+        const sucursal = await db.getFirstAsync(
+            `SELECT NOMBRE, DIRECCION, TELEFONO FROM SUCURSAL LIMIT 1`,
+        );
+        return { negocio, sucursal };
+    });
 
-const padLine = (left, right) => {
-    const maxLeft = COL_WIDTH - right.length - 1;
-    const trimmed = left.length > maxLeft ? left.slice(0, maxLeft - 1) + '.' : left;
-    const spaces = COL_WIDTH - trimmed.length - right.length;
-    return trimmed + ' '.repeat(Math.max(1, spaces)) + right;
-};
+const SEP = '--------------------------------\n';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -107,120 +108,48 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
         try {
             await BluetoothEscposPrinter.printerInit();
 
-            // ── ENCABEZADO ────────────────────────────────────────────────────────
-            await BluetoothEscposPrinter.printerAlign(ALIGN.CENTER);
-            await BluetoothEscposPrinter.printText('CUENTA\n', { widthtimes: 1, heigthtimes: 1 });
-            await BluetoothEscposPrinter.printText(SEP, {});
-
-            // ── INFO ──────────────────────────────────────────────────────────────
-            await BluetoothEscposPrinter.printerAlign(ALIGN.LEFT);
-            await BluetoothEscposPrinter.printText(`Mesa : ${mesa?.NOMBRE ?? '-'}\n`, {});
-            await BluetoothEscposPrinter.printText(`Folio: #${comanda.FICHA ?? '-'}\n`, {});
-            const [fecha, horaFull] = (comanda.FECHA ?? '').split(' ');
-            await BluetoothEscposPrinter.printText(
-                `${fecha ?? '-'}  ${horaFull?.slice(0, 5) ?? ''}\n`,
-                {}
-            );
-            if (cliente) {
-                await BluetoothEscposPrinter.printText(`Cliente: ${cliente.NOMBRE}\n`, {});
-            }
-            await BluetoothEscposPrinter.printText(SEP, {});
-
-            // ── ARTÍCULOS ─────────────────────────────────────────────────────────
-            for (const renglon of articulos) {
-                const nombre =
-                    renglon.articulo?.NOMBRE ??
-                    renglon.articulo?.NOMBRE_CORTO ??
-                    '---';
-                const cant = renglon.CANTIDAD ?? 1;
-                await BluetoothEscposPrinter.printText(
-                    padLine(`${cant}x ${nombre}`, fmt$(renglon.TOTAL)) + '\n',
-                    {}
-                );
-                for (const comp of renglon.complementos ?? []) {
-                    const cNombre = comp.COMP_NOMBRE ?? comp.complemento?.NOMBRE ?? '---';
-                    const cPrecio = comp.COMP_PRECIO ?? comp.complemento?.PRECIO ?? 0;
-                    const compLine = cPrecio > 0
-                        ? padLine(`  + ${cNombre}`, fmt$(cPrecio))
-                        : `  + ${cNombre}`;
-                    await BluetoothEscposPrinter.printText(compLine + '\n', {});
-                }
-            }
-
-            // ── TOTALES ───────────────────────────────────────────────────────────
-            await BluetoothEscposPrinter.printText(SEP, {});
-            await BluetoothEscposPrinter.printText(
-                padLine('Subtotal', fmt$(totales.subtotal)) + '\n', {}
-            );
-            if ((totales.impuestos ?? 0) > 0) {
-                await BluetoothEscposPrinter.printText(
-                    padLine('Impuestos', fmt$(totales.impuestos)) + '\n', {}
-                );
-            }
-            if ((totales.descuento ?? 0) > 0) {
-                await BluetoothEscposPrinter.printText(
-                    padLine('Descuento', `-${fmt$(totales.descuento)}`) + '\n', {}
-                );
-            }
-            if ((totales.propina ?? 0) > 0) {
-                await BluetoothEscposPrinter.printText(
-                    padLine('Propina', fmt$(totales.propina)) + '\n', {}
-                );
-            }
-            if ((totales.costoEnvio ?? 0) > 0) {
-                await BluetoothEscposPrinter.printText(
-                    padLine('Envio', fmt$(totales.costoEnvio)) + '\n', {}
-                );
-            }
-            await BluetoothEscposPrinter.printText(SEP, {});
-
-            // Total en grande
-            await BluetoothEscposPrinter.printerAlign(ALIGN.RIGHT);
-            await BluetoothEscposPrinter.printText(`TOTAL  ${fmt$(totales.total)}\n`, {
-                widthtimes: 1,
-                heigthtimes: 1,
+            const encabezado = await getEncabezadoTicket();
+            const lineas = construirLineasCuenta({
+                negocio: encabezado?.negocio,
+                sucursal: encabezado?.sucursal,
+                comanda,
+                articulos,
+                mesa,
+                cliente,
+                totales,
+                metodoPago,
+                pagoDividido,
+                formatosPago,
+                impresion: (Number(comanda?.CONT_IMPRESO) || 0) + 1,
             });
 
-            // Pago normal (solo cuando no hay pago dividido)
-            await BluetoothEscposPrinter.printerAlign(ALIGN.LEFT);
-            await BluetoothEscposPrinter.printText(SEP, {});
-            if (pagoDividido.length === 0) {
-                const montoPago =
-                    (totales.montoRecibido ?? 0) > 0
-                        ? totales.montoRecibido
-                        : (totales.total ?? 0);
-                await BluetoothEscposPrinter.printText(
-                    padLine(`Pago (${metodoPago ?? '-'})`, fmt$(montoPago)) + '\n', {}
-                );
-                if ((totales.cambio ?? 0) > 0) {
-                    await BluetoothEscposPrinter.printText(
-                        padLine('Cambio', fmt$(totales.cambio)) + '\n', {}
-                    );
+            for (const linea of lineas) {
+                if (linea.kind === 'feed') {
+                    await BluetoothEscposPrinter.printText('\n\n\n', {});
+                    continue;
                 }
-            }
 
-            // ── PAGO DIVIDIDO (si existe) ─────────────────────────────────────────
-            if (pagoDividido.length > 0) {
-                await BluetoothEscposPrinter.printerAlign(ALIGN.LEFT);
-                await BluetoothEscposPrinter.printText(SEP, {});
-                await BluetoothEscposPrinter.printText('PAGO DIVIDIDO\n', { widthtimes: 1, heigthtimes: 1 });
-                for (let i = 0; i < pagoDividido.length; i++) {
-                    const fila = pagoDividido[i];
-                    const metodoF = formatosPago.find(
-                        (f) => (f.ID ?? f.value) === fila.FORMA_PAGO
-                    );
-                    const metodoNombre = metodoF?.NOMBRE ?? metodoF?.label ?? '-';
-                    await BluetoothEscposPrinter.printText(
-                        padLine(`  Cliente ${i + 1} (${metodoNombre})`, fmt$(fila.TOTAL)) + '\n', {}
-                    );
+                const align =
+                    linea.align ??
+                    (linea.kind === 'center'
+                        ? 'center'
+                        : linea.kind === 'right'
+                          ? 'right'
+                          : 'left');
+                await BluetoothEscposPrinter.printerAlign(ALIGN[align.toUpperCase()]);
+
+                if (linea.kind === 'sep') {
+                    await BluetoothEscposPrinter.printText(SEP, {});
+                    continue;
                 }
-            }
 
-            // ── FOOTER ────────────────────────────────────────────────────────────
-            await BluetoothEscposPrinter.printText(SEP, {});
-            await BluetoothEscposPrinter.printerAlign(ALIGN.CENTER);
-            await BluetoothEscposPrinter.printText('¡Gracias por su visita!\n\n\n', {});
-            await BluetoothEscposPrinter.printText('\n\n\n', {});
+                const opts = linea.size === 'lg' ? { widthtimes: 1, heigthtimes: 1 } : {};
+                const texto =
+                    linea.kind === 'pair'
+                        ? padLine(linea.left, linea.right)
+                        : linea.text;
+                await BluetoothEscposPrinter.printText(`${texto}\n`, opts);
+            }
             return true;
         } finally {
             await desconectarImpresora();

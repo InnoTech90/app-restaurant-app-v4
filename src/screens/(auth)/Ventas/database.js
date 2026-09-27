@@ -59,7 +59,11 @@ export default class VentasDatabase {
         `SELECT
                     c.*,
                     m.NOMBRE AS MESA_NOMBRE,
-                    cl.NOMBRE AS CLIENTE_NOMBRE
+                    cl.NOMBRE AS CLIENTE_NOMBRE,
+                    cl.DIRECCION AS CLIENTE_DIRECCION,
+                    cl.TELEFONO AS CLIENTE_TELEFONO,
+                    cl.NOTAS AS CLIENTE_NOTAS,
+                    cl.DESCRIPCION AS CLIENTE_DESCRIPCION
                 FROM COMANDA c
                 LEFT JOIN MESA m ON c.ID_MESA = m.UUID
                 LEFT JOIN CLIENTES cl ON c.ID_CLIENTE = cl.ID

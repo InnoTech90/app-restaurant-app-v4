@@ -3,7 +3,7 @@ import { gb } from "../../../screens/globalStyles";
 import Card from "../Card/Card";
 import { s } from "./styles";
 
-const PagoMontoRecibido = ({ total, montoRecibido, cambio, onChangeMonto, onFocus, disabled = false }) => (
+const PagoMontoRecibido = ({ total, montoRecibido, cambio, onChangeMonto, onFocus, onBlur, disabled = false }) => (
     <View style={s.wrapper}>
         <Card
             title="MONTO RECIBIDO"
@@ -20,6 +20,7 @@ const PagoMontoRecibido = ({ total, montoRecibido, cambio, onChangeMonto, onFocu
                         value={montoRecibido}
                         onChangeText={onChangeMonto}
                         onFocus={onFocus}
+                        onBlur={onBlur}
                         keyboardType="decimal-pad"
                         placeholder={total.toFixed(2)}
                         placeholderTextColor={gb.gray300}

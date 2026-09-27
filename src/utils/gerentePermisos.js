@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 /**
  * Permisos de gerente por KEYWORD (GERENTE_PERMISOS).
  *
@@ -65,4 +67,42 @@ export function requiereNipAcceso(screen) {
 /** @deprecated Usar requiereNipAcceso */
 export function requiereNipDueño(gerenteSesion, screen) {
   return requiereNipAcceso(screen);
+}
+
+const SESION_GERENTE = "gerenteSesion";
+
+export async function guardarSesionAcceso(result) {
+  if (result?.tipo === "owner") {
+    await AsyncStorage.setItem(
+      SESION_GERENTE,
+      JSON.stringify({ tipo: "owner", id: "owner" }),
+    );
+    return;
+  }
+
+  if (result?.tipo === "gerente") {
+    await AsyncStorage.setItem(
+      SESION_GERENTE,
+      JSON.stringify({
+        tipo: "gerente",
+        id: result.gerente?.UUID ?? null,
+        permisos: result.gerente?.permisos ?? [],
+      }),
+    );
+  }
+}
+
+/**
+ * Sin NIP: el dueño (o un dispositivo sin sesión de gerente) entra.
+ * Un gerente identificado sin el keyword de la pantalla no entra.
+ */
+export async function sesionPuedeEntrar(screen) {
+  const raw = await AsyncStorage.getItem(SESION_GERENTE);
+  if (!raw) return true;
+
+  try {
+    return tienePermisoKeyword(JSON.parse(raw), screen);
+  } catch {
+    return true;
+  }
 }

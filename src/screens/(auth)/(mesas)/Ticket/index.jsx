@@ -32,6 +32,7 @@ const Ticket = () => {
   const [modalSinImpresora, setModalSinImpresora] = useState(false);
   const [config, setConfig] = useState(null);
   const [comandaDb, setComandaDb] = useState(comandaData?.comanda ?? null);
+  const [edicionTrasImpresion, setEdicionTrasImpresion] = useState(false);
 
   const comanda = comandaDb ?? comandaData?.comanda;
   const bloqueada = Number(comanda?.ESTATUS) === 4;
@@ -39,7 +40,7 @@ const Ticket = () => {
     Number(comanda?.CONT_IMPRESO) > 0 ||
     (articulos.length > 0 &&
       articulos.every((a) => Number(a.IMPRESO) === 1));
-  const soloLectura = bloqueada || preparacionImpresa;
+  const soloLectura = bloqueada || (preparacionImpresa && !edicionTrasImpresion);
 
   const {
     puedeEditar,
@@ -47,11 +48,10 @@ const Ticket = () => {
     modalNipEdicion,
     cerrarNipEdicion,
     solicitarEdicion,
+    editarCampo,
+    cerrarCampo,
     confirmarNipEdicion,
-    desbloquearEdicion,
   } = useEdicionTicket(config);
-
-  const edicionBloqueada = soloLectura || !puedeEditar;
 
   useEffect(() => {
     Database.getConfiguraciones().then(setConfig).catch(console.error);
@@ -297,22 +297,28 @@ const Ticket = () => {
   };
 
   const handleNotaBlur = () => {
-    if (!comanda || soloLectura) return;
-    solicitarEdicion(async () => {
+    if (!comanda || soloLectura || requiereNipEdicion) return;
+    Database.actualizarNota(comanda.ID, nota).catch((e) => {
+      console.error("Error guardando nota:", e);
+    });
+  };
+
+  const handleNotaChange = (texto) => {
+    if (soloLectura) return;
+    editarCampo(async () => {
+      setNota(texto);
+      if (!comanda?.ID) return;
       try {
-        await Database.actualizarNota(comanda.ID, nota);
+        await Database.actualizarNota(comanda.ID, texto);
       } catch (e) {
         console.error("Error guardando nota:", e);
       }
     });
   };
 
-  const handleNotaChange = (texto) => {
-    if (edicionBloqueada) {
-      if (requiereNipEdicion && !soloLectura) desbloquearEdicion();
-      return;
-    }
-    setNota(texto);
+  const habilitarEdicionImpresa = () => {
+    if (bloqueada) return;
+    solicitarEdicion(() => setEdicionTrasImpresion(true));
   };
 
   const handleImprimir = async () => {
@@ -335,6 +341,7 @@ const Ticket = () => {
       ]);
       setArticulos(lista ?? []);
       if (comandaActual) setComandaDb(comandaActual);
+      setEdicionTrasImpresion(false);
     } catch (e) {
       console.error("Error imprimiendo ticket:", e);
     } finally {
@@ -352,12 +359,7 @@ const Ticket = () => {
   const handleEditarArticulo = (renglon) => {
     if (!renglon?.articulo && !renglon?.ID_ARTICULO) return;
     if (soloLectura) return;
-    if (edicionBloqueada) {
-      if (requiereNipEdicion) desbloquearEdicion();
-      return;
-    }
-    solicitarEdicion(() => {
-      router.push({
+    router.push({
         pathname: "/DetalleArticulo",
         params: {
           id_mesa: idMesa,
@@ -368,7 +370,6 @@ const Ticket = () => {
           ),
         },
       });
-    });
   };
 
   const renderArticulo = ({ item: renglon, index: idx }) => {
@@ -402,7 +403,7 @@ const Ticket = () => {
           onChange={(val) => handleCambiarCantidad(renglon, val)}
           min={1}
           small
-          disabled={edicionBloqueada}
+          disabled={soloLectura}
           style={s.inputCantidad}
         />
         <Text style={s.articuloTotal}>${(renglon.TOTAL ?? 0).toFixed(2)}</Text>
@@ -410,12 +411,12 @@ const Ticket = () => {
           style={s.btnEliminar}
           styleContainer={s.btnEliminarContainer}
           onPress={() => handleEliminarArticulo(renglon)}
-          disabled={edicionBloqueada}
+          disabled={soloLectura}
         >
           <Ionicons
             name="trash-outline"
             size={normalize(14)}
-            color={edicionBloqueada ? gb.gray400 : gb.red600}
+            color={soloLectura ? gb.gray400 : gb.red600}
           />
         </Button>
       </View>
@@ -561,7 +562,7 @@ const Ticket = () => {
         </View>
       )}
 
-      {!bloqueada && preparacionImpresa && (
+      {!bloqueada && preparacionImpresa && !edicionTrasImpresion && (
         <View
           style={{
             backgroundColor: gb.yellow100 ?? "#FFF2C5",
@@ -615,14 +616,9 @@ const Ticket = () => {
                 fontWeight: "600",
               }}
             >
-              Edición protegida — ingresa tu NIP para modificar el ticket
+            Cada cambio de la comanda pide NIP
             </Text>
           </View>
-          <Button onPress={desbloquearEdicion} style={{ paddingHorizontal: normalize(10), paddingVertical: normalize(6) }}>
-            <Text style={{ color: gb.gray50, fontSize: normalize(11), fontWeight: "700" }}>
-              Desbloquear
-            </Text>
-          </Button>
         </View>
       )}
 
@@ -657,10 +653,25 @@ const Ticket = () => {
           placeholderTextColor={gb.gray400}
           value={nota}
           onChangeText={handleNotaChange}
-          onBlur={handleNotaBlur}
+          onBlur={() => {
+            cerrarCampo();
+            handleNotaBlur();
+          }}
           textAlignVertical="top"
-          editable={!edicionBloqueada}
+          editable={!soloLectura}
         />
+
+        {preparacionImpresa && !bloqueada && !edicionTrasImpresion && (
+          <Button
+            styleContainer={s.btnImprimirContainer}
+            style={s.btnImprimir}
+            gradient={[gb.gray700, gb.gray600]}
+            onPress={habilitarEdicionImpresa}
+          >
+            <Ionicons name="create-outline" size={normalize(20)} color={gb.gray50} />
+            <Text style={s.btnImprimirTexto}>Editar impresión</Text>
+          </Button>
+        )}
 
         {/* Botón imprimir */}
         <Button

@@ -15,7 +15,7 @@ import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
 } from "../../utils/exportDatabase";
-import { requiereNipAcceso } from "../../utils/gerentePermisos";
+import { requiereNipAcceso, sesionPuedeEntrar } from "../../utils/gerentePermisos";
 import {
   autorizarSeccion,
   revocarOtrasSecciones,
@@ -162,26 +162,30 @@ export default function AuthLayout() {
       label: "Caja",
       title: "Caja",
       keywords: ["cash"],
+      restringeConModo: true,
+      seccionAcceso: "caja",
     },
     {
       name: "MiRestaurante/index",
       label: "Mi Restaurante",
       title: "Mi Restaurante",
       keywords: ["business"],
-      requiereNip: true,
+      restringeConModo: true,
+      seccionAcceso: "restaurante",
     },
     {
       name: "Clientes",
       label: "Clientes",
       title: "Clientes",
       keywords: ["customers"],
+      requiereNip: true,
     },
     {
       name: "Gastos",
       label: "Gastos",
       title: "Gastos",
       keywords: ["expenses"],
-      requiereNipSi: "MODO_RESTRICTIVO",
+      restringeConModo: true,
       seccionAcceso: "gastos",
     },
     {
@@ -189,7 +193,7 @@ export default function AuthLayout() {
       label: "Inventarios",
       title: "Inventarios",
       keywords: ["inventory"],
-      requiereNipSi: "MODO_RESTRICTIVO",
+      restringeConModo: true,
       seccionAcceso: "inventarios",
     },
     {
@@ -197,12 +201,21 @@ export default function AuthLayout() {
       label: "Impresoras",
       title: "Impresoras",
       keywords: ["printers"],
+      requiereNip: true,
     },
     {
       name: "Configuraciones/index",
       label: "Configuraciones",
       title: "Configuraciones",
       keywords: ["settings"],
+      restringeConModo: true,
+      seccionAcceso: "configuraciones",
+    },
+    {
+      name: "Plantillas/index",
+      label: "Plantillas",
+      title: "Plantillas",
+      soloDesarrollo: true,
     },
   ];
 
@@ -266,12 +279,40 @@ export default function AuthLayout() {
       navigation.navigate(screen.name);
     };
 
-    // Pantallas con keywords: NIP dueño (siempre) o gerente con permiso.
-    if (requiereNipAcceso(screen)) {
+    const pedirNipAcceso = () => {
       pedirNip(screen.title, navegar, {
         modo: "acceso",
         keywords: screen.keywords ?? [],
       });
+    };
+
+    if (screen.restringeConModo) {
+      const configuraciones = await dataBase.getConfiguracionesModel();
+      const modoRestrictivo = !!configuraciones?.[0]?.MODO_RESTRICTIVO;
+
+      if (modoRestrictivo) {
+        if (screen.seccionAcceso && tieneAccesoSeccion(screen.seccionAcceso)) {
+          navegar();
+          return;
+        }
+        pedirNipAcceso();
+        return;
+      }
+
+      const permitido = await sesionPuedeEntrar(screen);
+      if (!permitido) {
+        Alert.alert(
+          "Sin permiso",
+          "No tiene permisos para acceder a esta opción.",
+        );
+        return;
+      }
+      navegar();
+      return;
+    }
+
+    if (requiereNipAcceso(screen) && !screen.requiereNipSi) {
+      pedirNipAcceso();
       return;
     }
 
@@ -286,10 +327,7 @@ export default function AuthLayout() {
     }
 
     if (necesitaNip) {
-      pedirNip(screen.title, navegar, {
-        modo: "acceso",
-        keywords: screen.keywords ?? [],
-      });
+      pedirNipAcceso();
     } else {
       navegar();
     }
@@ -335,7 +373,7 @@ export default function AuthLayout() {
             options={{
               drawerLabel: screen.label,
               title: screen.title,
-              ...(ocultarDrawer
+              ...(ocultarDrawer || (screen.soloDesarrollo && !__DEV__)
                 ? {
                     drawerItemStyle: { display: "none" },
                     href: null,

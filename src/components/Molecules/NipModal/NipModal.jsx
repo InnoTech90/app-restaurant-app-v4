@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
+import { guardarSesionAcceso } from "../../../utils/gerentePermisos";
 import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
@@ -82,6 +83,7 @@ const NipModal = ({
         alert("NIP incorrecto");
         return;
       }
+      await guardarSesionAcceso(result);
       await onSubmit(result);
       return;
     }
