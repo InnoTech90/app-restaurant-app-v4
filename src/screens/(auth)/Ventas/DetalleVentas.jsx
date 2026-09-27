@@ -3,13 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useLocalSearchParams } from "expo-router/build/hooks";
 import { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import ModalSinImpresora from "../../../components/atoms/ModalSinImpresora/ModalSinImpresora";
@@ -77,8 +71,7 @@ const DetalleVentas = () => {
       0,
     );
     const subtotalArticulos = articulos.reduce(
-      (acc, a) =>
-        acc + (Number(a.SUBTOTAL) || Number(a.TOTAL) || 0),
+      (acc, a) => acc + (Number(a.SUBTOTAL) || Number(a.TOTAL) || 0),
       0,
     );
 
@@ -133,10 +126,7 @@ const DetalleVentas = () => {
       const total = Number(comanda.TOTAL) || 0;
       const cambio = Math.max(0, montoRecibido - total);
 
-      const metodoPago =
-        comanda.FORMATO_PAGO ||
-        pagos[0]?.METODO_NOMBRE ||
-        "—";
+      const metodoPago = comanda.FORMATO_PAGO || pagos[0]?.METODO_NOMBRE || "—";
 
       const ok = await imprimirCuenta(
         comanda,
@@ -282,13 +272,19 @@ const DetalleVentas = () => {
             </View>
             {/* Desglose */}
             <View style={{ marginTop: normalize(10), gap: normalize(4) }}>
-              <_FilaDesglose label="Subtotal" valor={totalesCalculados.subtotal} />
+              <_FilaDesglose
+                label="Subtotal"
+                valor={totalesCalculados.subtotal}
+              />
               <_FilaDesglose
                 label="Descuento"
                 valor={totalesCalculados.descuento}
                 resta
               />
-              <_FilaDesglose label="Propina" valor={totalesCalculados.propina} />
+              <_FilaDesglose
+                label="Propina"
+                valor={totalesCalculados.propina}
+              />
               <_FilaDesglose
                 label="Costo envío"
                 valor={totalesCalculados.costoEnvio}
