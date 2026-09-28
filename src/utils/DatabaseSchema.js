@@ -389,6 +389,36 @@ export const DatabaseSchema = {
       dependencies: ["SUCURSAL"],
     },
 
+    MOVIMIENTO_CAJA: {
+      name: "MOVIMIENTO_CAJA",
+      ddl: `
+        CREATE TABLE IF NOT EXISTS MOVIMIENTO_CAJA (
+          ID INTEGER PRIMARY KEY AUTOINCREMENT,
+          ID_CAJA INTEGER,
+          TIPO NVARCHAR,
+          MONTO REAL,
+          FECHA DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `,
+      dependencies: ["HISTORIAL_CAJA"],
+    },
+
+    CAJA_VENTA: {
+      name: "CAJA_VENTA",
+      ddl: `
+        CREATE TABLE IF NOT EXISTS CAJA_VENTA (
+          ID INTEGER PRIMARY KEY AUTOINCREMENT,
+          ID_CAJA INTEGER,
+          ID_COMANDA INTEGER,
+          METODO NVARCHAR,
+          MONTO REAL,
+          ES_EFECTIVO INTEGER DEFAULT 0,
+          FECHA DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `,
+      dependencies: ["HISTORIAL_CAJA", "COMANDA"],
+    },
+
     // Tablas de clientes
     CLIENTES: {
       name: "CLIENTES",

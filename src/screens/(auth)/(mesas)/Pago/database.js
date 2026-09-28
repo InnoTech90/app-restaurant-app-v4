@@ -1,5 +1,6 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import { withDb } from "../../../../utils/db";
+import { Database as CajaDatabase } from "../../Caja/dataBase";
 
 export default class Database {
   static async validarCajaAbierta(db) {
@@ -395,6 +396,27 @@ export default class Database {
             OR UUID = (SELECT ID_MESA FROM COMANDA WHERE ID = ?)`,
         [idComanda, idComanda],
       );
+
+      const lineas = [];
+      if (pagosDivididos.length > 0) {
+        for (const pago of pagosDivididos) {
+          const metodo = await db.getFirstAsync(
+            `SELECT NOMBRE FROM METODO_PAGO WHERE ID = ?`,
+            [pago.FORMA_PAGO],
+          );
+          lineas.push({
+            metodo: metodo?.NOMBRE ?? datos.formatoPago ?? "Otro",
+            monto: Number(pago.TOTAL) || 0,
+          });
+        }
+      } else if (datos.idMetodoPago != null || datos.formatoPago) {
+        lineas.push({
+          metodo: datos.formatoPago ?? "Otro",
+          monto: Number(datos.total) || 0,
+        });
+      }
+      await CajaDatabase.registrarVentaEnCaja(db, { idComanda, lineas });
+
       return { ok: true };
     });
   }
