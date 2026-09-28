@@ -24,6 +24,7 @@ const GeneralModal = ({
   headerTitle,
   headerColorText = "black",
   scrollable = true,
+  showsVerticalScrollIndicator = false,
 }) => {
   const headerContent = (
     <>
@@ -82,7 +83,7 @@ const GeneralModal = ({
                 style={s.content}
                 contentContainerStyle={s.contentContainer}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={showsVerticalScrollIndicator}
               >
                 {children}
               </ScrollView>

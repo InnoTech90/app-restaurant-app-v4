@@ -147,4 +147,97 @@ export class Database {
       ids,
     );
   }
+
+  /**
+   * Actualiza CATEGORIA_GASTO y CONCEPTO_GASTO con el arreglo `data` de la API.
+   * Cada grupo se guarda por UUID. Los conceptos que ya no vienen y no tienen
+   * gastos registrados se eliminan para que la lista coincida con el servidor.
+   */
+  static async guardarCatalogo(categorias) {
+    const db = await getDb();
+    const grupos = Array.isArray(categorias) ? categorias : [];
+    const uuidsCategoria = [];
+    const uuidsConcepto = [];
+
+    for (const categoria of grupos) {
+      if (!categoria?.id) continue;
+      uuidsCategoria.push(categoria.id);
+
+      await db.runAsync(
+        `INSERT INTO CATEGORIA_GASTO (UUID, NOMBRE, DESCRIPCION, SINCRONIZADO)
+         VALUES (?, ?, ?, 1)
+         ON CONFLICT(UUID) DO UPDATE SET
+           NOMBRE = excluded.NOMBRE,
+           DESCRIPCION = excluded.DESCRIPCION,
+           SINCRONIZADO = 1`,
+        [categoria.id, categoria.name ?? "", categoria.description ?? null],
+      );
+
+      for (const concepto of categoria.concepts || []) {
+        if (!concepto?.id) continue;
+        uuidsConcepto.push(concepto.id);
+
+        await db.runAsync(
+          `INSERT INTO CONCEPTO_GASTO
+             (UUID, ID_CATEGORIA, NOMBRE, DESCRIPCION, PRECIO, SINCRONIZADO)
+           VALUES (?, ?, ?, ?, ?, 1)
+           ON CONFLICT(UUID) DO UPDATE SET
+             ID_CATEGORIA = excluded.ID_CATEGORIA,
+             NOMBRE = excluded.NOMBRE,
+             DESCRIPCION = excluded.DESCRIPCION,
+             SINCRONIZADO = 1`,
+          [
+            concepto.id,
+            categoria.id,
+            concepto.name ?? "",
+            concepto.description ?? null,
+            concepto.price ?? 0,
+          ],
+        );
+      }
+    }
+
+    if (uuidsConcepto.length === 0) {
+      await db.runAsync(
+        `DELETE FROM CONCEPTO_GASTO
+         WHERE UUID NOT IN (
+           SELECT ID_CONCEPTO FROM REGISTRO_GASTO WHERE ID_CONCEPTO IS NOT NULL
+         )`,
+      );
+    } else {
+      const placeholders = uuidsConcepto.map(() => "?").join(",");
+      await db.runAsync(
+        `DELETE FROM CONCEPTO_GASTO
+         WHERE UUID NOT IN (${placeholders})
+           AND UUID NOT IN (
+             SELECT ID_CONCEPTO FROM REGISTRO_GASTO WHERE ID_CONCEPTO IS NOT NULL
+           )`,
+        uuidsConcepto,
+      );
+    }
+
+    if (uuidsCategoria.length === 0) {
+      await db.runAsync(
+        `DELETE FROM CATEGORIA_GASTO
+         WHERE UUID NOT IN (
+           SELECT ID_CATEGORIA FROM CONCEPTO_GASTO WHERE ID_CATEGORIA IS NOT NULL
+         )`,
+      );
+    } else {
+      const placeholders = uuidsCategoria.map(() => "?").join(",");
+      await db.runAsync(
+        `DELETE FROM CATEGORIA_GASTO
+         WHERE UUID NOT IN (${placeholders})
+           AND UUID NOT IN (
+             SELECT ID_CATEGORIA FROM CONCEPTO_GASTO WHERE ID_CATEGORIA IS NOT NULL
+           )`,
+        uuidsCategoria,
+      );
+    }
+
+    return {
+      categorias: uuidsCategoria.length,
+      conceptos: uuidsConcepto.length,
+    };
+  }
 }

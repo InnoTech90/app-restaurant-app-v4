@@ -41,7 +41,7 @@ export const s = StyleSheet.create({
   listContent: {
     padding: normalize(14),
     paddingBottom: normalize(30),
-    gap: normalize(10),
+    gap: normalize(14),
     // En tablet: layout de 2 columnas usando flexWrap
     ...(isTablet && {
       flexDirection: "row",
@@ -82,8 +82,9 @@ export const s = StyleSheet.create({
   },
   cardBody: {
     flex: 1,
-    padding: normalize(14),
-    gap: normalize(5),
+    paddingVertical: normalize(16),
+    paddingHorizontal: normalize(16),
+    gap: normalize(12),
   },
   cardHeader: {
     flexDirection: "row",
@@ -109,28 +110,40 @@ export const s = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
+  cardNameBlock: {
+    flex: 1,
+    gap: normalize(6),
+  },
   cardName: {
     color: gb.purple800,
     fontWeight: "700",
-    fontSize: normalize(14),
+    fontSize: normalize(15),
+    lineHeight: normalize(20),
     textTransform: "capitalize",
-    flex: 1,
+  },
+  cardDetails: {
+    gap: normalize(10),
+    paddingTop: normalize(12),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: gb.gray200,
   },
   cardInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: normalize(6),
+    gap: normalize(8),
   },
   cardInfoText: {
     color: gb.gray500,
-    fontSize: normalize(12),
+    fontSize: normalize(13),
+    lineHeight: normalize(18),
     flex: 1,
   },
   cardKey: {
+    alignSelf: "flex-start",
     backgroundColor: gb.purple550 + "18",
     borderRadius: normalize(8),
     paddingHorizontal: normalize(8),
-    paddingVertical: normalize(2),
+    paddingVertical: normalize(3),
   },
   cardKeyText: {
     color: gb.purple550,

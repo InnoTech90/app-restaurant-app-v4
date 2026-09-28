@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -86,6 +87,7 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
       iconCloseColor="white"
       headerColorText="white"
       animationType="slide"
+      showsVerticalScrollIndicator
     >
       {seleccionado && (
         <View style={s.modalInner}>
@@ -130,6 +132,11 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
               ]}
               onPress={() => setTipoMovimiento("entrada")}
             >
+              <Ionicons
+                name="add-circle-outline"
+                size={normalize(18)}
+                color={tipoMovimiento === "entrada" ? "white" : gb.green600}
+              />
               <Text
                 style={[
                   s.btnTipoMovimientoTexto,
@@ -137,11 +144,6 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
                     s.btnTipoMovimientoTextoActivo,
                 ]}
               >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={normalize(17)}
-                  color={tipoMovimiento === "entrada" ? "white" : gb.green600}
-                />
                 Entrada
               </Text>
             </Pressable>
@@ -154,17 +156,17 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
               ]}
               onPress={() => setTipoMovimiento("salida")}
             >
+              <Ionicons
+                name="remove-circle-outline"
+                size={normalize(18)}
+                color={tipoMovimiento === "salida" ? "white" : gb.red600}
+              />
               <Text
                 style={[
                   s.btnTipoMovimientoTexto,
                   tipoMovimiento === "salida" && s.btnTipoMovimientoTextoActivo,
                 ]}
               >
-                <Ionicons
-                  name="remove-circle-outline"
-                  size={normalize(17)}
-                  color={tipoMovimiento === "salida" ? "white" : gb.red600}
-                />
                 Salida
               </Text>
             </Pressable>
@@ -235,16 +237,45 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
             <Button style={s.btnCancelar} onPress={onClose}>
               <Text style={s.btnCancelarTexto}>Cancelar</Text>
             </Button>
-            <Button
-              gradient={gb.gradient_blue}
-              style={s.btnGuardar}
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                s.btnGuardar,
+                { opacity: pressed || guardando ? 0.8 : 1 },
+              ]}
               onPress={guardar}
               disabled={guardando}
             >
-              <Text style={s.btnGuardarTexto}>
-                {guardando ? "Guardando..." : `Registrar ${tipoMovimiento}`}
-              </Text>
-            </Button>
+              <LinearGradient
+                colors={
+                  tipoMovimiento === "entrada"
+                    ? [gb.green700, gb.green500]
+                    : [gb.red800, gb.red600]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.btnGuardarGradient}
+              >
+                <Ionicons
+                  name={
+                    guardando
+                      ? "hourglass-outline"
+                      : tipoMovimiento === "entrada"
+                        ? "add-circle-outline"
+                        : "remove-circle-outline"
+                  }
+                  size={normalize(18)}
+                  color="white"
+                />
+                <Text style={s.btnGuardarTexto} numberOfLines={1}>
+                  {guardando
+                    ? "Guardando..."
+                    : tipoMovimiento === "entrada"
+                      ? "Registrar entrada"
+                      : "Registrar salida"}
+                </Text>
+              </LinearGradient>
+            </Pressable>
           </View>
         </View>
       )}
@@ -316,12 +347,15 @@ const s = StyleSheet.create({
   },
   btnTipoMovimiento: {
     flex: 1,
-    height: normalize(42),
+    minHeight: normalize(48),
     borderRadius: normalize(8),
     borderWidth: 1,
     borderColor: gb.gray300,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: normalize(6),
+    paddingHorizontal: normalize(8),
     backgroundColor: "white",
   },
   btnEntradaActivo: {
@@ -333,12 +367,9 @@ const s = StyleSheet.create({
     borderColor: gb.red600,
   },
   btnTipoMovimientoTexto: {
-    fontSize: normalize(14),
+    fontSize: normalize(15),
     fontWeight: "700",
     color: gb.gray500,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: normalize(5),
   },
   btnTipoMovimientoTextoActivo: {
     color: "white",
@@ -422,12 +453,13 @@ const s = StyleSheet.create({
   },
   modalBotonesRow: {
     flexDirection: "row",
+    alignItems: "stretch",
     gap: normalize(10),
   },
   btnCancelar: {
-    flex: 1,
-    height: normalize(44),
-    borderRadius: normalize(8),
+    flex: 0.85,
+    height: normalize(48),
+    borderRadius: normalize(10),
     backgroundColor: gb.gray100,
     borderWidth: 1,
     borderColor: gb.gray300,
@@ -440,12 +472,18 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   btnGuardar: {
-    flex: 1,
-    height: normalize(44),
-    borderRadius: normalize(8),
+    flex: 1.45,
+    height: normalize(48),
+    borderRadius: normalize(10),
     overflow: "hidden",
+  },
+  btnGuardarGradient: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: normalize(6),
+    paddingHorizontal: normalize(12),
   },
   btnGuardarTexto: {
     fontSize: normalize(14),

@@ -1,7 +1,7 @@
 ﻿import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   DeviceEventEmitter,
@@ -28,6 +28,14 @@ import { Database } from "./database";
 import { GASTOS_REFRESH_EVENT } from "./events";
 import { integracionGastos } from "./integracion";
 import { s } from "./styles";
+
+const GRADIENTE_PENDIENTE = ["#F6C9A4", "#FBE6D4"];
+const COLOR_PENDIENTE = "#8A4E2A";
+
+const categoriaTienePendientes = (categoria) =>
+  (categoria.conceptos ?? []).some(
+    (concepto) => Number(concepto.TIENE_PENDIENTES) > 0,
+  );
 
 const formatearFechaCorta = (fechaIso) => {
   if (!fechaIso) return "—";
@@ -146,24 +154,35 @@ const CategoriaAccordion = ({
   onAddGasto,
   onEditGasto,
   onDeleteGasto,
-}) => (
+}) => {
+  const tienePendientes = categoriaTienePendientes(categoria);
+
+  return (
   <View style={s.seccion}>
     <Pressable onPress={onToggleCategoria}>
       <LinearGradient
         style={s.seccionHeader}
-        colors={gb.gradient_blue}
+        colors={tienePendientes ? GRADIENTE_PENDIENTE : gb.gradient_blue}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
         <Ionicons
           name={expandida ? "chevron-down" : "chevron-forward"}
           size={normalize(18)}
-          color="white"
+          color={tienePendientes ? COLOR_PENDIENTE : "white"}
         />
-        <Text style={s.seccionNombre} numberOfLines={1}>
+        <Text
+          style={[s.seccionNombre, tienePendientes && s.seccionNombrePendiente]}
+          numberOfLines={1}
+        >
           {categoria.NOMBRE}
         </Text>
-        <Text style={s.seccionHeaderTotal}>
+        <Text
+          style={[
+            s.seccionHeaderTotal,
+            tienePendientes && s.seccionHeaderTotalPendiente,
+          ]}
+        >
           ${Number(categoria.TOTAL ?? 0).toFixed(2)}
         </Text>
       </LinearGradient>
@@ -192,7 +211,8 @@ const CategoriaAccordion = ({
       </View>
     )}
   </View>
-);
+  );
+};
 
 /* ─── Pantalla principal ───────────────────────────────────────── */
 const Gastos = () => {
@@ -211,7 +231,8 @@ const Gastos = () => {
   });
 
   const [categorias, setCategorias] = useState([]);
-  const [refrescando, setRefrescando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
+  const actualizandoRef = useRef(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [catsExpandidas, setCatsExpandidas] = useState({});
   const [conceptosExpandidos, setConceptosExpandidos] = useState({});
@@ -240,11 +261,6 @@ const Gastos = () => {
     return () => sub.remove();
   }, [cargar]);
 
-  const onRefresh = async () => {
-    setRefrescando(true);
-    await cargar();
-    setRefrescando(false);
-  };
 
   const totalGeneral = categorias.reduce(
     (sum, cat) => sum + Number(cat.TOTAL ?? 0),
@@ -336,6 +352,40 @@ const Gastos = () => {
     }
   };
 
+  const actualizarCatalogo = async () => {
+    if (actualizandoRef.current) return;
+
+    const hayInternet = await verificarConexionInternet();
+    if (!hayInternet) {
+      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      return;
+    }
+
+    try {
+      actualizandoRef.current = true;
+      setActualizando(true);
+      const { categorias: totalCategorias, conceptos } =
+        await integracionGastos.actualizarCatalogo();
+      await cargar();
+      Alert.alert(
+        "Listo",
+        `${totalCategorias} categoría(s) y ${conceptos} concepto(s) actualizados.`,
+      );
+    } catch (e) {
+      console.error("Error al actualizar el catálogo de gastos:", e);
+      Alert.alert(
+        "Error",
+        obtenerMensajeErrorRed(
+          e,
+          "No se pudo actualizar el catálogo de gastos.",
+        ),
+      );
+    } finally {
+      actualizandoRef.current = false;
+      setActualizando(false);
+    }
+  };
+
   const sincronizarGastos = async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
@@ -346,12 +396,12 @@ const Gastos = () => {
     try {
       setSincronizando(true);
       const { sincronizados } = await integracionGastos.sincronizarGastos();
+      await cargar();
       if (sincronizados === 0) {
         Alert.alert("Sin pendientes", "No hay gastos por sincronizar.");
       } else {
         Alert.alert("Listo", `${sincronizados} registro(s) sincronizado(s).`);
       }
-      await cargar();
     } catch (e) {
       console.error("Error al sincronizar gastos:", e);
       Alert.alert(
@@ -388,6 +438,29 @@ const Gastos = () => {
           <Text style={s.totalBannerMonto}>${totalGeneral.toFixed(2)}</Text>
         </View>
 
+        {categorias.length > 0 && (
+          <View style={s.leyendaColores}>
+            <View style={s.leyendaItem}>
+              <LinearGradient
+                colors={gb.gradient_blue}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.leyendaMuestra}
+              />
+              <Text style={s.leyendaTexto}>Al día</Text>
+            </View>
+            <View style={s.leyendaItem}>
+              <LinearGradient
+                colors={GRADIENTE_PENDIENTE}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.leyendaMuestra}
+              />
+              <Text style={s.leyendaTexto}>Gastos por sincronizar</Text>
+            </View>
+          </View>
+        )}
+
         <FlatList
           style={{ flex: 1 }}
           data={categorias}
@@ -398,9 +471,10 @@ const Gastos = () => {
           ]}
           refreshControl={
             <RefreshControl
-              refreshing={refrescando}
-              onRefresh={onRefresh}
+              refreshing={actualizando}
+              onRefresh={actualizarCatalogo}
               colors={gb.gradient_blue}
+              tintColor={gb.blue550}
             />
           }
           renderItem={({ item }) => (
@@ -436,14 +510,20 @@ const Gastos = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
-        <Button style={s.btnSync} onPress={onRefresh}>
+        <Button
+          style={s.btnSync}
+          onPress={actualizarCatalogo}
+          disabled={actualizando || sincronizando}
+        >
           <Ionicons name="refresh-outline" size={normalize(20)} color="white" />
-          <Text style={s.btnSyncText}>Actualizar</Text>
+          <Text style={s.btnSyncText}>
+            {actualizando ? "..." : "Actualizar"}
+          </Text>
         </Button>
         <Button
           style={s.btnSync}
           onPress={sincronizarGastos}
-          disabled={sincronizando}
+          disabled={actualizando || sincronizando}
         >
           <Ionicons name="sync-outline" size={normalize(20)} color="white" />
           <Text style={s.btnSyncText}>

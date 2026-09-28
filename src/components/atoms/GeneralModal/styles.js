@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { Dimensions, StyleSheet } from "react-native";
 import {
   CONTENT_MAX_WIDTH,
   isTablet,
@@ -6,6 +6,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 
 const MODAL_WIDTH = isTablet ? Math.min(CONTENT_MAX_WIDTH * 0.72, 560) : "90%";
+const SCROLL_MAX_HEIGHT = Dimensions.get("window").height * (isTablet ? 0.68 : 0.74);
 
 const s = StyleSheet.create({
   background: {
@@ -18,18 +19,20 @@ const s = StyleSheet.create({
   sheet: {
     width: MODAL_WIDTH,
     maxWidth: isTablet ? 560 : undefined,
-    maxHeight: isTablet ? "70%" : "80%",
+    maxHeight: isTablet ? "85%" : "92%",
     borderRadius: normalize(12),
     overflow: "hidden",
     backgroundColor: "white",
   },
   container: {
     width: "100%",
-    maxHeight: isTablet ? "100%" : undefined,
+    flexShrink: 1,
     backgroundColor: "white",
   },
   content: {
     width: "100%",
+    maxHeight: SCROLL_MAX_HEIGHT,
+    flexShrink: 1,
     backgroundColor: "white",
   },
   contentContainer: {

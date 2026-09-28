@@ -61,10 +61,8 @@ const ClienteCard = ({ cliente, onPress }) => {
           >
             <Text style={s.cardAvatarText}>{iniciales}</Text>
           </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={s.cardName} numberOfLines={1}>
-              {cliente.NOMBRE}
-            </Text>
+          <View style={s.cardNameBlock}>
+            <Text style={s.cardName}>{cliente.NOMBRE}</Text>
             <View style={s.cardKey}>
               <Text style={s.cardKeyText}>Clave #{cliente.DINNER_KEY}</Text>
             </View>
@@ -78,43 +76,44 @@ const ClienteCard = ({ cliente, onPress }) => {
           />
         </View>
 
-        {/* Teléfono */}
-        {!!cliente.TELEFONO && (
-          <View style={s.cardInfoRow}>
-            <Ionicons
-              name="call-outline"
-              size={normalize(13)}
-              color={gb.blue500}
-            />
-            <Text style={s.cardInfoText}>{cliente.TELEFONO}</Text>
-          </View>
-        )}
+        {(!!cliente.TELEFONO || !!cliente.CORREO || !!cliente.DIRECCION) && (
+          <View style={s.cardDetails}>
+            {!!cliente.TELEFONO && (
+              <View style={s.cardInfoRow}>
+                <Ionicons
+                  name="call-outline"
+                  size={normalize(15)}
+                  color={gb.blue500}
+                />
+                <Text style={s.cardInfoText}>{cliente.TELEFONO}</Text>
+              </View>
+            )}
 
-        {/* Correo */}
-        {!!cliente.CORREO && (
-          <View style={s.cardInfoRow}>
-            <Ionicons
-              name="mail-outline"
-              size={normalize(13)}
-              color={gb.purple550}
-            />
-            <Text style={s.cardInfoText} numberOfLines={1}>
-              {cliente.CORREO}
-            </Text>
-          </View>
-        )}
+            {!!cliente.CORREO && (
+              <View style={s.cardInfoRow}>
+                <Ionicons
+                  name="mail-outline"
+                  size={normalize(15)}
+                  color={gb.purple550}
+                />
+                <Text style={s.cardInfoText} numberOfLines={1}>
+                  {cliente.CORREO}
+                </Text>
+              </View>
+            )}
 
-        {/* Dirección */}
-        {!!cliente.DIRECCION && (
-          <View style={s.cardInfoRow}>
-            <Ionicons
-              name="location-outline"
-              size={normalize(13)}
-              color={gb.red400}
-            />
-            <Text style={s.cardInfoText} numberOfLines={1}>
-              {cliente.DIRECCION}
-            </Text>
+            {!!cliente.DIRECCION && (
+              <View style={s.cardInfoRow}>
+                <Ionicons
+                  name="location-outline"
+                  size={normalize(15)}
+                  color={gb.red400}
+                />
+                <Text style={s.cardInfoText} numberOfLines={1}>
+                  {cliente.DIRECCION}
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>

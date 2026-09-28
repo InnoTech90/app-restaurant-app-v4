@@ -263,6 +263,31 @@ export const s = StyleSheet.create({
         fontWeight: "800",
         fontSize: normalize(16),
     },
+    leyendaColores: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: normalize(14),
+        paddingHorizontal: normalize(16),
+        paddingVertical: normalize(8),
+        backgroundColor: "white",
+        borderBottomWidth: 1,
+        borderBottomColor: gb.gray200,
+    },
+    leyendaItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(6),
+    },
+    leyendaMuestra: {
+        width: normalize(14),
+        height: normalize(14),
+        borderRadius: normalize(4),
+    },
+    leyendaTexto: {
+        color: gb.gray600,
+        fontSize: normalize(12),
+    },
 
     /* ── Sección de categoría ────────────────── */
     seccion: {
@@ -294,6 +319,12 @@ export const s = StyleSheet.create({
         color: "white",
         fontWeight: "800",
         fontSize: normalize(14),
+    },
+    seccionNombrePendiente: {
+        color: "#8A4E2A",
+    },
+    seccionHeaderTotalPendiente: {
+        color: "#8A4E2A",
     },
     conceptosWrap: {
         backgroundColor: "white",
