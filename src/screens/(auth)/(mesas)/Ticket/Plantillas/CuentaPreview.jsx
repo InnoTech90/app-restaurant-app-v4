@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { construirLineasCuenta } from './cuenta';
+import { construirLineasCuenta, perfilTamanoTicket } from './cuenta';
 
 const alignStyle = {
     center: 'center',
@@ -8,9 +8,18 @@ const alignStyle = {
 };
 
 const CuentaPreview = (props) => {
+    const perfil = perfilTamanoTicket(props.tamano);
     const lineas = (props.lineas ?? construirLineasCuenta(props)).filter(
         (linea) => linea.kind !== 'feed',
     );
+    const texto = {
+        fontSize: perfil.preview,
+        lineHeight: Math.round(perfil.preview * 1.35),
+    };
+    const destacado = {
+        fontSize: Math.round(perfil.preview * 1.25),
+        lineHeight: Math.round(perfil.preview * 1.6),
+    };
 
     return (
         <View style={styles.sombra}>
@@ -22,10 +31,24 @@ const CuentaPreview = (props) => {
                     if (linea.kind === 'pair') {
                         return (
                             <View key={index} style={styles.fila}>
-                                <Text style={[styles.texto, styles.textoFlex]} numberOfLines={1}>
+                                <Text style={[styles.texto, texto, styles.textoFlex]}>
                                     {linea.left}
                                 </Text>
-                                <Text style={styles.monto}>{linea.right}</Text>
+                                <Text style={[styles.monto, texto]}>{linea.right}</Text>
+                            </View>
+                        );
+                    }
+                    const partes = String(linea.text ?? '').match(/^(.*\S)\s{2,}(\S+)$/);
+                    if (partes) {
+                        const grande = linea.size === 'lg';
+                        return (
+                            <View key={index} style={styles.fila}>
+                                <Text style={[styles.texto, texto, styles.textoFlex, grande && styles.grande, grande && destacado]}>
+                                    {partes[1]}
+                                </Text>
+                                <Text style={[styles.monto, texto, grande && styles.grande, grande && destacado]}>
+                                    {partes[2]}
+                                </Text>
                             </View>
                         );
                     }
@@ -35,7 +58,9 @@ const CuentaPreview = (props) => {
                             key={index}
                             style={[
                                 styles.texto,
+                                texto,
                                 grande && styles.grande,
+                                grande && destacado,
                                 { textAlign: alignStyle[linea.kind] ?? 'left' },
                             ]}
                         >

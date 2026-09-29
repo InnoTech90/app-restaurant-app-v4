@@ -6,7 +6,7 @@ import {
     MENSAJE_BT_NO_DISPONIBLE,
 } from '../../../../utils/bluetoothEscpos';
 import { withDb } from '../../../../utils/db';
-import { construirLineasCuenta, padLine } from '../Ticket/Plantillas/cuenta';
+import { construirLineasCuenta, padLine, perfilTamanoTicket } from '../Ticket/Plantillas/cuenta';
 import Database from './database';
 
 const getEncabezadoTicket = () =>
@@ -17,7 +17,13 @@ const getEncabezadoTicket = () =>
         const sucursal = await db.getFirstAsync(
             `SELECT NOMBRE, DIRECCION, TELEFONO FROM SUCURSAL LIMIT 1`,
         );
-        return { negocio, sucursal };
+        const tamano = await db.getFirstAsync(
+            `SELECT f.NOMBRE AS TAMANO
+             FROM CONFIGURACIONES c
+             LEFT JOIN TAMAÑO_FUENTES f ON f.ID = c.ID_TAMAÑO_FUENTE
+             LIMIT 1`,
+        );
+        return { negocio, sucursal, tamano: tamano?.TAMANO };
     });
 
 const SEP = '--------------------------------\n';
@@ -109,6 +115,16 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
             await BluetoothEscposPrinter.printerInit();
 
             const encabezado = await getEncabezadoTicket();
+            const tamano = perfilTamanoTicket(encabezado?.tamano);
+            const cuerpo = {
+                fonttype: tamano.fonttype,
+                widthtimes: tamano.widthtimes,
+                heigthtimes: tamano.heigthtimes,
+            };
+            const destacado = {
+                ...cuerpo,
+                heigthtimes: Math.min(tamano.heigthtimes + 1, 2),
+            };
             const lineas = construirLineasCuenta({
                 negocio: encabezado?.negocio,
                 sucursal: encabezado?.sucursal,
@@ -143,7 +159,7 @@ export const imprimirCuenta = async (comanda, articulos, mesa, cliente, totales,
                     continue;
                 }
 
-                const opts = linea.size === 'lg' ? { widthtimes: 1, heigthtimes: 1 } : {};
+                const opts = linea.size === 'lg' ? destacado : cuerpo;
                 const texto =
                     linea.kind === 'pair'
                         ? padLine(linea.left, linea.right)

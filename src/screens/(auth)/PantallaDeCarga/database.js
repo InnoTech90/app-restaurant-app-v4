@@ -26,7 +26,7 @@ const CONFIGURACIONES_DEFAULTS = {
   abiertoPedidos: 1,
   imprimirFicha: 1,
   soloProductosNuevos: 0,
-  idTamanoFuente: 2,
+  idTamanoFuente: 1,
   costoEnvio: 0,
   impuestos: 0,
   descuentos: 0,

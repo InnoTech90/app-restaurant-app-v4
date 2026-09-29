@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import CuentaPreview from "../(mesas)/Ticket/Plantillas/CuentaPreview";
+import { withDb } from "../../../utils/db";
 
 const BASE = {
   negocio: { NOMBRE_NEGOCIO: "Antojos a la Mexicana" },
@@ -69,6 +70,21 @@ const PLANTILLAS = [
 const Plantillas = () => {
   const [previewId, setPreviewId] = useState(null);
   const [dividido, setDividido] = useState(false);
+  const [tamano, setTamano] = useState("Pequeña");
+
+  useEffect(() => {
+    withDb("Plantillas.tamano", async (db) => {
+      const fila = await db.getFirstAsync(
+        `SELECT f.NOMBRE AS TAMANO
+         FROM CONFIGURACIONES c
+         LEFT JOIN TAMAÑO_FUENTES f ON f.ID = c.ID_TAMAÑO_FUENTE
+         LIMIT 1`,
+      );
+      return fila?.TAMANO ?? "Pequeña";
+    }).then((nombre) => {
+      if (nombre) setTamano(nombre);
+    });
+  }, []);
 
   return (
     <ScrollView
@@ -165,6 +181,7 @@ const Plantillas = () => {
                 </View>
                 <CuentaPreview
                   {...BASE}
+                  tamano={tamano}
                   pagoDividido={dividido ? PAGO_DIVIDIDO : []}
                 />
               </View>

@@ -3,6 +3,44 @@
 
 const COL_WIDTH = 32;
 
+// La letra cambia de tamaño, el ancho se queda en 32 columnas para que
+// etiquetas y montos sigan alineados en papel de 58 mm.
+export const perfilTamanoTicket = (nombre) => {
+    const clave = String(nombre ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    if (clave.startsWith('grand')) {
+        return {
+            id: 'grande',
+            columnas: COL_WIDTH,
+            fonttype: 0,
+            widthtimes: 0,
+            heigthtimes: 1,
+            preview: 17,
+        };
+    }
+    if (clave.startsWith('med')) {
+        return {
+            id: 'mediana',
+            columnas: COL_WIDTH,
+            fonttype: 0,
+            widthtimes: 0,
+            heigthtimes: 0,
+            preview: 13,
+        };
+    }
+    return {
+        id: 'pequena',
+        columnas: COL_WIDTH,
+        fonttype: 1,
+        widthtimes: 0,
+        heigthtimes: 0,
+        preview: 10,
+    };
+};
+
 export const fmt$ = (val) => `$${(val ?? 0).toFixed(2)}`;
 
 export const padLine = (left, right) => {
@@ -129,10 +167,6 @@ export const construirLineasCuenta = ({
         });
     }
 
-    const conMonto = derecha.filter((fila) => fila.left);
-    const anchoEtiqueta = Math.max(0, ...conMonto.map((fila) => fila.left.length));
-    const anchoMonto = Math.max(0, ...conMonto.map((fila) => fila.right.length));
-
     lineas.push({ kind: 'sep' });
     for (const fila of derecha) {
         if (fila.sep) {
@@ -140,13 +174,25 @@ export const construirLineasCuenta = ({
             continue;
         }
         if (fila.text) {
-            lineas.push({ kind: 'right', text: fila.text, size: fila.size });
+            const titulo = String(fila.text).slice(0, COL_WIDTH);
+            lineas.push({
+                kind: 'left',
+                text: `${' '.repeat(Math.max(0, COL_WIDTH - titulo.length))}${titulo}`,
+                size: fila.size,
+            });
             continue;
         }
+        const monto = String(fila.right);
+        let etiqueta = String(fila.left);
+        const maxEtiqueta = Math.max(1, COL_WIDTH - monto.length - 1);
+        if (etiqueta.length > maxEtiqueta) {
+            etiqueta = `${etiqueta.slice(0, Math.max(1, maxEtiqueta - 1))}.`;
+        }
+        const espacios = Math.max(1, COL_WIDTH - etiqueta.length - monto.length);
         lineas.push({
-            kind: 'right',
+            kind: 'left',
             size: fila.size,
-            text: `${fila.left.padEnd(anchoEtiqueta)}  ${fila.right.padStart(anchoMonto)}`,
+            text: `${etiqueta}${' '.repeat(espacios)}${monto}`,
         });
     }
 

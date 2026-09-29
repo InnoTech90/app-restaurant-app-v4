@@ -89,20 +89,18 @@ export const conectarImpresora = async (address) => {
     await liberarConexionBT();
     await sleep(800);
 
-    for (let intento = 0; intento < 2; intento++) {
+    for (let intento = 0; intento < 3; intento++) {
         try {
             await BluetoothManager.connect(mac);
-            await sleep(600);
+            await sleep(700);
             return true;
         } catch (e) {
             console.warn(
                 `[BT] connect intento ${intento + 1} (${mac}):`,
                 e?.message ?? e,
             );
-            if (intento === 0) {
-                await liberarConexionBT();
-                await sleep(1200);
-            }
+            await liberarConexionBT();
+            if (intento < 2) await sleep(900 + intento * 600);
         }
     }
 
@@ -122,7 +120,8 @@ export const desconectarImpresora = async (address) => {
  * Conecta, imprime y libera la conexión al terminar.
  * @returns {Promise<boolean>}
  */
-export const imprimirConImpresora = async (address, imprimirFn) => {
+export const imprimirConImpresora = async (address, imprimirFn, opciones = {}) => {
+    const avisar = opciones.avisar !== false;
     if (!isBluetoothEscposDisponible()) {
         Alert.alert(
             'Impresión no disponible',
@@ -140,28 +139,51 @@ export const imprimirConImpresora = async (address, imprimirFn) => {
     const btOk = await prepararBluetooth();
     if (!btOk) return false;
 
-    try {
-        const conectado = await conectarImpresora(mac);
-        if (!conectado) {
-            Alert.alert(
-                'Sin conexión',
-                `No se pudo conectar con ${mac}. Verifica que la impresora esté encendida, emparejada en Ajustes → Bluetooth y cerca del dispositivo.`,
-            );
-            return false;
-        }
-
+    const enviar = async () => {
         await BluetoothEscposPrinter.printerInit();
         await sleep(200);
         await imprimirFn();
-        await sleep(800);
-        return true;
-    } catch (e) {
-        console.warn('[BT] Error imprimiendo en', mac, e?.message ?? e);
+        await sleep(500);
+    };
+
+    const avisarFallo = () => {
+        if (!avisar) return;
         Alert.alert(
-            'Error de impresión',
-            e?.message ?? 'Ocurrió un error al enviar datos a la impresora.',
+            'Sin conexión',
+            `No se pudo conectar con ${mac}. Verifica que la impresora esté encendida, emparejada en Ajustes → Bluetooth y cerca del dispositivo.`,
         );
-        return false;
+    };
+
+    try {
+        let conectado = await conectarImpresora(mac);
+        if (!conectado) {
+            avisarFallo();
+            return false;
+        }
+
+        try {
+            await enviar();
+            return true;
+        } catch (e) {
+            console.warn('[BT] Error imprimiendo en', mac, e?.message ?? e);
+            await liberarConexionBT();
+            await sleep(800);
+        }
+
+        conectado = await conectarImpresora(mac);
+        if (!conectado) {
+            avisarFallo();
+            return false;
+        }
+
+        try {
+            await enviar();
+            return true;
+        } catch (e) {
+            console.warn('[BT] Segundo intento falló en', mac, e?.message ?? e);
+            avisarFallo();
+            return false;
+        }
     } finally {
         await sleep(300);
         await liberarConexionBT();

@@ -31,7 +31,7 @@ import {
   solicitarPermisosBluetooth,
 } from "./Funciones/Impresion";
 import s from "./styles";
-import { handleTest } from "./templates/TicketDePrueba";
+import { imprimirTicketPrueba } from "./templates/TicketDePrueba";
 
 // Caché de dispositivos emparejados — no guardar listas vacías para permitir reintentos.
 let _pairedDevicesCache = null;
@@ -45,6 +45,8 @@ const PrinterCard = ({
   onDesvincular,
   onTest,
   vinculando,
+  pruebaBloqueada,
+  pruebaMandada,
 }) => {
   const linked = !!item.ID_IMPRESORA;
   return (
@@ -90,13 +92,19 @@ const PrinterCard = ({
       <View style={s.cardActions}>
         {linked ? (
           <>
-            <Pressable style={s.btnTest} onPress={() => onTest(item)}>
+            <Pressable
+              style={[s.btnTest, pruebaBloqueada && { opacity: 0.65 }]}
+              onPress={() => onTest(item)}
+              disabled={pruebaBloqueada}
+            >
               <Ionicons
-                name="checkmark-circle"
+                name={pruebaMandada ? "paper-plane" : "checkmark-circle"}
                 size={normalize(13)}
                 color="white"
               />
-              <Text style={s.btnText}>Prueba</Text>
+              <Text style={s.btnText}>
+                {pruebaMandada ? "Prueba mandada" : "Prueba"}
+              </Text>
             </Pressable>
             <Pressable
               style={s.btnDesvincular}
@@ -159,7 +167,27 @@ const Impresoras = () => {
   const [pairedDevices, setPairedDevices] = useState([]);
   const [foundDevices, setFoundDevices] = useState([]);
   const [conectando, setConectando] = useState(false);
+  const [enviandoPruebaId, setEnviandoPruebaId] = useState(null);
   const puntoSeleccionadoRef = useRef(null);
+
+  const enviarPrueba = async (punto) => {
+    if (!punto?.ID_IMPRESORA || enviandoPruebaId) return;
+
+    setEnviandoPruebaId(punto.ID);
+    let ok = false;
+    try {
+      ok = await imprimirTicketPrueba(punto, { avisar: false });
+    } finally {
+      setEnviandoPruebaId(null);
+    }
+
+    if (ok) return;
+
+    Alert.alert(
+      "No se pudo imprimir",
+      `La impresora de "${punto.NOMBRE}" no respondió. Espera un momento y vuelve a pulsar Prueba.`,
+    );
+  };
 
   const cargarPuntosDesdeApi = useCallback(async () => {
     const hayInternet = await verificarConexionInternet();
@@ -361,8 +389,6 @@ const Impresoras = () => {
     if (!puntoSeleccionadoRef.current) return;
     try {
       setConectando(true);
-      // Solo guardar la MAC — no se necesita abrir conexión RFCOMM para vincular.
-      // Conectarse aquí agota el stack BT de Android al vincular varias impresoras.
       await Database.vincularImpresora(
         puntoSeleccionadoRef.current.ID,
         device.address,
@@ -374,17 +400,35 @@ const Impresoras = () => {
       return;
     }
 
-    // Guardado exitoso — cerrar modal y refrescar lista.
-    // cargarPuntos() va fuera del try para que un error de lectura
-    // no se confunda con un error de vinculación.
-    const nombrePunto = puntoSeleccionadoRef.current.NOMBRE;
+    const punto = puntoSeleccionadoRef.current;
+    const nombrePunto = punto.NOMBRE;
     const nombreDispositivo = device.name || device.address;
     setModalBT(false);
-    setConectando(false);
-    await cargarPuntos().catch(() => {});
+    setEnviandoPruebaId(punto.ID);
+    await cargarPuntos({ mostrarLoader: false }).catch(() => {});
+
+    let ok = false;
+    try {
+      ok = await imprimirTicketPrueba(
+        { ...punto, ID_IMPRESORA: device.address },
+        { avisar: false },
+      );
+    } finally {
+      setEnviandoPruebaId(null);
+      setConectando(false);
+    }
+
+    if (ok) {
+      Alert.alert(
+        "Vinculada",
+        `Impresora "${nombreDispositivo}" vinculada a "${nombrePunto}". Se envió una prueba de impresión.`,
+      );
+      return;
+    }
+
     Alert.alert(
       "Vinculada",
-      `Impresora "${nombreDispositivo}" vinculada a "${nombrePunto}".`,
+      `Se guardó "${nombreDispositivo}" en "${nombrePunto}", pero no salió la prueba. Enciende la impresora y pulsa Prueba.`,
     );
   };
 
@@ -491,8 +535,10 @@ const Impresoras = () => {
                 item={item}
                 onVincular={handleVincular}
                 onDesvincular={handleDesvincular}
-                onTest={handleTest}
-                vinculando={conectando}
+                onTest={enviarPrueba}
+                vinculando={conectando || enviandoPruebaId != null}
+                pruebaBloqueada={enviandoPruebaId != null}
+                pruebaMandada={enviandoPruebaId === item.ID}
               />
             </View>
           )}
