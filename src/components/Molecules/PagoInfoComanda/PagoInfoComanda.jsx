@@ -35,11 +35,11 @@ const PagoInfoComanda = ({
                     <Text style={s.label}>Fecha</Text>
                     <Text style={s.valor}>{fecha} · {hora}</Text>
                 </View>
-                <View style={s.row}>
+                <View style={[s.row, s.rowTop]}>
                     <Text style={s.label}>Cliente</Text>
                     <Button
                         styleContainer={s.clienteBtnContainer}
-                        style={s.clienteBtn}
+                        style={[s.clienteBtn, cliente && s.clienteBtnActivo]}
                         onPress={onAbrirModalCliente}
                     >
                         <Ionicons
@@ -47,11 +47,31 @@ const PagoInfoComanda = ({
                             size={normalize(16)}
                             color={cliente ? gb.green500 : gb.blue550}
                         />
-                        <Text style={[s.clienteBtnTexto, cliente && { color: gb.green500 }]}>
-                            {cliente ? cliente.NOMBRE.split(" ")[0] : "Asignar cliente"}
+                        <Text
+                            style={[s.clienteBtnTexto, cliente && { color: gb.green500 }]}
+                        >
+                            {cliente ? cliente.NOMBRE : "Asignar cliente"}
                         </Text>
                     </Button>
                 </View>
+                {!!cliente?.TELEFONO && (
+                    <View style={s.row}>
+                        <Text style={s.label}>Teléfono</Text>
+                        <Text style={s.valor}>{cliente.TELEFONO}</Text>
+                    </View>
+                )}
+                {!!cliente?.DIRECCION && (
+                    <View style={[s.row, s.rowTop]}>
+                        <Text style={s.label}>Dirección</Text>
+                        <Text style={s.valor}>{cliente.DIRECCION}</Text>
+                    </View>
+                )}
+                {!!cliente?.DESCRIPCION && (
+                    <View style={[s.row, s.rowTop]}>
+                        <Text style={s.label}>Descripción</Text>
+                        <Text style={s.valor}>{cliente.DESCRIPCION}</Text>
+                    </View>
+                )}
             </View>
         </Card>
     </View>

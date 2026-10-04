@@ -194,7 +194,7 @@ const PagoArticulos = ({
           style={s.notasInput}
           multiline
           numberOfLines={2}
-          placeholder="Nota de la mesa..."
+          placeholder="Nota de la comanda..."
           placeholderTextColor={gb.gray400}
           value={nota}
           onChangeText={onNotaChange}

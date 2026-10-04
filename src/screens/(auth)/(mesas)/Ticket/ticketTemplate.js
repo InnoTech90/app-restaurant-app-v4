@@ -1,5 +1,6 @@
 import { Alert, Platform } from 'react-native';
 import { BluetoothEscposPrinter, isBluetoothEscposDisponible } from '../../../../utils/bluetoothEscpos';
+import { withDb } from '../../../../utils/db';
 import {
     conectarImpresora,
     liberarConexionBT,
@@ -8,27 +9,16 @@ import {
     sleep,
 } from '../../Impresoras/Funciones/Impresion';
 import Database from './database';
+import { padLine, perfilTamanoTicket } from './Plantillas/cuenta';
+import { construirLineasPreparacion } from './Plantillas/preparacion';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Utilidades de formato
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Ancho de columna estándar (58mm ≈ 32 chars, 80mm ≈ 48 chars)
-const COL_WIDTH = 32;
 const SEP = '--------------------------------\n';
 
 const fmt$ = (val) => `$${(val ?? 0).toFixed(2)}`;
-
-/**
- * Genera una línea con texto a la izquierda y precio a la derecha,
- * truncando el nombre si es necesario para que todo quepa en COL_WIDTH.
- */
-const padLine = (left, right) => {
-    const maxLeft = COL_WIDTH - right.length - 1;
-    const trimmed = left.length > maxLeft ? left.slice(0, maxLeft - 1) + '.' : left;
-    const spaces = COL_WIDTH - trimmed.length - right.length;
-    return trimmed + ' '.repeat(Math.max(1, spaces)) + right;
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Impresión de un grupo de artículos en un único punto de impresión
@@ -43,7 +33,78 @@ const padLine = (left, right) => {
  * @param {object}   mesa      - Objeto mesa (NOMBRE, …)
  * @param {boolean}  esCaja    - Si true, imprime precios y total (ticket de caja)
  */
-const imprimirSeccion = async (punto, renglones, comanda, mesa, esCaja) => {
+const leerTamanoTicket = () =>
+    withDb('Ticket.tamanoPreparacion', async (db) => {
+        const fila = await db.getFirstAsync(
+            `SELECT f.NOMBRE AS TAMANO
+             FROM CONFIGURACIONES c
+             LEFT JOIN TAMAÑO_FUENTES f ON f.ID = c.ID_TAMAÑO_FUENTE
+             LIMIT 1`,
+        );
+        return fila?.TAMANO ?? null;
+    });
+
+const imprimirLineas = async (lineas, perfil) => {
+    const ALIGN = BluetoothEscposPrinter.ALIGN;
+    const cuerpo = {
+        fonttype: perfil.fonttype,
+        widthtimes: perfil.widthtimes,
+        heigthtimes: perfil.heigthtimes,
+    };
+    const destacado = {
+        ...cuerpo,
+        heigthtimes: Math.min(perfil.heigthtimes + 1, 2),
+    };
+
+    await BluetoothEscposPrinter.printerInit();
+
+    for (const linea of lineas) {
+        if (linea.kind === 'feed') {
+            await BluetoothEscposPrinter.printText('\n\n\n', {});
+            continue;
+        }
+        if (linea.kind === 'space') {
+            await BluetoothEscposPrinter.printText('\n', cuerpo);
+            continue;
+        }
+
+        const align = linea.kind === 'center' ? 'CENTER' : 'LEFT';
+        await BluetoothEscposPrinter.printerAlign(ALIGN[align]);
+
+        if (BluetoothEscposPrinter.setBlob) {
+            await BluetoothEscposPrinter.setBlob(linea.bold ? 1 : 0);
+        }
+
+        if (linea.kind === 'sep') {
+            await BluetoothEscposPrinter.printText(SEP, cuerpo);
+            continue;
+        }
+
+        const opts = linea.size === 'lg' ? destacado : cuerpo;
+        const texto =
+            linea.kind === 'pair'
+                ? padLine(linea.left, linea.right)
+                : linea.text;
+        await BluetoothEscposPrinter.printText(`${texto}\n`, opts);
+    }
+
+    if (BluetoothEscposPrinter.setBlob) {
+        await BluetoothEscposPrinter.setBlob(0);
+    }
+};
+
+const imprimirSeccion = async (punto, renglones, comanda, mesa, esCaja, perfil) => {
+    if (!esCaja) {
+        const lineas = construirLineasPreparacion({
+            punto,
+            comanda,
+            mesa,
+            articulos: renglones,
+        });
+        await imprimirLineas(lineas, perfil);
+        return;
+    }
+
     const ALIGN = BluetoothEscposPrinter.ALIGN;
     await BluetoothEscposPrinter.printerInit();
 
@@ -219,6 +280,10 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
             return puntosSinImpresora.length > 0 ? false : 'SIN_IMPRESORA';
         }
 
+        const perfil = perfilTamanoTicket(
+            await leerTamanoTicket().catch(() => null),
+        );
+
         const errores = [];
         let impresos = 0;
 
@@ -234,7 +299,7 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
                 await sleep(200);
 
                 for (const { punto, renglones, esCaja } of secciones) {
-                    await imprimirSeccion(punto, renglones, comanda, mesa, esCaja);
+                    await imprimirSeccion(punto, renglones, comanda, mesa, esCaja, perfil);
                 }
                 impresos++;
             } catch (e) {

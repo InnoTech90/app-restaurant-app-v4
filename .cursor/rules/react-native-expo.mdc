@@ -1,0 +1,58 @@
+---
+description: React Native, Expo, and mobile UI coding standards
+alwaysApply: true
+---
+
+# React Native and Expo
+
+Write clean, readable JavaScript with functional components and hooks. Keep each component focused on one responsibility, and group related components, hooks, and styles by feature (`user-profile`, `chat-screen`).
+
+## Naming
+
+- Variables and functions: camelCase (`isFetchingData`, `handleUserInput`)
+- Components: PascalCase (`UserProfile`, `ChatScreen`)
+- Directories: lowercase and hyphenated (`user-profile`, `chat-screen`)
+
+## JavaScript
+
+- Avoid global variables
+- Prefer ES6+: arrow functions, destructuring, and template literals
+- Use PropTypes for component props when the file is not TypeScript
+
+## Performance
+
+- Keep state local and skip updates that do not change the UI
+- Wrap pure functional components in `React.memo`
+- Tune `FlatList` with `removeClippedSubviews`, `maxToRenderPerBatch`, and `windowSize`
+- Do not pass inline anonymous functions to `renderItem` or event handlers
+
+## UI
+
+- Define styles with `StyleSheet.create()`, or Styled Components when styles depend on props
+- Adapt layout to screen size and orientation (`react-native-responsive-screen` or similar)
+- Load images with an optimized library such as `react-native-fast-image`
+
+## Expo
+
+- Respect React Native's threading model so the UI thread stays responsive
+- Ship with EAS Build and EAS Update for continuous deployment and OTA updates
+- Use Expo Router for file-based routing, native navigation, and deep linking on Android, iOS, and web: https://docs.expo.dev/router/introduction/
+
+## Example
+
+```jsx
+const OrderRow = React.memo(function OrderRow({ item, onPress }) {
+  return (
+    <Pressable onPress={onPress} style={styles.row}>
+      <Text>{item.name}</Text>
+    </Pressable>
+  );
+});
+
+OrderRow.propTypes = {
+  item: PropTypes.shape({ name: PropTypes.string }).isRequired,
+  onPress: PropTypes.func.isRequired,
+};
+```
+
+Pass a stable `onPress` from the parent. Define it outside `renderItem`.

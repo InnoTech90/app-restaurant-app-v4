@@ -23,10 +23,14 @@ export const s = StyleSheet.create({
         alignItems: "center",
         gap: normalize(8),
     },
+    rowTop: {
+        alignItems: "flex-start",
+    },
     label: {
         fontSize: normalize(12),
         color: gb.gray400,
-        width: normalize(58),
+        width: normalize(78),
+        paddingTop: normalize(2),
     },
     valor: {
         fontSize: normalize(13),
@@ -48,9 +52,14 @@ export const s = StyleSheet.create({
         backgroundColor: gb.blue550 + "14",
         borderRadius: normalize(20),
     },
+    clienteBtnActivo: {
+        backgroundColor: gb.green500 + "14",
+    },
     clienteBtnTexto: {
         fontSize: normalize(13),
         fontWeight: "600",
         color: gb.blue550,
+        flex: 1,
+        flexShrink: 1,
     },
 });

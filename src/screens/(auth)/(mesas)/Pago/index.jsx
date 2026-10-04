@@ -313,7 +313,7 @@ const Pago = () => {
       const metodoPagoNombre =
         formatosPago.find((f) => f.ID === metodoPagoId)?.NOMBRE ?? "-";
       const impresionOk = await imprimirCuenta(
-        comanda,
+        { ...comanda, NOTA: nota },
         articulosComanda,
         mesa,
         cliente,
@@ -546,21 +546,46 @@ const Pago = () => {
     });
   };
 
-  const extraerFecha = (fechaStr) => {
-    if (!fechaStr) return "—";
-    const [datePart] = fechaStr.split(" ");
-    const [yyyy, mm, dd] = datePart.split("-");
-    return `${dd}/${mm}/${yyyy.slice(2)}`;
+  const parseFechaUtc = (fechaStr) => {
+    if (!fechaStr) return null;
+    const raw = String(fechaStr).trim();
+    const normalizada = raw.includes("T") ? raw : raw.replace(" ", "T");
+    const sinZona = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(
+      normalizada,
+    );
+    const iso = sinZona ? `${normalizada}Z` : normalizada;
+    const fecha = new Date(iso);
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
   };
 
-  const extraerHora = (fechaStr) => {
-    if (!fechaStr) return "—";
-    const [, timePart] = fechaStr.split(" ");
-    return timePart?.slice(0, 5) ?? "—";
+  const formatearFecha = (fechaStr) => {
+    if (!fechaStr) return { fecha: "—", hora: "—" };
+    const fechaObj = parseFechaUtc(fechaStr);
+    if (!fechaObj) {
+      const [fechaRaw, horaRaw] = String(fechaStr).split(" ");
+      return { fecha: fechaRaw ?? "—", hora: horaRaw?.slice(0, 5) ?? "—" };
+    }
+
+    const partes = {};
+    for (const parte of new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
+      year: "2-digit",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(fechaObj)) {
+      if (parte.type !== "literal") partes[parte.type] = parte.value;
+    }
+
+    return {
+      fecha: `${partes.day}/${partes.month}/${partes.year}`,
+      hora: `${partes.hour}:${partes.minute}`,
+    };
   };
 
-  const fecha = extraerFecha(comanda?.FECHA);
-  const hora = extraerHora(comanda?.FECHA);
+  const { fecha, hora } = formatearFecha(comanda?.FECHA);
 
   return (
     <SafeAreaView edges={["bottom"]} style={s.root}>
@@ -672,20 +697,18 @@ const Pago = () => {
           <PagoMetodosPago
             formatosPago={formatosPago}
             metodoPagoId={metodoPagoId}
-            onSeleccionar={(id) =>
-              ejecutarCobro(() => {
-                setMetodoPagoId(id);
-                const metodo = formatosPago.find((f) =>
-                  sameMetodoId(f.ID, id),
-                );
-                if (!/efectivo/i.test(String(metodo?.NOMBRE ?? ""))) {
-                  setMontoRecibido("");
-                }
-                if (comanda?.ID && id != null) {
-                  persistirCobro(comanda.ID, id, montoRecibido);
-                }
-              })
-            }
+            onSeleccionar={(id) => {
+              setMetodoPagoId(id);
+              const metodo = formatosPago.find((f) =>
+                sameMetodoId(f.ID, id),
+              );
+              if (!/efectivo/i.test(String(metodo?.NOMBRE ?? ""))) {
+                setMontoRecibido("");
+              }
+              if (comanda?.ID && id != null) {
+                persistirCobro(comanda.ID, id, montoRecibido);
+              }
+            }}
             disabled={false}
           />
           <PagoAdicionales

@@ -326,7 +326,12 @@ const Ticket = () => {
     setImprimiendo(true);
     try {
       // sinPrecios=true: ticket de cocina/barra, nunca mostrar precios
-      const resultado = await imprimirComanda(comanda, articulos, mesa, true);
+      const resultado = await imprimirComanda(
+        { ...comanda, NOTA: nota },
+        articulos,
+        mesa,
+        true,
+      );
       if (resultado === "SIN_IMPRESORA") {
         setModalSinImpresora(true);
         return;
@@ -649,7 +654,7 @@ const Ticket = () => {
           style={s.notasInput}
           multiline
           numberOfLines={2}
-          placeholder="Nota de la mesa..."
+          placeholder="Nota de la comanda..."
           placeholderTextColor={gb.gray400}
           value={nota}
           onChangeText={handleNotaChange}

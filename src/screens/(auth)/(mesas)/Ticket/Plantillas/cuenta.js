@@ -199,15 +199,20 @@ export const construirLineasCuenta = ({
     const nombreCliente = texto(cliente?.NOMBRE);
     const direccionCliente = texto(cliente?.DIRECCION);
     const telefonoCliente = texto(cliente?.TELEFONO);
-    const referenciaCliente = texto(
-        cliente?.NOTAS ?? cliente?.DESCRIPCION ?? comanda?.NOTA,
-    );
+    const referenciaCliente = texto(cliente?.NOTAS ?? cliente?.DESCRIPCION);
     if (nombreCliente || direccionCliente || telefonoCliente || referenciaCliente) {
         lineas.push({ kind: 'sep' });
         if (nombreCliente) lineas.push({ kind: 'left', text: `Cliente: ${nombreCliente}` });
         if (direccionCliente) lineas.push({ kind: 'left', text: direccionCliente });
         if (telefonoCliente) lineas.push({ kind: 'left', text: telefonoCliente });
         if (referenciaCliente) lineas.push({ kind: 'left', text: referenciaCliente });
+    }
+
+    const notaComanda = texto(comanda?.NOTA);
+    if (notaComanda) {
+        lineas.push({ kind: 'sep' });
+        lineas.push({ kind: 'left', text: 'Nota', size: 'lg' });
+        lineas.push({ kind: 'left', text: notaComanda });
     }
 
     const promos = (promociones ?? []).filter((promo) => texto(promo?.nombre ?? promo?.NOMBRE));

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import CuentaPreview from "../(mesas)/Ticket/Plantillas/CuentaPreview";
+import PreparacionPreview from "../(mesas)/Ticket/Plantillas/PreparacionPreview";
+import PruebaPreview from "../(mesas)/Ticket/Plantillas/PruebaPreview";
 import { withDb } from "../../../utils/db";
 
 const BASE = {
@@ -10,7 +12,12 @@ const BASE = {
     DIRECCION: "San Lazaro 47",
     TELEFONO: "3345657820",
   },
-  comanda: { FICHA: 128, FECHA: "27/09/2026 14:32:00", CONT_IMPRESO: 1 },
+  comanda: {
+    FICHA: 128,
+    FECHA: "27/09/2026 14:32:00",
+    CONT_IMPRESO: 1,
+    NOTA: "Cumpleaños, mesa junto a la ventana",
+  },
   mesa: { NOMBRE: "Mesa 4" },
   cliente: {
     NOMBRE: "Ana López",
@@ -64,6 +71,16 @@ const PLANTILLAS = [
     id: "cuenta",
     nombre: "Cuenta",
     detalle: "Ticket de cobro que sale por caja",
+  },
+  {
+    id: "prueba",
+    nombre: "Prueba de impresora",
+    detalle: "Ticket que sale al vincular o al pulsar Prueba",
+  },
+  {
+    id: "preparacion",
+    nombre: "Preparación",
+    detalle: "Ticket de cocina y barra, con notas",
   },
 ];
 
@@ -183,6 +200,46 @@ const Plantillas = () => {
                   {...BASE}
                   tamano={tamano}
                   pagoDividido={dividido ? PAGO_DIVIDIDO : []}
+                />
+              </View>
+            )}
+
+            {abierta && plantilla.id === "preparacion" && (
+              <View style={{ backgroundColor: "#ece7df", paddingVertical: 16 }}>
+                <PreparacionPreview
+                  tamano={tamano}
+                  punto={{ NOMBRE: "Cocina" }}
+                  mesa={{ NOMBRE: "Mesa 4" }}
+                  comanda={{
+                    FICHA: 128,
+                    FECHA: "27/09/2026 14:32:00",
+                    NOTA: "Sin picante, para llevar",
+                  }}
+                  articulos={[
+                    {
+                      CANTIDAD: 2,
+                      NOTA: "Sin cebolla",
+                      articulo: { NOMBRE: "Tacos al pastor" },
+                      complementos: [
+                        { COMP_NOMBRE: "Salsa verde" },
+                        { COMP_NOMBRE: "Queso extra" },
+                      ],
+                    },
+                    {
+                      CANTIDAD: 1,
+                      articulo: { NOMBRE: "Agua de horchata" },
+                      complementos: [],
+                    },
+                  ]}
+                />
+              </View>
+            )}
+
+            {abierta && plantilla.id === "prueba" && (
+              <View style={{ backgroundColor: "#ece7df", paddingVertical: 16 }}>
+                <PruebaPreview
+                  tamano={tamano}
+                  punto={{ NOMBRE: "Caja", ID_IMPRESORA: "AA:BB:CC:DD:EE:FF" }}
                 />
               </View>
             )}
