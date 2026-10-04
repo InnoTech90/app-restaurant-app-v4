@@ -43,6 +43,7 @@ export class integracionClientes {
     const headers = await getDeviceAuthHeaders();
 
     const records = pendientes.map((c) => {
+      const activo = Number(c.ACTIVO ?? 1) === 1;
       const record = {
         fullName: c.NOMBRE,
         address: c.DIRECCION ?? "",
@@ -51,9 +52,9 @@ export class integracionClientes {
         whatsapp: c.TELEFONO ?? "",
         email: c.CORREO ?? "",
         description: c.DESCRIPCION ?? "",
-        // branchesIds: [sucursalId],
+        status: activo ? "activo" : "inactivo",
+        branchesIds: [sucursalId],
       };
-      // dinerId solo para clientes que ya existen en el servidor
       if (c.UUID) record.dinerId = c.UUID;
       return record;
     });

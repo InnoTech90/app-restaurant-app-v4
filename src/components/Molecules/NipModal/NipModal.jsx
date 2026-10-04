@@ -133,18 +133,14 @@ const NipModal = ({
         <Input
           placeholder="NIP"
           secureTextEntry={true}
-          style={s.input}
+          style={s.inputContainer}
           icon="apps"
           iconColor={gb.purple500}
           value={nip}
           onChange={(text) => setNip(text)}
           keyboardType="numeric"
           maxLength={8}
-          styleInput={{
-            textAlign: "center",
-            letterSpacing: 8,
-            fontSize: normalize(20),
-          }}
+          styleInput={s.inputField}
         />
         <View style={s.buttonsContainer}>
           <Button onPress={onClose} style={s.btnCancelar}>

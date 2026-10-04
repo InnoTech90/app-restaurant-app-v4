@@ -2,12 +2,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, Text, TextInput, View } from "react-native";
+import {
+  FlatList,
+  Keyboard,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import InputCantidad from "../../../../components/atoms/InputCantidad/InputCantidad";
 import ModalSinImpresora from "../../../../components/atoms/ModalSinImpresora/ModalSinImpresora";
 import MesasNavButtons from "../../../../components/Molecules/MesasNavButtons/MesasNavButtons";
+import ModalWarning from "../../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverButton";
 import { setAuthHeaderTitulo } from "../../../../utils/authHeaderTitle";
@@ -33,14 +42,22 @@ const Ticket = () => {
   const [config, setConfig] = useState(null);
   const [comandaDb, setComandaDb] = useState(comandaData?.comanda ?? null);
   const [edicionTrasImpresion, setEdicionTrasImpresion] = useState(false);
+  const [articuloAEliminar, setArticuloAEliminar] = useState(null);
+  const [openNipEliminar, setOpenNipEliminar] = useState(false);
+  const [openConfirmCancelar, setOpenConfirmCancelar] = useState(false);
+  const [openNipCancelar, setOpenNipCancelar] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const comanda = comandaDb ?? comandaData?.comanda;
   const bloqueada = Number(comanda?.ESTATUS) === 4;
   const preparacionImpresa =
     Number(comanda?.CONT_IMPRESO) > 0 ||
-    (articulos.length > 0 &&
-      articulos.every((a) => Number(a.IMPRESO) === 1));
-  const soloLectura = bloqueada || (preparacionImpresa && !edicionTrasImpresion);
+    (articulos.length > 0 && articulos.every((a) => Number(a.IMPRESO) === 1));
+  const soloLectura =
+    bloqueada || (preparacionImpresa && !edicionTrasImpresion);
+  const pedirNipEliminacion =
+    Number(config?.MODO_RESTRICTIVO) === 1 ||
+    Number(config?.HABILITAR_EDICION_TICKET) === 0;
 
   const {
     puedeEditar,
@@ -48,8 +65,6 @@ const Ticket = () => {
     modalNipEdicion,
     cerrarNipEdicion,
     solicitarEdicion,
-    editarCampo,
-    cerrarCampo,
     confirmarNipEdicion,
   } = useEdicionTicket(config);
 
@@ -60,6 +75,21 @@ const Ticket = () => {
       Database.getCliente(comanda.ID_CLIENTE)
         .then(setCliente)
         .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const showEvt =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      setKeyboardHeight(e?.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   useFocusEffect(
@@ -128,9 +158,7 @@ const Ticket = () => {
   );
   const totalBrutoProductos = articulos.reduce(
     (acc, r) =>
-      acc +
-      (Number(r.SUBTOTAL) ||
-        (r.CANTIDAD ?? 0) * (r.PRECIO_VENTA ?? 0)),
+      acc + (Number(r.SUBTOTAL) || (r.CANTIDAD ?? 0) * (r.PRECIO_VENTA ?? 0)),
     0,
   );
 
@@ -192,49 +220,44 @@ const Ticket = () => {
   const { fecha, hora } = formatearFecha(comanda?.FECHA);
 
   const handleCancelar = () => {
-    if (soloLectura) return;
-    solicitarEdicion(() => {
-      Alert.alert(
-        "Cancelar comanda",
-        "¿Estás seguro de que deseas cancelar esta comanda? Esta acción no se puede deshacer.",
-        [
-          { text: "No", style: "cancel" },
-          {
-            text: "Sí, cancelar",
-            style: "destructive",
-            onPress: async () => {
-              if (cancelando || !comanda) return;
-              setCancelando(true);
-              try {
-                await Database.cancelarComanda(comanda.ID);
-                router.replace("/Inicio");
-              } catch (e) {
-                console.error("Error cancelando comanda:", e);
-                setCancelando(false);
-              }
-            },
-          },
-        ],
-      );
-    });
+    if (soloLectura || cancelando) return;
+    setOpenConfirmCancelar(true);
+  };
+
+  const confirmarCancelarComanda = async () => {
+    if (cancelando || !comanda) return;
+    setOpenNipCancelar(false);
+    setOpenConfirmCancelar(false);
+    setCancelando(true);
+    try {
+      await Database.cancelarComanda(comanda.ID);
+      router.replace("/Inicio");
+    } catch (e) {
+      console.error("Error cancelando comanda:", e);
+      setCancelando(false);
+    }
   };
 
   const handleCambiarCantidad = (renglon, nuevaCantidad) => {
     if (soloLectura) return;
+    const cantidadActual = Number(renglon.CANTIDAD) || 0;
+    const cantidadNueva = Number(nuevaCantidad) || 0;
+    if (cantidadNueva < 1 || cantidadNueva === cantidadActual) return;
+
     solicitarEdicion(async () => {
       try {
         const tipo =
-          nuevaCantidad > renglon.CANTIDAD
+          cantidadNueva > cantidadActual
             ? "INCREMENTAR_ARTICULO"
             : "DISMINUIR_ARTICULO";
         const costoComps = costoComplementosRenglon(renglon);
         const descuento = descuentoRenglon(renglon);
-        const nuevoSubtotal = nuevaCantidad * (renglon.PRECIO_VENTA ?? 0);
+        const nuevoSubtotal = cantidadNueva * (renglon.PRECIO_VENTA ?? 0);
         const nuevoTotal = Math.max(0, nuevoSubtotal - descuento + costoComps);
 
         await Database.actualizarCantidadArticulo(
           renglon.ID,
-          nuevaCantidad,
+          cantidadNueva,
           renglon.PRECIO_VENTA,
           {
             subtotal: nuevoSubtotal,
@@ -252,7 +275,7 @@ const Ticket = () => {
             r.ID === renglon.ID
               ? {
                   ...r,
-                  CANTIDAD: nuevaCantidad,
+                  CANTIDAD: cantidadNueva,
                   SUBTOTAL: nuevoSubtotal,
                   TOTAL: nuevoTotal,
                   DESCUENTO: descuento,
@@ -268,51 +291,34 @@ const Ticket = () => {
 
   const handleEliminarArticulo = (renglon) => {
     if (soloLectura) return;
-    solicitarEdicion(() => {
-      Alert.alert(
-        "Eliminar artículo",
-        `¿Eliminar "${renglon.articulo?.NOMBRE ?? "este artículo"}" de la comanda?`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Eliminar",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await Database.registrarMovimiento(
-                  renglon.ID_COMANDA,
-                  renglon.ID_ARTICULO,
-                  "ELIMINACION_ARTICULO",
-                );
-                await Database.eliminarArticulo(renglon.ID);
-                setArticulos((prev) => prev.filter((r) => r.ID !== renglon.ID));
-              } catch (e) {
-                console.error("Error eliminando artículo:", e);
-              }
-            },
-          },
-        ],
-      );
-    });
+    setArticuloAEliminar(renglon);
   };
 
-  const handleNotaBlur = () => {
-    if (!comanda || soloLectura || requiereNipEdicion) return;
-    Database.actualizarNota(comanda.ID, nota).catch((e) => {
-      console.error("Error guardando nota:", e);
-    });
+  const confirmarEliminarArticulo = async () => {
+    const renglon = articuloAEliminar;
+    if (!renglon) return;
+    try {
+      await Database.registrarMovimiento(
+        renglon.ID_COMANDA,
+        renglon.ID_ARTICULO,
+        "ELIMINACION_ARTICULO",
+      );
+      await Database.eliminarArticulo(renglon.ID);
+      setArticulos((prev) => prev.filter((r) => r.ID !== renglon.ID));
+    } catch (e) {
+      console.error("Error eliminando artículo:", e);
+    } finally {
+      setArticuloAEliminar(null);
+      setOpenNipEliminar(false);
+    }
   };
 
   const handleNotaChange = (texto) => {
     if (soloLectura) return;
-    editarCampo(async () => {
-      setNota(texto);
-      if (!comanda?.ID) return;
-      try {
-        await Database.actualizarNota(comanda.ID, texto);
-      } catch (e) {
-        console.error("Error guardando nota:", e);
-      }
+    setNota(texto);
+    if (!comanda?.ID) return;
+    Database.actualizarNota(comanda.ID, texto).catch((e) => {
+      console.error("Error guardando nota:", e);
     });
   };
 
@@ -365,16 +371,16 @@ const Ticket = () => {
     if (!renglon?.articulo && !renglon?.ID_ARTICULO) return;
     if (soloLectura) return;
     router.push({
-        pathname: "/DetalleArticulo",
-        params: {
-          id_mesa: idMesa,
-          modo: "editar",
-          id_comanda_articulo: String(renglon.ID),
-          id_articulo: String(
-            renglon.articulo?.UUID ?? renglon.ID_ARTICULO ?? "",
-          ),
-        },
-      });
+      pathname: "/DetalleArticulo",
+      params: {
+        id_mesa: idMesa,
+        modo: "editar",
+        id_comanda_articulo: String(renglon.ID),
+        id_articulo: String(
+          renglon.articulo?.UUID ?? renglon.ID_ARTICULO ?? "",
+        ),
+      },
+    });
   };
 
   const renderArticulo = ({ item: renglon, index: idx }) => {
@@ -384,109 +390,111 @@ const Ticket = () => {
       comps.length > 0 || descuento > 0 || !!renglon.NOTA?.trim();
 
     return (
-    <View style={[s.articuloCard, idx !== 0 && s.articuloRowBorder]}>
-      <View style={s.articuloRow}>
-        <Pressable
-          style={s.articuloInfo}
-          onPress={() => handleEditarArticulo(renglon)}
-          disabled={soloLectura}
-        >
-          <Text style={s.articuloNombre} numberOfLines={2}>
-            {renglon.articulo?.NOMBRE ?? "—"}
-          </Text>
-          <View style={s.articuloMeta}>
-            <Text style={s.articuloPrecio}>
-              ${(renglon.PRECIO_VENTA ?? 0).toFixed(2)} c/u
+      <View style={[s.articuloCard, idx !== 0 && s.articuloRowBorder]}>
+        <View style={s.articuloRow}>
+          <Pressable
+            style={s.articuloInfo}
+            onPress={() => handleEditarArticulo(renglon)}
+            disabled={soloLectura}
+          >
+            <Text style={s.articuloNombre} numberOfLines={2}>
+              {renglon.articulo?.NOMBRE ?? "—"}
             </Text>
-            {!soloLectura && (
-              <Text style={s.articuloEditarHint}> · Editar</Text>
-            )}
-          </View>
-        </Pressable>
-        <InputCantidad
-          value={renglon.CANTIDAD}
-          onChange={(val) => handleCambiarCantidad(renglon, val)}
-          min={1}
-          small
-          disabled={soloLectura}
-          style={s.inputCantidad}
-        />
-        <Text style={s.articuloTotal}>${(renglon.TOTAL ?? 0).toFixed(2)}</Text>
-        <Button
-          style={s.btnEliminar}
-          styleContainer={s.btnEliminarContainer}
-          onPress={() => handleEliminarArticulo(renglon)}
-          disabled={soloLectura}
-        >
-          <Ionicons
-            name="trash-outline"
-            size={normalize(14)}
-            color={soloLectura ? gb.gray400 : gb.red600}
-          />
-        </Button>
-      </View>
-
-      {tieneAjustes && (
-        <Pressable
-          style={s.ajustesLista}
-          onPress={() => handleEditarArticulo(renglon)}
-          disabled={soloLectura}
-        >
-          {comps.length > 0 && (
-            <View style={s.ajusteBloque}>
-              <Text style={s.ajustesTitulo}>Complementos</Text>
-              {comps.map((comp, i) => (
-                <View
-                  key={`${renglon.ID}-comp-${comp.ID ?? comp.ID_COMPLEMENTO ?? i}`}
-                  style={s.ajusteRow}
-                >
-                  <Text style={s.ajusteBullet}>↳</Text>
-                  <Text style={s.ajusteNombre} numberOfLines={1}>
-                    {nombreComplemento(comp)}
-                  </Text>
-                  {totalComplemento(comp) > 0 && (
-                    <Text style={s.ajustePrecioPos}>
-                      +${totalComplemento(comp).toFixed(2)}
-                    </Text>
-                  )}
-                </View>
-              ))}
+            <View style={s.articuloMeta}>
+              <Text style={s.articuloPrecio}>
+                ${(renglon.PRECIO_VENTA ?? 0).toFixed(2)} c/u
+              </Text>
+              {!soloLectura && (
+                <Text style={s.articuloEditarHint}> · Editar</Text>
+              )}
             </View>
-          )}
+          </Pressable>
+          <InputCantidad
+            value={renglon.CANTIDAD}
+            onChange={(val) => handleCambiarCantidad(renglon, val)}
+            min={1}
+            small
+            disabled={soloLectura}
+            style={s.inputCantidad}
+          />
+          <Text style={s.articuloTotal}>
+            ${(renglon.TOTAL ?? 0).toFixed(2)}
+          </Text>
+          <Button
+            style={s.btnEliminar}
+            styleContainer={s.btnEliminarContainer}
+            onPress={() => handleEliminarArticulo(renglon)}
+            disabled={soloLectura}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={normalize(14)}
+              color={soloLectura ? gb.gray400 : gb.red600}
+            />
+          </Button>
+        </View>
 
-          {descuento > 0 && (
-            <View style={s.ajusteBloque}>
-              <Text style={s.ajustesTitulo}>Descuento</Text>
-              <View style={s.ajusteRow}>
-                <Text style={s.ajusteBullet}>↳</Text>
-                <Text style={s.ajusteNombre}>Descuento aplicado</Text>
-                <Text style={s.ajustePrecioNeg}>
-                  -${descuento.toFixed(2)}
+        {tieneAjustes && (
+          <Pressable
+            style={s.ajustesLista}
+            onPress={() => handleEditarArticulo(renglon)}
+            disabled={soloLectura}
+          >
+            {comps.length > 0 && (
+              <View style={s.ajusteBloque}>
+                <Text style={s.ajustesTitulo}>Complementos</Text>
+                {comps.map((comp, i) => (
+                  <View
+                    key={`${renglon.ID}-comp-${comp.ID ?? comp.ID_COMPLEMENTO ?? i}`}
+                    style={s.ajusteRow}
+                  >
+                    <Text style={s.ajusteBullet}>↳</Text>
+                    <Text style={s.ajusteNombre} numberOfLines={1}>
+                      {nombreComplemento(comp)}
+                    </Text>
+                    {totalComplemento(comp) > 0 && (
+                      <Text style={s.ajustePrecioPos}>
+                        +${totalComplemento(comp).toFixed(2)}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {descuento > 0 && (
+              <View style={s.ajusteBloque}>
+                <Text style={s.ajustesTitulo}>Descuento</Text>
+                <View style={s.ajusteRow}>
+                  <Text style={s.ajusteBullet}>↳</Text>
+                  <Text style={s.ajusteNombre}>Descuento aplicado</Text>
+                  <Text style={s.ajustePrecioNeg}>
+                    -${descuento.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {!!renglon.NOTA?.trim() && (
+              <View style={[s.ajusteBloque, s.notaPedido]}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={normalize(13)}
+                  color={gb.blue550}
+                />
+                <Text style={s.notaPedidoTexto} numberOfLines={2}>
+                  Nota: {renglon.NOTA}
                 </Text>
               </View>
-            </View>
-          )}
-
-          {!!renglon.NOTA?.trim() && (
-            <View style={[s.ajusteBloque, s.notaPedido]}>
-              <Ionicons
-                name="document-text-outline"
-                size={normalize(13)}
-                color={gb.blue550}
-              />
-              <Text style={s.notaPedidoTexto} numberOfLines={2}>
-                Nota: {renglon.NOTA}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      )}
-    </View>
+            )}
+          </Pressable>
+        )}
+      </View>
     );
   };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={s.root}>
+    <SafeAreaView edges={keyboardHeight > 0 ? [] : ["bottom"]} style={s.root}>
       <ModalSinImpresora
         visible={modalSinImpresora}
         onOmitir={() => setModalSinImpresora(false)}
@@ -607,7 +615,14 @@ const Ticket = () => {
             gap: normalize(8),
           }}
         >
-          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: normalize(8) }}>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: normalize(8),
+            }}
+          >
             <Ionicons
               name="lock-closed-outline"
               size={normalize(16)}
@@ -621,18 +636,19 @@ const Ticket = () => {
                 fontWeight: "600",
               }}
             >
-            Cada cambio de la comanda pide NIP
+              Cada cambio de la comanda pide NIP
             </Text>
           </View>
         </View>
       )}
 
-      {/* ── LISTA ARTÍCULOS (único scroll) ── */}
       <FlatList
         data={articulos}
         keyExtractor={(item) => String(item.ID)}
         style={s.lista}
         contentContainerStyle={s.listaContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListHeaderComponent={
           <View style={s.listaHeader}>
             <Text style={s.listaHeaderTexto}>Artículo</Text>
@@ -647,61 +663,132 @@ const Ticket = () => {
         renderItem={renderArticulo}
       />
 
-      {/* ── FOOTER FIJO ── */}
-      <View style={s.footer}>
-        {/* Nota */}
-        <TextInput
-          style={s.notasInput}
-          multiline
-          numberOfLines={2}
-          placeholder="Nota de la comanda..."
-          placeholderTextColor={gb.gray400}
-          value={nota}
-          onChangeText={handleNotaChange}
-          onBlur={() => {
-            cerrarCampo();
-            handleNotaBlur();
-          }}
-          textAlignVertical="top"
-          editable={!soloLectura}
-        />
-
-        {preparacionImpresa && !bloqueada && !edicionTrasImpresion && (
-          <Button
-            styleContainer={s.btnImprimirContainer}
-            style={s.btnImprimir}
-            gradient={[gb.gray700, gb.gray600]}
-            onPress={habilitarEdicionImpresa}
-          >
-            <Ionicons name="create-outline" size={normalize(20)} color={gb.gray50} />
-            <Text style={s.btnImprimirTexto}>Editar impresión</Text>
-          </Button>
-        )}
-
-        {/* Botón imprimir */}
-        <Button
-          styleContainer={s.btnImprimirContainer}
-          style={s.btnImprimir}
-          gradient={soloLectura ? [gb.gray300, gb.gray200] : gb.gradient_blue}
-          onPress={handleImprimir}
-          disabled={imprimiendo || soloLectura}
-        >
-          <Ionicons
-            name="print-outline"
-            size={normalize(20)}
-            color={soloLectura ? gb.gray500 : gb.gray50}
+      <View style={{ paddingBottom: keyboardHeight }}>
+        <View style={s.footer}>
+          <TextInput
+            style={s.notasInput}
+            multiline
+            numberOfLines={2}
+            placeholder="Nota de la comanda..."
+            placeholderTextColor={gb.gray400}
+            value={nota}
+            onChangeText={handleNotaChange}
+            textAlignVertical="top"
+            editable={!soloLectura}
           />
-          <Text
-            style={[s.btnImprimirTexto, soloLectura && { color: gb.gray500 }]}
-          >
-            {imprimiendo
-              ? "Imprimiendo..."
-              : preparacionImpresa
-                ? "Preparación ya impresa"
-                : "Imprimir preparación"}
-          </Text>
-        </Button>
+
+          {keyboardHeight === 0 &&
+            preparacionImpresa &&
+            !bloqueada &&
+            !edicionTrasImpresion && (
+              <Button
+                styleContainer={s.btnImprimirContainer}
+                style={s.btnImprimir}
+                gradient={[gb.gray700, gb.gray600]}
+                onPress={habilitarEdicionImpresa}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={normalize(20)}
+                  color={gb.gray50}
+                />
+                <Text style={s.btnImprimirTexto}>Editar impresión</Text>
+              </Button>
+            )}
+
+          {keyboardHeight === 0 && (
+            <Button
+              styleContainer={s.btnImprimirContainer}
+              style={s.btnImprimir}
+              gradient={
+                soloLectura ? [gb.gray300, gb.gray200] : gb.gradient_blue
+              }
+              onPress={handleImprimir}
+              disabled={imprimiendo || soloLectura}
+            >
+              <Ionicons
+                name="print-outline"
+                size={normalize(20)}
+                color={soloLectura ? gb.gray500 : gb.gray50}
+              />
+              <Text
+                style={[
+                  s.btnImprimirTexto,
+                  soloLectura && { color: gb.gray500 },
+                ]}
+              >
+                {imprimiendo
+                  ? "Imprimiendo..."
+                  : preparacionImpresa
+                    ? "Preparación ya impresa"
+                    : "Imprimir preparación"}
+              </Text>
+            </Button>
+          )}
+        </View>
+
+        {keyboardHeight === 0 && (
+          <MesasNavButtons
+            tabActiva="comanda"
+            idMesa={idMesa}
+            comandaPayload={comandaPayload}
+            tieneCliente={!!(cliente?.ID ?? comanda?.ID_CLIENTE)}
+            onPressCliente={irClientes}
+          />
+        )}
       </View>
+
+      <ModalWarning
+        visible={!!articuloAEliminar && !openNipEliminar}
+        type="danger"
+        title="Eliminar artículo"
+        message={`¿Estás seguro de eliminar "${articuloAEliminar?.articulo?.NOMBRE ?? "este artículo"}" de la comanda?`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onCancel={() => setArticuloAEliminar(null)}
+        onConfirm={() => {
+          if (pedirNipEliminacion) setOpenNipEliminar(true);
+          else confirmarEliminarArticulo();
+        }}
+      />
+
+      <ModalWarning
+        visible={openConfirmCancelar && !openNipCancelar}
+        type="danger"
+        title="Cancelar comanda"
+        message={`¿Estás seguro de cancelar el pedido de ${mesa?.NOMBRE ?? "esta mesa"}? Esta acción no se puede deshacer.`}
+        confirmText="Sí, cancelar"
+        cancelText="No"
+        onCancel={() => setOpenConfirmCancelar(false)}
+        onConfirm={() => {
+          if (pedirNipEliminacion) setOpenNipCancelar(true);
+          else confirmarCancelarComanda();
+        }}
+      />
+
+      <NipModal
+        visible={openNipEliminar}
+        titulo="Eliminar artículo"
+        modo="acceso"
+        keywords={["sales"]}
+        onClose={() => {
+          setOpenNipEliminar(false);
+          setArticuloAEliminar(null);
+        }}
+        onSubmit={confirmarEliminarArticulo}
+      />
+
+      <NipModal
+        visible={openNipCancelar}
+        titulo="Cancelar comanda"
+        modo="acceso"
+        keywords={["sales"]}
+        onClose={() => {
+          setOpenNipCancelar(false);
+          setOpenConfirmCancelar(false);
+        }}
+        onSubmit={confirmarCancelarComanda}
+      />
 
       <NipModal
         visible={modalNipEdicion}
@@ -710,14 +797,6 @@ const Ticket = () => {
         keywords={["sales"]}
         onSubmit={confirmarNipEdicion}
         onClose={cerrarNipEdicion}
-      />
-
-      <MesasNavButtons
-        tabActiva="comanda"
-        idMesa={idMesa}
-        comandaPayload={comandaPayload}
-        tieneCliente={!!(cliente?.ID ?? comanda?.ID_CLIENTE)}
-        onPressCliente={irClientes}
       />
     </SafeAreaView>
   );

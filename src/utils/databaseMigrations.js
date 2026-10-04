@@ -46,9 +46,17 @@ export async function runDatabaseMigrations(db) {
       ID_CAJA INTEGER,
       TIPO NVARCHAR,
       MONTO REAL,
+      CONCEPTO NVARCHAR,
       FECHA DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await ensureColumn(
+    db,
+    "MOVIMIENTO_CAJA",
+    "CONCEPTO",
+    "ALTER TABLE MOVIMIENTO_CAJA ADD COLUMN CONCEPTO NVARCHAR",
+  );
 
   await db.runAsync(`
     CREATE TABLE IF NOT EXISTS CAJA_VENTA (

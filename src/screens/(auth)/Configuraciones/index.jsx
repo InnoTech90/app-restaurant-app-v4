@@ -130,7 +130,7 @@ export default function Configuraciones() {
     PROTEGER_VENTAS: "Proteger acceso a ventas",
     NIP_FINALIZAR_TICKET: "NIP para finalizar ticket",
     MODO_RESTRICTIVO: "Modo restrictivo",
-    HABILITAR_EDICION_TICKET: "Habilitar edición de ticket",
+    HABILITAR_EDICION_TICKET: "Restringir edición de ticket",
   };
 
   // ── Guardar inmediato (Switch, Select) ────────────────────────────────────
@@ -478,12 +478,15 @@ export default function Configuraciones() {
             icon="create-outline"
             iconColor={gb.red600}
             titulo="Restringir edición de ticket"
-            subtitulo="Si está activo, permite editar la comanda sin NIP. Si está desactivado, pide NIP en cualquier cambio (productos, complementos, descuentos, etc.)"
+            subtitulo="Si está activo, pide NIP en cualquier cambio de la comanda (productos, complementos, descuentos, etc.). Si está desactivado, permite editar sin NIP."
           >
             <Switch
-              value={!!config.HABILITAR_EDICION_TICKET}
+              value={
+                config.HABILITAR_EDICION_TICKET != null &&
+                Number(config.HABILITAR_EDICION_TICKET) === 0
+              }
               onValueChange={(v) =>
-                guardar("HABILITAR_EDICION_TICKET", v ? 1 : 0)
+                guardar("HABILITAR_EDICION_TICKET", v ? 0 : 1)
               }
               trackColor={{ false: gb.gray200, true: gb.red600 }}
               thumbColor={gb.gray50}

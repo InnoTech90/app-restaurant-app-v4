@@ -54,6 +54,19 @@ export const s = StyleSheet.create({
         // En tablet limitar el ancho del contenido
         ...(isTablet && { alignSelf: "center", width: CONTENT_MAX_WIDTH }),
     },
+    notasInput: {
+        backgroundColor: gb.gray100,
+        borderRadius: normalize(8),
+        paddingHorizontal: normalize(12),
+        paddingVertical: normalize(8),
+        fontSize: normalize(13),
+        color: gb.gray800,
+        minHeight: normalize(60),
+        maxHeight: normalize(100),
+        borderWidth: 1,
+        borderColor: gb.gray200,
+        textAlignVertical: "top",
+    },
     // -- Footer fijo
     footer: {
         bottom: 0,

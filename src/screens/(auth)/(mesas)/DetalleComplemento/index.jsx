@@ -34,7 +34,6 @@ const leerEstadoInicial = () => {
   const seleccion = {};
   if (seleccionRaw && typeof seleccionRaw === "object") {
     for (const [k, v] of Object.entries(seleccionRaw)) {
-      // Solo sí/no: cualquier cantidad > 0 cuenta como seleccionado
       seleccion[String(k)] = Number(v) > 0 ? 1 : 0;
     }
   }
@@ -45,7 +44,6 @@ const leerEstadoInicial = () => {
   };
 };
 
-/** Aplana grupos → lista de opciones seleccionables (sí/no). */
 const aplanarOpciones = (grupos) => {
   const opciones = [];
   for (const grupo of grupos ?? []) {
@@ -60,7 +58,6 @@ const aplanarOpciones = (grupos) => {
         });
       }
     } else if (grupo.UUID || grupo.ID) {
-      // Si el grupo no tiene hijos, el propio grupo es el complemento
       opciones.push({
         UUID: String(grupo.UUID ?? grupo.ID),
         NOMBRE: grupo.NOMBRE,

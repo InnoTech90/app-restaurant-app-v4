@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
@@ -145,11 +145,8 @@ const FilaArticulo = ({
 
 const PagoArticulos = ({
   articulos,
-  nota,
   onCambiarCantidad,
   onEliminarArticulo,
-  onNotaChange,
-  onNotaBlur,
   disabled = false,
 }) => (
   <View style={s.wrapper}>
@@ -189,18 +186,6 @@ const PagoArticulos = ({
             />
           ))
         )}
-
-        <TextInput
-          style={s.notasInput}
-          multiline
-          numberOfLines={2}
-          placeholder="Nota de la comanda..."
-          placeholderTextColor={gb.gray400}
-          value={nota}
-          onChangeText={onNotaChange}
-          onBlur={onNotaBlur}
-          editable={!disabled}
-        />
       </View>
     </Card>
   </View>

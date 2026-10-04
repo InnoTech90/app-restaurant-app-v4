@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
+import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import {
   MENSAJE_SIN_INTERNET,
@@ -20,6 +21,7 @@ import {
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import {
+  CONTENT_MAX_WIDTH,
   listColumns,
   normalize,
 } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -28,24 +30,37 @@ import { Database } from "./Database";
 import { integracionClientes } from "./integracion";
 import { s } from "./styles";
 
+const COLUMN_GAP = normalize(12);
+const LIST_PADDING_H = normalize(14);
+const COLUMN_WIDTH =
+  listColumns > 1
+    ? (CONTENT_MAX_WIDTH - LIST_PADDING_H * 2 - COLUMN_GAP * (listColumns - 1)) /
+      listColumns
+    : undefined;
+
 /* ─── Card de un cliente ───────────────────────────────────────── */
-const ClienteCard = ({ cliente, onPress }) => {
+const ClienteCard = ({ cliente, onPress, onInactivar }) => {
   const iniciales = cliente.NOMBRE
     ? cliente.NOMBRE.split(" ")
         .slice(0, 2)
         .map((w) => w[0]?.toUpperCase())
         .join("")
     : "?";
+  const inactivo = Number(cliente.ACTIVO ?? 1) === 0;
 
   return (
     <Pressable
-      style={({ pressed }) => [s.card, { opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [
+        s.card,
+        inactivo && s.cardInactiva,
+        { opacity: pressed ? 0.85 : 1 },
+      ]}
       onPress={onPress}
     >
       {/* Barra lateral con degradado */}
       <LinearGradient
         style={s.cardAccent}
-        colors={gb.gradient_blue}
+        colors={inactivo ? ["#C53030", "#E53E3E"] : gb.gradient_blue}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       />
@@ -55,7 +70,7 @@ const ClienteCard = ({ cliente, onPress }) => {
         <View style={s.cardNameRow}>
           <LinearGradient
             style={s.cardAvatar}
-            colors={gb.gradient_blue}
+            colors={inactivo ? ["#C53030", "#E53E3E"] : gb.gradient_blue}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
@@ -63,17 +78,37 @@ const ClienteCard = ({ cliente, onPress }) => {
           </LinearGradient>
           <View style={s.cardNameBlock}>
             <Text style={s.cardName}>{cliente.NOMBRE}</Text>
-            <View style={s.cardKey}>
-              <Text style={s.cardKeyText}>Clave #{cliente.DINNER_KEY}</Text>
+            <View style={s.cardBadges}>
+              <View style={s.cardKey}>
+                <Text style={s.cardKeyText}>Clave #{cliente.DINNER_KEY}</Text>
+              </View>
+              {inactivo && (
+                <View style={s.cardInactivoBadge}>
+                  <Text style={s.cardInactivoBadgeText}>Inactivo</Text>
+                </View>
+              )}
             </View>
           </View>
           <EstatusSincronizado sincronizado={!!cliente.SINCRONIZADO} />
-          <Ionicons
-            name="chevron-forward"
-            size={normalize(18)}
-            color={gb.gray300}
-            style={{ marginLeft: normalize(4) }}
-          />
+          {!inactivo && (
+            <Pressable
+              style={({ pressed }) => [
+                s.cardDeleteBtn,
+                pressed && { opacity: 0.75 },
+              ]}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onInactivar?.(cliente);
+              }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="person-remove-outline"
+                size={normalize(15)}
+                color="#C53030"
+              />
+            </Pressable>
+          )}
         </View>
 
         {(!!cliente.TELEFONO || !!cliente.CORREO || !!cliente.DIRECCION) && (
@@ -128,6 +163,7 @@ const Clientes = () => {
   const [refrescando, setRefrescando] = useState(false);
   const [actualizando, setActualizando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [clienteAInactivar, setClienteAInactivar] = useState(null);
 
   const cargar = async () => {
     try {
@@ -159,6 +195,18 @@ const Clientes = () => {
 
   const irAAgregar = () => {
     router.push({ pathname: "/Clientes/Agregar" });
+  };
+
+  const confirmarInactivarCliente = async () => {
+    if (!clienteAInactivar?.ID) return;
+    try {
+      await Database.inactivarCliente(clienteAInactivar.ID);
+      setClienteAInactivar(null);
+      await cargar();
+    } catch (e) {
+      console.error("Error al inactivar cliente:", e);
+      Alert.alert("Error", "No se pudo inactivar el cliente.");
+    }
   };
 
   const handleActualizar = async () => {
@@ -233,11 +281,20 @@ const Clientes = () => {
           data={clientes}
           keyExtractor={(item) => String(item.ID)}
           numColumns={listColumns}
-          key={listColumns}
-          columnWrapperStyle={listColumns > 1 ? { gap: normalize(10) } : null}
+          key={`clientes-${listColumns}`}
+          columnWrapperStyle={
+            listColumns > 1
+              ? {
+                  gap: COLUMN_GAP,
+                  alignItems: "stretch",
+                  justifyContent: "flex-start",
+                  marginBottom: normalize(2),
+                }
+              : undefined
+          }
           contentContainerStyle={[
             s.listContent,
-            clientes.length === 0 && { flex: 1 },
+            clientes.length === 0 && { flexGrow: 1 },
           ]}
           refreshControl={
             <RefreshControl
@@ -247,7 +304,19 @@ const Clientes = () => {
             />
           }
           renderItem={({ item }) => (
-            <ClienteCard cliente={item} onPress={() => irAEditar(item)} />
+            <View
+              style={
+                listColumns > 1
+                  ? { width: COLUMN_WIDTH, minWidth: 0 }
+                  : undefined
+              }
+            >
+              <ClienteCard
+                cliente={item}
+                onPress={() => irAEditar(item)}
+                onInactivar={setClienteAInactivar}
+              />
+            </View>
           )}
           ListEmptyComponent={
             <View style={s.emptyContainer}>
@@ -261,6 +330,18 @@ const Clientes = () => {
           }
         />
       </View>
+
+      <ModalWarning
+        visible={!!clienteAInactivar}
+        type="danger"
+        title="Inactivar cliente"
+        message={`¿Inactivar a "${clienteAInactivar?.NOMBRE ?? "este cliente"}"? Quedará pendiente de sincronizar.`}
+        confirmText="Inactivar"
+        cancelText="Cancelar"
+        onCancel={() => setClienteAInactivar(null)}
+        onConfirm={confirmarInactivarCliente}
+      />
+
       <LinearGradient
         style={s.footer}
         colors={gb.gradient_blue}

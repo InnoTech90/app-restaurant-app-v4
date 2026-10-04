@@ -34,7 +34,7 @@ export class Database {
       const placeholders = ids.map(() => "?").join(",");
       const movimientos = await db.getAllAsync(
         `
-                SELECT ID, ID_CAJA, TIPO, MONTO, FECHA
+                SELECT ID, ID_CAJA, TIPO, MONTO, CONCEPTO, FECHA
                 FROM MOVIMIENTO_CAJA
                 WHERE ID_CAJA IN (${placeholders})
                 ORDER BY FECHA DESC, ID DESC
@@ -229,14 +229,18 @@ export class Database {
     });
   }
 
-  static async insertarMovimiento({ idCaja, tipo, monto }) {
+  static async insertarMovimiento({ idCaja, tipo, monto, concepto }) {
     const cantidad = Number(monto);
+    const motivo = String(concepto ?? "").trim();
     if (!idCaja) return { ok: false, message: "No hay una caja activa." };
     if (tipo !== "deposito" && tipo !== "retiro") {
       return { ok: false, message: "Movimiento no válido." };
     }
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
       return { ok: false, message: "Ingresa un monto mayor a cero." };
+    }
+    if (!motivo) {
+      return { ok: false, message: "Indica el concepto del movimiento." };
     }
 
     return withDb("Caja.insertarMovimiento", async (db) => {
@@ -290,8 +294,8 @@ export class Database {
       }
 
       await db.runAsync(
-        `INSERT INTO MOVIMIENTO_CAJA (ID_CAJA, TIPO, MONTO) VALUES (?, ?, ?)`,
-        [idCaja, tipo, cantidad],
+        `INSERT INTO MOVIMIENTO_CAJA (ID_CAJA, TIPO, MONTO, CONCEPTO) VALUES (?, ?, ?, ?)`,
+        [idCaja, tipo, cantidad, motivo],
       );
       return { ok: true };
     });
@@ -309,6 +313,42 @@ export class Database {
                 `,
         [id],
       );
+    });
+  }
+
+  static async eliminarHistorial() {
+    const idSucursal = await AsyncStorage.getItem("qrCode");
+    if (!idSucursal) {
+      return { ok: false, message: "No se encontró la sucursal." };
+    }
+
+    return withDb("Caja.eliminarHistorial", async (db) => {
+      await runDatabaseMigrations(db);
+      const sesiones = await db.getAllAsync(
+        `SELECT ID FROM HISTORIAL_CAJA WHERE ID_SUCURSAL = ?`,
+        [idSucursal],
+      );
+      if (!sesiones.length) {
+        return { ok: true };
+      }
+
+      const ids = sesiones.map((s) => s.ID);
+      const placeholders = ids.map(() => "?").join(",");
+
+      await db.runAsync(
+        `DELETE FROM CAJA_VENTA WHERE ID_CAJA IN (${placeholders})`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM MOVIMIENTO_CAJA WHERE ID_CAJA IN (${placeholders})`,
+        ids,
+      );
+      await db.runAsync(
+        `DELETE FROM HISTORIAL_CAJA WHERE ID_SUCURSAL = ?`,
+        [idSucursal],
+      );
+
+      return { ok: true };
     });
   }
 }

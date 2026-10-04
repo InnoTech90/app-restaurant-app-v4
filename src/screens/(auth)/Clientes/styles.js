@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 import {
   CONTENT_MAX_WIDTH,
+  contentPaddingH,
   isTablet,
   normalize,
 } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -10,15 +11,17 @@ export const s = StyleSheet.create({
   /* ── Header ─────────────────────────────── */
   header: {
     width: "100%",
-    height: normalize(50),
-    paddingHorizontal: normalize(10),
+    height: normalize(isTablet ? 56 : 50),
+    paddingHorizontal: isTablet
+      ? contentPaddingH + normalize(16)
+      : normalize(10),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   headerTitle: {
     color: "white",
-    fontSize: normalize(18),
+    fontSize: normalize(isTablet ? 20 : 18),
     fontWeight: "bold",
   },
   btnAdd: {
@@ -32,6 +35,28 @@ export const s = StyleSheet.create({
     justifyContent: "center",
     padding: 0,
   },
+  btnHeaderDelete: {
+    width: normalize(35),
+    height: normalize(35),
+    borderRadius: normalize(15),
+    backgroundColor: "#C5303040",
+    borderWidth: normalize(1),
+    borderColor: "#FCA5A5",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+  },
+  cardDeleteBtn: {
+    width: normalize(34),
+    height: normalize(34),
+    borderRadius: normalize(10),
+    backgroundColor: "#C5303014",
+    borderWidth: 1,
+    borderColor: "#C53030",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: normalize(4),
+  },
 
   /* ── Body / lista ────────────────────────── */
   body: {
@@ -39,16 +64,16 @@ export const s = StyleSheet.create({
     backgroundColor: gb.gray100,
   },
   listContent: {
-    padding: normalize(14),
+    paddingVertical: normalize(14),
+    paddingHorizontal: isTablet
+      ? contentPaddingH + normalize(14)
+      : normalize(14),
     paddingBottom: normalize(30),
     gap: normalize(14),
-    // En tablet: layout de 2 columnas usando flexWrap
     ...(isTablet && {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
       alignSelf: "center",
-      width: CONTENT_MAX_WIDTH,
+      width: CONTENT_MAX_WIDTH + contentPaddingH * 2,
+      maxWidth: "100%",
     }),
   },
   emptyContainer: {
@@ -57,6 +82,9 @@ export const s = StyleSheet.create({
     justifyContent: "center",
     paddingTop: normalize(60),
     gap: normalize(10),
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: isTablet ? 480 : undefined,
   },
   emptyText: {
     color: gb.gray400,
@@ -74,8 +102,31 @@ export const s = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
-    // En tablet cada card ocupa ~48% del ancho
-    ...(isTablet && { width: "48%" }),
+    width: "100%",
+    flex: 1,
+  },
+  cardInactiva: {
+    opacity: 0.92,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+  cardBadges: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: normalize(6),
+    alignItems: "center",
+  },
+  cardInactivoBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#C5303018",
+    borderRadius: normalize(8),
+    paddingHorizontal: normalize(8),
+    paddingVertical: normalize(3),
+  },
+  cardInactivoBadgeText: {
+    color: "#C53030",
+    fontSize: normalize(11),
+    fontWeight: "700",
   },
   cardAccent: {
     width: normalize(5),

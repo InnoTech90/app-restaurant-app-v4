@@ -17,7 +17,15 @@ export class Database {
     const qrData = await AsyncStorage.getItem("qrCode");
     return withDb("Clientes.getClientes", (db) =>
       db.getAllAsync(
-        `SELECT * FROM CLIENTES WHERE ACTIVO = 1 AND SUCURSAL = ? ORDER BY NOMBRE ASC`,
+        `
+        SELECT * FROM CLIENTES
+        WHERE SUCURSAL = ?
+          AND (
+            COALESCE(ACTIVO, 1) = 1
+            OR (COALESCE(ACTIVO, 1) = 0 AND COALESCE(SINCRONIZADO, 1) = 0)
+          )
+        ORDER BY COALESCE(ACTIVO, 1) DESC, NOMBRE ASC
+        `,
         [qrData],
       ),
     );
@@ -90,13 +98,13 @@ export class Database {
     );
   }
 
-  /** Clientes con SINCRONIZADO = 0 (editados o creados localmente) */
+  /** Clientes con SINCRONIZADO = 0 (editados, creados o inactivados localmente) */
   static async getClientesPendientes() {
     return withDb("Clientes.getClientesPendientes", (db) =>
       db.getAllAsync(
         `SELECT ID, UUID, NOMBRE, TELEFONO, CORREO, DIRECCION,
-                        CIUDAD, ESTADO, WHATSAPP, DESCRIPCION, SUCURSAL
-                 FROM CLIENTES WHERE SINCRONIZADO = 0`,
+                CIUDAD, ESTADO, WHATSAPP, DESCRIPCION, SUCURSAL, ACTIVO
+         FROM CLIENTES WHERE COALESCE(SINCRONIZADO, 0) = 0`,
       ),
     );
   }
@@ -140,6 +148,16 @@ export class Database {
   static async eliminarClientesSinUUID() {
     return withDb("Clientes.eliminarClientesSinUUID", (db) =>
       db.runAsync(`DELETE FROM CLIENTES WHERE UUID IS NULL`),
+    );
+  }
+
+  static async inactivarCliente(id) {
+    if (id == null) return;
+    return withDb("Clientes.inactivarCliente", (db) =>
+      db.runAsync(
+        `UPDATE CLIENTES SET ACTIVO = 0, SINCRONIZADO = 0 WHERE ID = ?`,
+        [id],
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Input from "../../../components/atoms/Input/Input";
+import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
@@ -32,6 +33,8 @@ const Editar = () => {
   const [descripcion, setDescripcion] = useState(cliente.DESCRIPCION ?? "");
   const [notas, setNotas] = useState(cliente.NOTAS ?? "");
   const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [openConfirmEliminar, setOpenConfirmEliminar] = useState(false);
 
   const guardar = async () => {
     if (!nombre.trim()) {
@@ -68,6 +71,21 @@ const Editar = () => {
     }
   };
 
+  const inactivar = async () => {
+    if (!cliente?.ID || eliminando) return;
+    try {
+      setEliminando(true);
+      setOpenConfirmEliminar(false);
+      await Database.inactivarCliente(cliente.ID);
+      router.back();
+    } catch (e) {
+      console.error("Error al inactivar cliente:", e);
+      Alert.alert("Error", "No se pudo inactivar el cliente.");
+    } finally {
+      setEliminando(false);
+    }
+  };
+
   return (
     <SafeAreaView
       edges={["bottom"]}
@@ -82,7 +100,21 @@ const Editar = () => {
       >
         <RecoverButton />
         <Text style={s.headerTitle}>Editar cliente</Text>
-        <View style={{ width: normalize(35) }} />
+        {Number(cliente.ACTIVO ?? 1) === 1 ? (
+          <TouchableOpacity
+            style={[s.btnHeaderDelete, eliminando && { opacity: 0.55 }]}
+            onPress={() => setOpenConfirmEliminar(true)}
+            disabled={guardando || eliminando}
+          >
+            <Ionicons
+              name="person-remove-outline"
+              size={normalize(18)}
+              color="white"
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: normalize(35) }} />
+        )}
       </LinearGradient>
 
       <KeyboardAvoidingView
@@ -163,7 +195,7 @@ const Editar = () => {
               <TouchableOpacity
                 style={s.saveBtnInner}
                 onPress={() => guardar()}
-                disabled={guardando}
+                disabled={guardando || eliminando}
               >
                 <Ionicons
                   name={
@@ -180,6 +212,17 @@ const Editar = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ModalWarning
+        visible={openConfirmEliminar}
+        type="danger"
+        title="Inactivar cliente"
+        message={`¿Inactivar a "${cliente.NOMBRE ?? "este cliente"}"? Quedará pendiente de sincronizar.`}
+        confirmText="Inactivar"
+        cancelText="Cancelar"
+        onCancel={() => setOpenConfirmEliminar(false)}
+        onConfirm={inactivar}
+      />
     </SafeAreaView>
   );
 };

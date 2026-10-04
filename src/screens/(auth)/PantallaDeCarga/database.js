@@ -609,13 +609,22 @@ export class Database {
     let clientesCount = 0;
 
     for (const cliente of data.data) {
+      const activoRaw = cliente.active ?? cliente.activo ?? cliente.isActive;
+      const activo =
+        activoRaw === false ||
+        activoRaw === 0 ||
+        activoRaw === "0" ||
+        activoRaw === "inactivo"
+          ? 0
+          : 1;
+
       await db.runAsync(
         `
             INSERT INTO CLIENTES (
                 UUID, NOMBRE, TELEFONO, CORREO, DIRECCION, NOTAS,
                 DESCRIPCION, DINNER_KEY, SUCURSAL, SINCRONIZADO, ACTIVO
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             ON CONFLICT(UUID)
             DO UPDATE SET
                 NOMBRE = excluded.NOMBRE,
@@ -626,8 +635,14 @@ export class Database {
                 DESCRIPCION = excluded.DESCRIPCION,
                 DINNER_KEY = excluded.DINNER_KEY,
                 SUCURSAL = excluded.SUCURSAL,
-                SINCRONIZADO = 1,
-                ACTIVO = 1
+                SINCRONIZADO = CASE
+                  WHEN CLIENTES.SINCRONIZADO = 0 THEN 0
+                  ELSE 1
+                END,
+                ACTIVO = CASE
+                  WHEN CLIENTES.ACTIVO = 0 AND CLIENTES.SINCRONIZADO = 0 THEN 0
+                  ELSE excluded.ACTIVO
+                END
             `,
         [
           cliente.id,
@@ -639,6 +654,7 @@ export class Database {
           cliente.description || "",
           cliente.dinerKey || 0,
           qrData,
+          activo,
         ],
       );
       clientesCount++;

@@ -166,9 +166,27 @@ export const s = StyleSheet.create({
   montosRapidosContainer: {
     flexDirection: "row",
     gap: normalize(10),
-    marginTop: normalize(20),
-    marginBottom: normalize(20),
+    marginTop: normalize(12),
+    marginBottom: normalize(8),
     justifyContent: "center",
+  },
+  conceptoLabel: {
+    color: gb.gray400,
+    fontWeight: "bold",
+    marginTop: normalize(8),
+    marginBottom: normalize(6),
+    fontSize: normalize(12),
+  },
+  conceptoInput: {
+    minHeight: normalize(84),
+    borderWidth: 1,
+    borderColor: gb.gray300,
+    borderRadius: normalize(8),
+    backgroundColor: "white",
+    paddingHorizontal: normalize(12),
+    paddingVertical: normalize(10),
+    fontSize: normalize(13),
+    color: gb.gray800,
   },
   montoRapido: {
     backgroundColor: gb.blue200 + "40",
@@ -219,11 +237,34 @@ export const s = StyleSheet.create({
     width: "100%",
     marginTop: normalize(16),
   },
+  historialHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: normalize(8),
+    gap: normalize(10),
+  },
   historialTitle: {
     fontSize: normalize(14),
     fontWeight: "bold",
     color: gb.gray700,
-    marginBottom: normalize(8),
+    flex: 1,
+  },
+  historialEliminarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: normalize(4),
+    paddingVertical: normalize(6),
+    paddingHorizontal: normalize(10),
+    borderRadius: normalize(8),
+    backgroundColor: "#C5303014",
+    borderWidth: 1,
+    borderColor: "#C53030",
+  },
+  historialEliminarTexto: {
+    color: "#C53030",
+    fontWeight: "bold",
+    fontSize: normalize(11),
   },
   historialItem: {
     backgroundColor: "white",
@@ -318,6 +359,11 @@ export const s = StyleSheet.create({
   movimientoFecha: {
     fontSize: normalize(11),
     color: gb.gray500,
+  },
+  movimientoConcepto: {
+    fontSize: normalize(12),
+    color: gb.gray600,
+    marginTop: normalize(2),
   },
   movimientoMonto: {
     fontSize: normalize(14),

@@ -397,6 +397,7 @@ export const DatabaseSchema = {
           ID_CAJA INTEGER,
           TIPO NVARCHAR,
           MONTO REAL,
+          CONCEPTO NVARCHAR,
           FECHA DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `,

@@ -52,8 +52,14 @@ export class integracionPantallaDeCarga {
       await Database.clientesModel(response.data);
       return response.data;
     } catch (error) {
-      console.error("Error fetching clientes data:", error);
+      const status = error?.response?.status;
+      if (status === 404) {
+        const vacio = { data: [] };
+        await Database.clientesModel(vacio);
+        return vacio;
+      }
 
+      console.error("Error fetching clientes data:", error);
       throw error;
     }
   };

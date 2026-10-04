@@ -15,6 +15,7 @@ import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import Select from "../../atoms/Select/Select";
+import ModalWarning from "../ModalWarning/ModalWarning";
 import { s } from "./styles";
 
 const sameId = (a, b) =>
@@ -115,8 +116,8 @@ const ModalDividirCuenta = ({
     value: f.value ?? f.ID,
   }));
 
-  const crearFilas = (n, tot, fpDefault) => {
-    const montoBase = tot > 0 ? (tot / n).toFixed(2) : "0.00";
+  const crearFilas = (n, tot, fpDefault, dividir = false) => {
+    const montoBase = dividir && tot > 0 ? (tot / n).toFixed(2) : "";
     return Array.from({ length: n }, (_, i) => ({
       id: i,
       monto: montoBase,
@@ -137,9 +138,13 @@ const ModalDividirCuenta = ({
   const [numClientes, setNumClientes] = useState(2);
   const [filas, setFilas] = useState([]);
   const [guardando, setGuardando] = useState(false);
+  const [openConfirmLimpiar, setOpenConfirmLimpiar] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setOpenConfirmLimpiar(false);
+      return;
+    }
     if (filasGuardadas.length > 0) {
       const mapped = mapearGuardadas(filasGuardadas);
       setFilas(mapped);
@@ -152,39 +157,19 @@ const ModalDividirCuenta = ({
 
   const dividirIgual = () => {
     if (disabled) return;
-    setFilas(crearFilas(numClientes, total, formatoPagoDefault));
+    setFilas(crearFilas(numClientes, total, formatoPagoDefault, true));
   };
 
   const cambiarNumClientes = (n) => {
     if (disabled) return;
     const sanitized = Math.max(1, Math.min(20, n));
     setNumClientes(sanitized);
-    setFilas(crearFilas(sanitized, total, formatoPagoDefault));
+    setFilas(crearFilas(sanitized, total, formatoPagoDefault, false));
   };
 
   const handleChangeFila = (index, nuevaFila) => {
     if (disabled) return;
-    setFilas((prev) => {
-      const updated = prev.map((f, i) => (i === index ? nuevaFila : f));
-
-      const montoEditado = parseFloat(nuevaFila.monto) || 0;
-      const montoAnterior = parseFloat(prev[index].monto) || 0;
-      if (montoEditado === montoAnterior) return updated;
-
-      const restantes = updated
-        .map((f, i) => ({ f, i }))
-        .filter(({ i }) => i !== index);
-
-      if (restantes.length === 0) return updated;
-
-      const disponible = Math.max(0, total - montoEditado);
-      const porCada = (disponible / restantes.length).toFixed(2);
-
-      return updated.map((f, i) => {
-        if (i === index) return f;
-        return { ...f, monto: porCada };
-      });
-    });
+    setFilas((prev) => prev.map((f, i) => (i === index ? nuevaFila : f)));
   };
 
   const todasPagadas = filas.length > 0 && filas.every((f) => f.pagado);
@@ -198,14 +183,33 @@ const ModalDividirCuenta = ({
     setFilas((prev) => prev.map((f) => ({ ...f, pagado: !todasPagadas })));
   };
 
+  const totalCapturado = filas.reduce(
+    (sum, f) => sum + (parseFloat(f.monto) || 0),
+    0,
+  );
   const totalPagado = filas.reduce(
     (sum, f) => sum + (f.pagado ? parseFloat(f.monto) || 0 : 0),
     0,
   );
   const totalPendiente = Math.max(0, total - totalPagado);
+  const montosCuadran = Math.abs(totalCapturado - total) <= 0.01;
 
   const handleGuardar = async () => {
     if (disabled) return;
+    if (!todasValidas) {
+      Alert.alert(
+        "Datos incompletos",
+        "Captura el monto y método de pago de cada cliente.",
+      );
+      return;
+    }
+    if (!montosCuadran) {
+      Alert.alert(
+        "Montos incorrectos",
+        `La suma de los pagos ($${totalCapturado.toFixed(2)}) debe ser igual al total de la comanda ($${total.toFixed(2)}).`,
+      );
+      return;
+    }
     if (!todasPagadas) {
       Alert.alert(
         "Check pendiente",
@@ -229,32 +233,25 @@ const ModalDividirCuenta = ({
 
   const handleLimpiar = () => {
     if (disabled) return;
-    Alert.alert(
-      "Quitar división",
-      "Se eliminará el pago dividido guardado. ¿Continuar?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Quitar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await onLimpiar?.();
-              setFilas(crearFilas(2, total, formatoPagoDefault));
-              setNumClientes(2);
-            } catch (e) {
-              console.error("Error limpiando división:", e);
-            }
-          },
-        },
-      ],
-    );
+    setOpenConfirmLimpiar(true);
+  };
+
+  const confirmarLimpiar = async () => {
+    setOpenConfirmLimpiar(false);
+    try {
+      await onLimpiar?.();
+      setFilas(crearFilas(2, total, formatoPagoDefault));
+      setNumClientes(2);
+    } catch (e) {
+      console.error("Error limpiando división:", e);
+    }
   };
 
   const nombreMetodo = (id) =>
     opcionesPago.find((f) => sameId(f.value, id))?.label ?? "—";
 
   return (
+    <>
     <Modal
       visible={visible}
       animationType="slide"
@@ -431,6 +428,17 @@ const ModalDividirCuenta = ({
 
               <View style={s.resumenTotal}>
                 <View style={s.resumenTotalFila}>
+                  <Text style={s.resumenTotalLabel}>Suma capturada</Text>
+                  <Text
+                    style={[
+                      s.resumenTotalValor,
+                      { color: montosCuadran ? gb.green600 : gb.red600 },
+                    ]}
+                  >
+                    ${totalCapturado.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={s.resumenTotalFila}>
                   <Text style={s.resumenTotalLabel}>Total pagado</Text>
                   <Text style={[s.resumenTotalValor, { color: gb.green600 }]}>
                     ${totalPagado.toFixed(2)}
@@ -510,6 +518,18 @@ const ModalDividirCuenta = ({
         </View>
       </View>
     </Modal>
+
+    <ModalWarning
+      visible={openConfirmLimpiar}
+      type="danger"
+      title="Quitar división"
+      message="Se eliminará el pago dividido guardado. ¿Continuar?"
+      confirmText="Quitar"
+      cancelText="Cancelar"
+      onCancel={() => setOpenConfirmLimpiar(false)}
+      onConfirm={confirmarLimpiar}
+    />
+    </>
   );
 };
 

@@ -8,25 +8,26 @@ import { s } from "./style";
  * @param {object}   style     - Override del contenedor
  */
 const InputCantidad = ({ value = 1, onChange, style, min = 1, small = false, disabled = false }) => {
+    const actual = Number(value) || 0;
     const restar = () => {
-        if (value > min) onChange(value - 1);
+        if (actual > min) onChange(actual - 1);
     };
     const sumar = () => {
-        onChange(value + 1);
+        onChange(actual + 1);
     };
 
     return (
         <View style={[s.contenedor, style]}>
             <Pressable
                 onPress={restar}
-                style={[s.boton, small && s.botonSmall, (disabled || value <= min) && s.botonDeshabilitado]}
-                disabled={disabled || value <= min}
+                style={[s.boton, small && s.botonSmall, (disabled || actual <= min) && s.botonDeshabilitado]}
+                disabled={disabled || actual <= min}
             >
-                <Text style={[s.botonTexto, small && s.botonTextoSmall, (disabled || value <= min) && s.botonTextoDeshabilitado]}>−</Text>
+                <Text style={[s.botonTexto, small && s.botonTextoSmall, (disabled || actual <= min) && s.botonTextoDeshabilitado]}>−</Text>
             </Pressable>
 
             <View style={[s.valorContainer, small && s.valorContainerSmall]}>
-                <Text style={s.valor}>{value}</Text>
+                <Text style={s.valor}>{actual}</Text>
             </View>
 
             <Pressable onPress={sumar} style={[s.boton, small && s.botonSmall, disabled && s.botonDeshabilitado]} disabled={disabled}>

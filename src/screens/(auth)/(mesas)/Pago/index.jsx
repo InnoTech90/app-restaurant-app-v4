@@ -7,8 +7,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,8 +20,10 @@ import RecoverButton from "../../../../components/atoms/RecoverButton/RecoverBut
 import ModalDividirCuenta from "../../../../components/Molecules/ModalDividirCuenta/ModalDividirCuenta";
 import MesasNavButtons from "../../../../components/Molecules/MesasNavButtons/MesasNavButtons";
 import ModalSeleccionCliente from "../../../../components/Molecules/ModalSeleccionCliente/ModalSeleccionCliente";
+import ModalWarning from "../../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../../components/Molecules/NipModal/NipModal";
 import PagoAdicionales from "../../../../components/Molecules/PagoAdicionales/PagoAdicionales";
+import Card from "../../../../components/Molecules/Card/Card";
 import PagoArticulos from "../../../../components/Molecules/PagoArticulos/PagoArticulos";
 import PagoDesglose from "../../../../components/Molecules/PagoDesglose/PagoDesglose";
 import PagoInfoComanda from "../../../../components/Molecules/PagoInfoComanda/PagoInfoComanda";
@@ -48,6 +52,7 @@ const Pago = () => {
   const [openModalCliente, setOpenModalCliente] = useState(false);
   const [openModalDividir, setOpenModalDividir] = useState(false);
   const [openNipModal, setOpenNipModal] = useState(false);
+  const [openNipFinalizar, setOpenNipFinalizar] = useState(false);
   const scrollRef = useRef(null);
   const [filasGuardadas, setFilasGuardadas] = useState([]);
   const [buscadorCliente, setBuscadorCliente] = useState("");
@@ -69,34 +74,32 @@ const Pago = () => {
   const [cuentaImpresa, setCuentaImpresa] = useState(false);
   const [openNipEditarModal, setOpenNipEditarModal] = useState(false);
   const [openNipAdicional, setOpenNipAdicional] = useState(false);
+  const [openNipDescuento, setOpenNipDescuento] = useState(false);
+  const [articuloAEliminar, setArticuloAEliminar] = useState(null);
+  const [openNipEliminar, setOpenNipEliminar] = useState(false);
   const [openNipCancelarModal, setOpenNipCancelarModal] = useState(false);
-  const [mostrarCancelar, setMostrarCancelar] = useState(false);
+  const [openConfirmCancelar, setOpenConfirmCancelar] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [mostrarCajaCerrada, setMostrarCajaCerrada] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const router = useRouter();
   const campoAdicionalAbierto = useRef(false);
+  const campoDescuentoAbierto = useRef(false);
   const accionAdicionalRef = useRef(null);
+  const accionDescuentoRef = useRef(null);
 
   const {
     puedeEditar,
     requiereNipEdicion,
+    notaDesbloqueada,
     modalNipEdicion,
     cerrarNipEdicion,
     solicitarEdicion,
     editarCampo,
+    enfocarCampo,
     cerrarCampo,
     confirmarNipEdicion,
   } = useEdicionTicket(configuraciones);
-
-  // Tras imprimir la cuenta, el cobro sigue sin NIP. Antes, cualquier cambio pide NIP si la edición está restringida.
-  const ejecutarCobro = (accion) => {
-    if (cuentaImpresa) {
-      accion();
-      return;
-    }
-    solicitarEdicion(accion);
-  };
 
   const aplicarAdicional = async (accion, { campo = false } = {}) => {
     if (cuentaImpresa) return;
@@ -125,8 +128,22 @@ const Pago = () => {
     accion();
   };
 
+  const aplicarDescuento = (accion, { campo = false } = {}) => {
+    if (cuentaImpresa) return;
+    if (campo && campoDescuentoAbierto.current) {
+      accion();
+      return;
+    }
+    accionDescuentoRef.current = () => {
+      if (campo) campoDescuentoAbierto.current = true;
+      accion();
+    };
+    setOpenNipDescuento(true);
+  };
+
   const cerrarAdicional = () => {
     campoAdicionalAbierto.current = false;
+    campoDescuentoAbierto.current = false;
   };
 
   const desbloquearComanda = async () => {
@@ -138,29 +155,18 @@ const Pago = () => {
     ]);
     setCuentaImpresa(false);
     setComanda((prev) => (prev ? { ...prev, ESTATUS: 0 } : prev));
-    setMostrarCancelar(true);
   };
 
   const solicitarCancelarCuenta = () => {
     if (cancelando || !comanda?.ID) return;
-    Alert.alert(
-      "Cancelar cuenta",
-      "¿Estás seguro de que deseas cancelar esta cuenta? Esta acción no se puede deshacer.",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Sí, cancelar",
-          style: "destructive",
-          onPress: () => setOpenNipCancelarModal(true),
-        },
-      ],
-    );
+    setOpenConfirmCancelar(true);
   };
 
   const confirmarCancelarCuenta = async () => {
     if (cancelando || !comanda?.ID) return;
     setCancelando(true);
     setOpenNipCancelarModal(false);
+    setOpenConfirmCancelar(false);
     try {
       await Database.cancelarComanda(comanda.ID);
       await AsyncStorage.multiRemove([
@@ -335,7 +341,6 @@ const Pago = () => {
       await Database.setComandaImpresa(comanda.ID);
       await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
       setCuentaImpresa(true);
-      setMostrarCancelar(false);
       setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
 
       if (!impresionOk) {
@@ -350,7 +355,6 @@ const Pago = () => {
         await Database.setComandaImpresa(comanda.ID);
         await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
         setCuentaImpresa(true);
-        setMostrarCancelar(false);
         setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
         Alert.alert(
           "No se pudo imprimir",
@@ -436,7 +440,8 @@ const Pago = () => {
       );
       return;
     }
-    finalizarVenta();
+    if (finalizando) return;
+    setOpenNipFinalizar(true);
   };
 
   const handleImprimirCuenta = () => {
@@ -449,11 +454,14 @@ const Pago = () => {
   };
 
   const cambiarCantidad = (renglon, nuevaCantidad) => {
+    const cantidadActual = Number(renglon.CANTIDAD) || 0;
+    const cantidadNueva = Number(nuevaCantidad) || 0;
+    if (cantidadNueva < 1 || cantidadNueva === cantidadActual) return;
+
     solicitarEdicion(async () => {
-      if (nuevaCantidad < 1) return;
       try {
         const tipo =
-          nuevaCantidad > renglon.CANTIDAD
+          cantidadNueva > cantidadActual
             ? "INCREMENTAR_ARTICULO"
             : "DISMINUIR_ARTICULO";
         const costoComps = (renglon.complementos ?? []).reduce(
@@ -462,14 +470,17 @@ const Pago = () => {
             Number(
               c.TOTAL ??
                 (c.CANTIDAD ?? 0) *
-                  (c.PRECIO_VENTA ?? c.COMP_PRECIO ?? c.complemento?.PRECIO ?? 0),
+                  (c.PRECIO_VENTA ??
+                    c.COMP_PRECIO ??
+                    c.complemento?.PRECIO ??
+                    0),
             ),
           0,
         );
         const descGuardado = Number(renglon.DESCUENTO);
         const subtotalAnterior =
           Number(renglon.SUBTOTAL) ||
-          (renglon.CANTIDAD ?? 0) * (renglon.PRECIO_VENTA ?? 0);
+          cantidadActual * (renglon.PRECIO_VENTA ?? 0);
         const descuento =
           Number.isFinite(descGuardado) && descGuardado > 0
             ? descGuardado
@@ -477,12 +488,12 @@ const Pago = () => {
                 0,
                 subtotalAnterior + costoComps - (Number(renglon.TOTAL) || 0),
               );
-        const nuevoSubtotal = nuevaCantidad * (renglon.PRECIO_VENTA ?? 0);
+        const nuevoSubtotal = cantidadNueva * (renglon.PRECIO_VENTA ?? 0);
         const nuevoTotal = Math.max(0, nuevoSubtotal - descuento + costoComps);
 
         await Database.actualizarCantidadArticulo(
           renglon.ID,
-          nuevaCantidad,
+          cantidadNueva,
           renglon.PRECIO_VENTA,
           {
             subtotal: nuevoSubtotal,
@@ -500,7 +511,7 @@ const Pago = () => {
             a.ID === renglon.ID
               ? {
                   ...a,
-                  CANTIDAD: nuevaCantidad,
+                  CANTIDAD: cantidadNueva,
                   SUBTOTAL: nuevoSubtotal,
                   TOTAL: nuevoTotal,
                   DESCUENTO: descuento,
@@ -514,20 +525,31 @@ const Pago = () => {
     });
   };
 
+  const pedirNipEliminacion =
+    Number(configuraciones?.MODO_RESTRICTIVO) === 1 ||
+    Number(configuraciones?.HABILITAR_EDICION_TICKET) === 0;
+
   const eliminarArticulo = (renglon) => {
-    solicitarEdicion(async () => {
-      try {
-        await Database.registrarMovimiento(
-          renglon.ID_COMANDA,
-          renglon.ID_ARTICULO,
-          "ELIMINACION_ARTICULO",
-        );
-        await Database.eliminarArticulo(renglon.ID);
-        setArticulosComanda((prev) => prev.filter((a) => a.ID !== renglon.ID));
-      } catch (error) {
-        console.error("Error eliminando artículo:", error);
-      }
-    });
+    setArticuloAEliminar(renglon);
+  };
+
+  const confirmarEliminarArticulo = async () => {
+    const renglon = articuloAEliminar;
+    if (!renglon) return;
+    try {
+      await Database.registrarMovimiento(
+        renglon.ID_COMANDA,
+        renglon.ID_ARTICULO,
+        "ELIMINACION_ARTICULO",
+      );
+      await Database.eliminarArticulo(renglon.ID);
+      setArticulosComanda((prev) => prev.filter((a) => a.ID !== renglon.ID));
+    } catch (error) {
+      console.error("Error eliminando artículo:", error);
+    } finally {
+      setArticuloAEliminar(null);
+      setOpenNipEliminar(false);
+    }
   };
 
   const cambiarNota = (texto) => {
@@ -603,22 +625,18 @@ const Pago = () => {
             Folio #{comanda?.FICHA == 0 ? 0 : comanda?.FICHA} · {fecha} {hora}
           </Text>
         </View>
-        {mostrarCancelar ? (
-          <Button
-            style={s.btnCancelar}
-            styleContainer={s.btnCancelarContainer}
-            onPress={solicitarCancelarCuenta}
-            disabled={cancelando}
-          >
-            <Ionicons
-              name="trash-outline"
-              size={normalize(15)}
-              color={gb.gray50}
-            />
-          </Button>
-        ) : (
-          <View style={{ width: normalize(40) }} />
-        )}
+        <Button
+          style={s.btnCancelar}
+          styleContainer={s.btnCancelarContainer}
+          onPress={solicitarCancelarCuenta}
+          disabled={cancelando || !comanda?.ID}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={normalize(15)}
+            color={gb.gray50}
+          />
+        </Button>
       </LinearGradient>
 
       {!cuentaImpresa && requiereNipEdicion && !puedeEditar && (
@@ -678,19 +696,14 @@ const Pago = () => {
             cliente={cliente}
             fecha={fecha}
             hora={hora}
-            onAbrirModalCliente={() =>
-              ejecutarCobro(() => setOpenModalCliente(true))
-            }
+            onAbrirModalCliente={() => setOpenModalCliente(true)}
             onQuitarCliente={() => {}}
             disabled={false}
           />
           <PagoArticulos
             articulos={articulos}
-            nota={nota}
             onCambiarCantidad={cuentaImpresa ? undefined : cambiarCantidad}
             onEliminarArticulo={cuentaImpresa ? undefined : eliminarArticulo}
-            onNotaChange={cuentaImpresa ? undefined : cambiarNota}
-            onNotaBlur={cerrarCampo}
             disabled={cuentaImpresa}
           />
 
@@ -699,9 +712,7 @@ const Pago = () => {
             metodoPagoId={metodoPagoId}
             onSeleccionar={(id) => {
               setMetodoPagoId(id);
-              const metodo = formatosPago.find((f) =>
-                sameMetodoId(f.ID, id),
-              );
+              const metodo = formatosPago.find((f) => sameMetodoId(f.ID, id));
               if (!/efectivo/i.test(String(metodo?.NOMBRE ?? ""))) {
                 setMontoRecibido("");
               }
@@ -714,58 +725,55 @@ const Pago = () => {
           <PagoAdicionales
             impuestosPct={impuestosPct}
             onImpuestosChange={
-              cuentaImpresa ? undefined : (v) => aplicarAdicional(() => setImpuestosPct(v), { campo: true })
+              cuentaImpresa
+                ? undefined
+                : (v) =>
+                    aplicarAdicional(() => setImpuestosPct(v), { campo: true })
             }
             desglosarImpuestos={desglosarImpuestos}
             onToggleDesglosar={
               cuentaImpresa
                 ? undefined
-                : () => aplicarAdicional(() => setDesglosarImpuestos((prev) => !prev))
+                : () =>
+                    aplicarAdicional(() =>
+                      setDesglosarImpuestos((prev) => !prev),
+                    )
             }
             propina={propina}
             propinaEsPct={propinaEsPct}
-            onPropinaChange={
-              cuentaImpresa ? undefined : (v) => aplicarAdicional(() => setPropina(v), { campo: true })
-            }
-            onPropinaToggle={
-              cuentaImpresa
-                ? undefined
-                : (esPct) => aplicarAdicional(() => setPropinaEsPct(esPct))
-            }
+            onPropinaChange={cuentaImpresa ? undefined : setPropina}
+            onPropinaToggle={cuentaImpresa ? undefined : setPropinaEsPct}
             descuento={descuento}
             descuentoEsPct={descuentoEsPct}
             onDescuentoChange={
               cuentaImpresa
                 ? undefined
                 : (v) =>
-                    aplicarAdicional(() => {
-                      if (descuentoEsPct) {
-                        const n = parseFloat(String(v).replace(/[^0-9.]/g, ""));
-                        if (!isNaN(n) && n > 100) {
-                          setDescuento("100");
-                          return;
+                    aplicarDescuento(
+                      () => {
+                        if (descuentoEsPct) {
+                          const n = parseFloat(
+                            String(v).replace(/[^0-9.]/g, ""),
+                          );
+                          if (!isNaN(n) && n > 100) {
+                            setDescuento("100");
+                            return;
+                          }
                         }
-                      }
-                      setDescuento(v);
-                    }, { campo: true })
+                        setDescuento(v);
+                      },
+                      { campo: true },
+                    )
             }
             onDescuentoToggle={
               cuentaImpresa
                 ? undefined
-                : (esPct) => aplicarAdicional(() => setDescuentoEsPct(esPct))
+                : (esPct) => aplicarDescuento(() => setDescuentoEsPct(esPct))
             }
             costoEnvio={costoEnvio}
             costoEnvioEsPct={costoEnvioEsPct}
-            onCostoEnvioChange={
-              cuentaImpresa
-                ? undefined
-                : (v) => aplicarAdicional(() => setCostoEnvio(v), { campo: true })
-            }
-            onCostoEnvioToggle={
-              cuentaImpresa
-                ? undefined
-                : (esPct) => aplicarAdicional(() => setCostoEnvioEsPct(esPct))
-            }
+            onCostoEnvioChange={cuentaImpresa ? undefined : setCostoEnvio}
+            onCostoEnvioToggle={cuentaImpresa ? undefined : setCostoEnvioEsPct}
             disabled={cuentaImpresa}
             onCerrarCampo={cerrarAdicional}
           />
@@ -783,10 +791,10 @@ const Pago = () => {
             costoEnvioEsPct={costoEnvioEsPct}
             montoCostoEnvio={montoCostoEnvio}
             total={total}
-            onDividirCuenta={() =>
-              ejecutarCobro(() => setOpenModalDividir(true))
-            }
+            onDividirCuenta={() => setOpenModalDividir(true)}
             tieneDivision={filasGuardadas.length > 0}
+            divisiones={filasGuardadas}
+            formatosPago={formatosPago}
           />
           {esEfectivo && (
             <PagoMontoRecibido
@@ -813,6 +821,51 @@ const Pago = () => {
               disabled={false}
             />
           )}
+          <Card
+            title="NOTA DE LA COMANDA"
+            linealGradient={gb.gradient_blue}
+            styleTitleHeader={{ color: gb.gray50 }}
+            styleHeader={{ width: "100%" }}
+            styleBody={{ width: "100%", paddingHorizontal: normalize(12), paddingVertical: normalize(12) }}
+          >
+            <Pressable
+              onPress={
+                cuentaImpresa
+                  ? undefined
+                  : () => {
+                      if (requiereNipEdicion && !notaDesbloqueada) {
+                        enfocarCampo();
+                      }
+                    }
+              }
+            >
+              <TextInput
+                style={s.notasInput}
+                multiline
+                numberOfLines={2}
+                placeholder="Escribe una nota para la comanda..."
+                placeholderTextColor={gb.gray400}
+                value={nota}
+                onChangeText={cuentaImpresa ? undefined : cambiarNota}
+                onFocus={
+                  cuentaImpresa
+                    ? undefined
+                    : () => {
+                        enfocarCampo();
+                        setTimeout(
+                          () =>
+                            scrollRef.current?.scrollToEnd({ animated: true }),
+                          100,
+                        );
+                      }
+                }
+                onBlur={cerrarCampo}
+                editable={
+                  !cuentaImpresa && (!requiereNipEdicion || notaDesbloqueada)
+                }
+              />
+            </Pressable>
+          </Card>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -833,7 +886,9 @@ const Pago = () => {
                   setOpenNipEditarModal(true);
                   return;
                 }
-                const permitido = await sesionPuedeEntrar({ keywords: ["sales"] });
+                const permitido = await sesionPuedeEntrar({
+                  keywords: ["sales"],
+                });
                 if (!permitido) {
                   Alert.alert(
                     "Sin permiso",
@@ -952,6 +1007,18 @@ const Pago = () => {
         }}
       />
 
+      <NipModal
+        visible={openNipFinalizar}
+        onClose={() => setOpenNipFinalizar(false)}
+        titulo="Finalizar venta"
+        modo="acceso"
+        keywords={["sales", "cash"]}
+        onSubmit={async () => {
+          setOpenNipFinalizar(false);
+          await finalizarVenta();
+        }}
+      />
+
       {/* ── MODAL NIP (editar comanda) ───────────────────── */}
       <NipModal
         visible={openNipEditarModal}
@@ -983,11 +1050,71 @@ const Pago = () => {
       />
 
       <NipModal
-        visible={openNipCancelarModal}
-        onClose={() => setOpenNipCancelarModal(false)}
-        titulo="Cancelar cuenta"
+        visible={openNipDescuento}
+        onClose={() => {
+          setOpenNipDescuento(false);
+          accionDescuentoRef.current = null;
+        }}
+        titulo="Aplicar descuento"
         modo="acceso"
-        keywords={[]}
+        keywords={["sales"]}
+        onSubmit={async () => {
+          setOpenNipDescuento(false);
+          const accion = accionDescuentoRef.current;
+          accionDescuentoRef.current = null;
+          await accion?.();
+        }}
+      />
+
+      <ModalWarning
+        visible={!!articuloAEliminar && !openNipEliminar}
+        type="danger"
+        title="Eliminar artículo"
+        message={`¿Estás seguro de eliminar "${articuloAEliminar?.articulo?.NOMBRE ?? "este artículo"}" de la comanda?`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onCancel={() => setArticuloAEliminar(null)}
+        onConfirm={() => {
+          if (pedirNipEliminacion) setOpenNipEliminar(true);
+          else confirmarEliminarArticulo();
+        }}
+      />
+
+      <ModalWarning
+        visible={openConfirmCancelar && !openNipCancelarModal}
+        type="danger"
+        title="Cancelar comanda"
+        message={`¿Estás seguro de cancelar el pedido de ${mesa?.NOMBRE ?? "esta mesa"}? Esta acción no se puede deshacer.`}
+        confirmText="Sí, cancelar"
+        cancelText="No"
+        onCancel={() => setOpenConfirmCancelar(false)}
+        onConfirm={() => {
+          if (pedirNipEliminacion) setOpenNipCancelarModal(true);
+          else confirmarCancelarCuenta();
+        }}
+      />
+
+      <NipModal
+        visible={openNipEliminar}
+        titulo="Eliminar artículo"
+        modo="acceso"
+        keywords={["sales"]}
+        onClose={() => {
+          setOpenNipEliminar(false);
+          setArticuloAEliminar(null);
+        }}
+        onSubmit={confirmarEliminarArticulo}
+      />
+
+      <NipModal
+        visible={openNipCancelarModal}
+        onClose={() => {
+          setOpenNipCancelarModal(false);
+          setOpenConfirmCancelar(false);
+        }}
+        titulo="Cancelar comanda"
+        modo="acceso"
+        keywords={["sales"]}
         onSubmit={confirmarCancelarCuenta}
       />
 

@@ -4,17 +4,18 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import GeneralModal from "../../../components/atoms/GeneralModal/GeneralModal";
 import Input from "../../../components/atoms/Input/Input";
+import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -42,7 +43,11 @@ const Caja = () => {
   const [modalEditar, setModalEditar] = useState(false);
   const [tipoMovimiento, setTipoMovimiento] = useState(null);
   const [montoMovimiento, setMontoMovimiento] = useState("");
+  const [conceptoMovimiento, setConceptoMovimiento] = useState("");
   const [nipAccion, setNipAccion] = useState(null);
+  const [aviso, setAviso] = useState(null);
+  const [openConfirmEliminarHistorial, setOpenConfirmEliminarHistorial] =
+    useState(false);
   const [historial, setHistorial] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
 
@@ -109,7 +114,29 @@ const Caja = () => {
       ? "Cerrar caja"
       : nipAccion === "retiro"
         ? "Retiro"
-        : "Depósito";
+        : nipAccion === "eliminarHistorial"
+          ? "Eliminar historial"
+          : "Depósito";
+
+  const eliminarHistorial = async () => {
+    try {
+      const resultado = await Database.eliminarHistorial();
+      if (resultado && resultado.ok === false) {
+        mostrarAviso(
+          "No se pudo eliminar",
+          resultado.message || "Intenta de nuevo.",
+        );
+        return;
+      }
+      await getData();
+    } catch (error) {
+      console.error("Error al eliminar historial de caja:", error);
+      mostrarAviso(
+        "No se pudo eliminar",
+        "Ocurrió un problema al eliminar el historial. Intenta de nuevo.",
+      );
+    }
+  };
 
   const onNipCorrecto = () => {
     const accion = nipAccion;
@@ -118,24 +145,42 @@ const Caja = () => {
       cerrarCaja();
       return;
     }
+    if (accion === "eliminarHistorial") {
+      eliminarHistorial();
+      return;
+    }
     if (accion === "deposito" || accion === "retiro") {
       setMontoMovimiento("");
+      setConceptoMovimiento("");
       setTipoMovimiento(accion);
     }
   };
 
+  const cerrarModalMovimiento = () => {
+    setTipoMovimiento(null);
+    setMontoMovimiento("");
+    setConceptoMovimiento("");
+  };
+
+  const conceptoValido = String(conceptoMovimiento ?? "").trim().length > 0;
+
+  const mostrarAviso = (title, message, type = "warning") => {
+    setAviso({ title, message, type });
+  };
+
   const registrarMovimiento = async () => {
-    if (!cajaAbierta || !tipoMovimiento) return;
+    if (!cajaAbierta || !tipoMovimiento || !conceptoValido) return;
     const cantidad = Number(String(montoMovimiento).replace(",", "."));
+    const concepto = String(conceptoMovimiento ?? "").trim();
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      Alert.alert("Monto inválido", "Ingresa un monto mayor a cero.");
+      mostrarAviso("Monto inválido", "Ingresa un monto mayor a cero.");
       return;
     }
     if (
       tipoMovimiento === "retiro" &&
       cantidad > Number(saldoActual ?? 0) + 0.001
     ) {
-      Alert.alert(
+      mostrarAviso(
         "Monto insuficiente",
         `En caja hay ${fmtMonto(saldoActual)}. No puedes retirar ${fmtMonto(cantidad)}.`,
       );
@@ -146,9 +191,10 @@ const Caja = () => {
         idCaja: sesionActual.ID,
         tipo: tipoMovimiento,
         monto: cantidad,
+        concepto,
       });
       if (resultado && resultado.ok === false) {
-        Alert.alert(
+        mostrarAviso(
           tipoMovimiento === "retiro" ? "Monto insuficiente" : "Depósito",
           resultado.saldo != null
             ? `En caja hay ${fmtMonto(resultado.saldo)}. No puedes retirar ${fmtMonto(cantidad)}.`
@@ -156,12 +202,11 @@ const Caja = () => {
         );
         return;
       }
-      setTipoMovimiento(null);
-      setMontoMovimiento("");
+      cerrarModalMovimiento();
       await getData();
     } catch (error) {
       console.error("Error al registrar movimiento de caja:", error);
-      Alert.alert(
+      mostrarAviso(
         "No se pudo guardar",
         "Ocurrió un problema al registrar el movimiento. Intenta de nuevo.",
       );
@@ -318,7 +363,23 @@ const Caja = () => {
       {/* Historial */}
         {historial.length > 0 ? (
           <View style={s.historialContainer}>
-            <Text style={s.historialTitle}>Historial</Text>
+            <View style={s.historialHeader}>
+              <Text style={s.historialTitle}>Historial</Text>
+              <Pressable
+                style={({ pressed }) => [
+                  s.historialEliminarBtn,
+                  pressed && { opacity: 0.75 },
+                ]}
+                onPress={() => setOpenConfirmEliminarHistorial(true)}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={normalize(14)}
+                  color="#C53030"
+                />
+                <Text style={s.historialEliminarTexto}>Eliminar</Text>
+              </Pressable>
+            </View>
             {historial.map((item) => {
               const abierta = Number(item.ESTATUS) === 1;
               const ventas = (item.ventasPorMetodo ?? []).filter(
@@ -407,6 +468,11 @@ const Caja = () => {
                               <Text style={s.movimientoFecha}>
                                 {formatearFechaHoraLocal(mov.FECHA)}
                               </Text>
+                              {!!mov.CONCEPTO?.trim() && (
+                                <Text style={s.movimientoConcepto}>
+                                  {mov.CONCEPTO}
+                                </Text>
+                              )}
                             </View>
                             <Text
                               style={[
@@ -527,7 +593,7 @@ const Caja = () => {
 
       <GeneralModal
         visible={!!tipoMovimiento}
-        onRequestClose={() => setTipoMovimiento(null)}
+        onRequestClose={cerrarModalMovimiento}
         headerColorGrandien={
           tipoMovimiento === "retiro"
             ? ["#C53030", "#E53E3E"]
@@ -572,6 +638,17 @@ const Caja = () => {
               </Pressable>
             ))}
           </View>
+          <Text style={s.conceptoLabel}>Concepto</Text>
+          <TextInput
+            style={s.conceptoInput}
+            value={conceptoMovimiento}
+            onChangeText={setConceptoMovimiento}
+            placeholder="Escribe el motivo del movimiento..."
+            placeholderTextColor={gb.gray400}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
           <View
             style={{
               flexDirection: "row",
@@ -582,7 +659,7 @@ const Caja = () => {
             <Button
               style={s.buttonModalCancel}
               styleContainer={s.buttonModalCancelContainer}
-              onPress={() => setTipoMovimiento(null)}
+              onPress={cerrarModalMovimiento}
             >
               <Text
                 style={{
@@ -598,9 +675,11 @@ const Caja = () => {
               style={[
                 s.buttonModalAccept,
                 tipoMovimiento === "retiro" && { backgroundColor: "#C53030" },
+                !conceptoValido && { opacity: 0.45 },
               ]}
               styleContainer={s.buttonModalAcceptContainer}
               onPress={registrarMovimiento}
+              disabled={!conceptoValido}
             >
               <Text
                 style={{
@@ -615,6 +694,31 @@ const Caja = () => {
           </View>
         </View>
       </GeneralModal>
+
+      <ModalWarning
+        visible={!!aviso}
+        type={aviso?.type ?? "warning"}
+        title={aviso?.title ?? ""}
+        message={aviso?.message ?? ""}
+        confirmText="Entendido"
+        cancelText="Cerrar"
+        onCancel={() => setAviso(null)}
+        onConfirm={() => setAviso(null)}
+      />
+
+      <ModalWarning
+        visible={openConfirmEliminarHistorial && nipAccion !== "eliminarHistorial"}
+        type="danger"
+        title="Eliminar historial"
+        message="Se eliminará todo el historial de caja, incluidos depósitos, retiros y ventas ligadas. Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onCancel={() => setOpenConfirmEliminarHistorial(false)}
+        onConfirm={() => {
+          setOpenConfirmEliminarHistorial(false);
+          setNipAccion("eliminarHistorial");
+        }}
+      />
 
       <NipModal
         visible={!!nipAccion}

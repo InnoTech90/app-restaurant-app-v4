@@ -59,15 +59,29 @@ const DetalleArticulo = () => {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [config, setConfig] = useState(null);
+  const [modalNipDescuento, setModalNipDescuento] = useState(false);
+  const [descuentoDesbloqueado, setDescuentoDesbloqueado] = useState(false);
+  const accionDescuentoRef = useRef(null);
 
   const {
     modalNipEdicion,
     cerrarNipEdicion,
     solicitarEdicion,
-    editarCampo,
-    cerrarCampo,
     confirmarNipEdicion,
   } = useEdicionTicket(config);
+
+  const pedirNipDescuento = (accion) => {
+    if (descuentoDesbloqueado) {
+      accion?.();
+      return;
+    }
+    accionDescuentoRef.current = () => {
+      setDescuentoDesbloqueado(true);
+      accion?.();
+    };
+    setModalNipDescuento(true);
+  };
+
 
   useEffect(() => {
     Database.getConfiguraciones().then(setConfig).catch(console.error);
@@ -188,11 +202,7 @@ const DetalleArticulo = () => {
   const totalBruto = precioBase * cantidad;
 
   const onChangePct = (val) => {
-    if (!esEdicion) {
-      aplicarDescuentoPct(val);
-      return;
-    }
-    editarCampo(() => aplicarDescuentoPct(val));
+    pedirNipDescuento(() => aplicarDescuentoPct(val));
   };
 
   const aplicarDescuentoPct = (val) => {
@@ -212,11 +222,7 @@ const DetalleArticulo = () => {
   };
 
   const onChangeMonto = (val) => {
-    if (!esEdicion) {
-      aplicarDescuentoMonto(val);
-      return;
-    }
-    editarCampo(() => aplicarDescuentoMonto(val));
+    pedirNipDescuento(() => aplicarDescuentoMonto(val));
   };
 
   const aplicarDescuentoMonto = (val) => {
@@ -255,6 +261,7 @@ const DetalleArticulo = () => {
   const total = totalBruto - descuento + costoComplementos;
 
   const abrirComplementos = async () => {
+    const navegar = async () => {
       const id = String(
         idArticuloParam || articulo?.UUID || articulo?.ID || "",
       ).trim();
@@ -287,6 +294,13 @@ const DetalleArticulo = () => {
           articuloNombre: articulo?.NOMBRE ?? "",
         },
       });
+    };
+
+    if (!esEdicion) {
+      await navegar();
+      return;
+    }
+    solicitarEdicion(navegar);
   };
 
   const payloadArticulo = () => ({
@@ -309,26 +323,35 @@ const DetalleArticulo = () => {
 
   const handleGuardar = async () => {
     if (guardando || !articulo) return;
-    setGuardando(true);
-    try {
-      if (esEdicion) {
-        await Database.updateComandaArticulo(
-          Number(idComandaArticulo),
-          payloadArticulo(),
-        );
-      } else {
-        await Database.insertComanda({
-          id_mesa: idMesa,
-          nota: "",
-          articulos: [payloadArticulo()],
-        });
+
+    const guardar = async () => {
+      setGuardando(true);
+      try {
+        if (esEdicion) {
+          await Database.updateComandaArticulo(
+            Number(idComandaArticulo),
+            payloadArticulo(),
+          );
+        } else {
+          await Database.insertComanda({
+            id_mesa: idMesa,
+            nota: "",
+            articulos: [payloadArticulo()],
+          });
+        }
+        router.back();
+      } catch (err) {
+        console.error("Error guardando comanda:", err);
+      } finally {
+        setGuardando(false);
       }
-      router.back();
-    } catch (err) {
-      console.error("Error guardando comanda:", err);
-    } finally {
-      setGuardando(false);
+    };
+
+    if (!esEdicion) {
+      await guardar();
+      return;
     }
+    solicitarEdicion(guardar);
   };
 
   const handleCambiarCantidad = (val) => {
@@ -336,7 +359,7 @@ const DetalleArticulo = () => {
       setCantidad(val);
       return;
     }
-    solicitarEdicion(() => setCantidad(val));
+    solicitarEdicion(() => setCantidad(Number(val) || 1));
   };
 
   if (cargando) {
@@ -400,14 +423,7 @@ const DetalleArticulo = () => {
             placeholder="Ej: sin sal, término medio..."
             placeholderTextColor={gb.gray400}
             value={notas}
-            onChangeText={(texto) => {
-              if (!esEdicion) {
-                setNotas(texto);
-                return;
-              }
-              editarCampo(() => setNotas(texto));
-            }}
-            onBlur={cerrarCampo}
+            onChangeText={setNotas}
             multiline
             numberOfLines={3}
           />
@@ -456,32 +472,38 @@ const DetalleArticulo = () => {
 
         <View style={s.seccion}>
           <Text style={s.seccionTitulo}>Descuento</Text>
-          <View style={s.descuentoRow}>
-            <View style={s.descuentoItem}>
-              <Text style={s.descuentoLabel}>Porcentaje (%)</Text>
-              <TextInput
-                style={s.descuentoInput}
-                placeholder="0.00"
-                placeholderTextColor={gb.gray400}
-                value={descuentoPct}
-                onChangeText={onChangePct}
-                onBlur={esEdicion ? cerrarCampo : undefined}
-                keyboardType="decimal-pad"
-              />
+          <Pressable
+            onPress={() => {
+              if (!descuentoDesbloqueado) pedirNipDescuento(() => {});
+            }}
+          >
+            <View style={s.descuentoRow} pointerEvents={descuentoDesbloqueado ? "auto" : "none"}>
+              <View style={s.descuentoItem}>
+                <Text style={s.descuentoLabel}>Porcentaje (%)</Text>
+                <TextInput
+                  style={s.descuentoInput}
+                  placeholder="0.00"
+                  placeholderTextColor={gb.gray400}
+                  value={descuentoPct}
+                  onChangeText={onChangePct}
+                  keyboardType="decimal-pad"
+                  editable={descuentoDesbloqueado}
+                />
+              </View>
+              <View style={s.descuentoItem}>
+                <Text style={s.descuentoLabel}>Monto ($)</Text>
+                <TextInput
+                  style={s.descuentoInput}
+                  placeholder="0.00"
+                  placeholderTextColor={gb.gray400}
+                  value={descuentoMonto}
+                  onChangeText={onChangeMonto}
+                  keyboardType="decimal-pad"
+                  editable={descuentoDesbloqueado}
+                />
+              </View>
             </View>
-            <View style={s.descuentoItem}>
-              <Text style={s.descuentoLabel}>Monto ($)</Text>
-              <TextInput
-                style={s.descuentoInput}
-                placeholder="0.00"
-                placeholderTextColor={gb.gray400}
-                value={descuentoMonto}
-                onChangeText={onChangeMonto}
-                onBlur={esEdicion ? cerrarCampo : undefined}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
+          </Pressable>
         </View>
 
         <View style={s.seccion}>
@@ -546,6 +568,23 @@ const DetalleArticulo = () => {
         keywords={["sales"]}
         onSubmit={confirmarNipEdicion}
         onClose={cerrarNipEdicion}
+      />
+
+      <NipModal
+        visible={modalNipDescuento}
+        titulo="Aplicar descuento"
+        modo="acceso"
+        keywords={["sales"]}
+        onSubmit={() => {
+          setModalNipDescuento(false);
+          const accion = accionDescuentoRef.current;
+          accionDescuentoRef.current = null;
+          accion?.();
+        }}
+        onClose={() => {
+          setModalNipDescuento(false);
+          accionDescuentoRef.current = null;
+        }}
       />
     </SafeAreaView>
   );
