@@ -21,6 +21,32 @@ export const s = StyleSheet.create({
         alignItems: "center",
         gap: normalize(10),
     },
+    leyendaColores: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: normalize(14),
+        paddingHorizontal: normalize(16),
+        paddingVertical: normalize(8),
+        backgroundColor: "white",
+        borderBottomWidth: 1,
+        borderBottomColor: gb.gray200,
+        width: "100%",
+    },
+    leyendaItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(6),
+    },
+    leyendaMuestra: {
+        width: normalize(14),
+        height: normalize(14),
+        borderRadius: normalize(4),
+    },
+    leyendaTexto: {
+        color: gb.gray600,
+        fontSize: normalize(12),
+    },
 
     ButtonFiltro: {
         flex: 1,

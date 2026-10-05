@@ -34,9 +34,13 @@ const COLUMN_GAP = normalize(12);
 const LIST_PADDING_H = normalize(14);
 const COLUMN_WIDTH =
   listColumns > 1
-    ? (CONTENT_MAX_WIDTH - LIST_PADDING_H * 2 - COLUMN_GAP * (listColumns - 1)) /
+    ? (CONTENT_MAX_WIDTH -
+        LIST_PADDING_H * 2 -
+        COLUMN_GAP * (listColumns - 1)) /
       listColumns
     : undefined;
+
+const GRADIENTE_PENDIENTE = ["#F6C9A4", "#FBE6D4"];
 
 /* ─── Card de un cliente ───────────────────────────────────────── */
 const ClienteCard = ({ cliente, onPress, onInactivar }) => {
@@ -47,12 +51,19 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
         .join("")
     : "?";
   const inactivo = Number(cliente.ACTIVO ?? 1) === 0;
+  const pendienteSync = !cliente.SINCRONIZADO;
+  const coloresAccent = inactivo
+    ? ["#C53030", "#E53E3E"]
+    : pendienteSync
+      ? GRADIENTE_PENDIENTE
+      : gb.gradient_blue;
 
   return (
     <Pressable
       style={({ pressed }) => [
         s.card,
         inactivo && s.cardInactiva,
+        pendienteSync && !inactivo && s.cardPendiente,
         { opacity: pressed ? 0.85 : 1 },
       ]}
       onPress={onPress}
@@ -60,7 +71,7 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
       {/* Barra lateral con degradado */}
       <LinearGradient
         style={s.cardAccent}
-        colors={inactivo ? ["#C53030", "#E53E3E"] : gb.gradient_blue}
+        colors={coloresAccent}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       />
@@ -70,11 +81,18 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
         <View style={s.cardNameRow}>
           <LinearGradient
             style={s.cardAvatar}
-            colors={inactivo ? ["#C53030", "#E53E3E"] : gb.gradient_blue}
+            colors={coloresAccent}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={s.cardAvatarText}>{iniciales}</Text>
+            <Text
+              style={[
+                s.cardAvatarText,
+                pendienteSync && !inactivo && { color: "#8A4E2A" },
+              ]}
+            >
+              {iniciales}
+            </Text>
           </LinearGradient>
           <View style={s.cardNameBlock}>
             <Text style={s.cardName}>{cliente.NOMBRE}</Text>
@@ -82,6 +100,11 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
               <View style={s.cardKey}>
                 <Text style={s.cardKeyText}>Clave #{cliente.DINNER_KEY}</Text>
               </View>
+              {pendienteSync && (
+                <View style={s.cardPendienteBadge}>
+                  <Text style={s.cardPendienteBadgeText}>Por sincronizar</Text>
+                </View>
+              )}
               {inactivo && (
                 <View style={s.cardInactivoBadge}>
                   <Text style={s.cardInactivoBadgeText}>Inactivo</Text>
@@ -277,6 +300,28 @@ const Clientes = () => {
 
       {/* Lista */}
       <View style={s.body}>
+        {clientes.length > 0 && (
+          <View style={s.leyendaColores}>
+            <View style={s.leyendaItem}>
+              <LinearGradient
+                colors={gb.gradient_blue}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.leyendaMuestra}
+              />
+              <Text style={s.leyendaTexto}>Al día</Text>
+            </View>
+            <View style={s.leyendaItem}>
+              <LinearGradient
+                colors={GRADIENTE_PENDIENTE}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.leyendaMuestra}
+              />
+              <Text style={s.leyendaTexto}>Clientes por sincronizar</Text>
+            </View>
+          </View>
+        )}
         <FlatList
           data={clientes}
           keyExtractor={(item) => String(item.ID)}

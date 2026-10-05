@@ -15,6 +15,10 @@ export const s = StyleSheet.create({
         elevation: normalize(2),
 
     },
+    shadowPendiente: {
+        borderWidth: 1,
+        borderColor: "#F6C9A4",
+    },
     container: {
         borderRadius: normalize(12),
         overflow: "hidden",

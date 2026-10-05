@@ -258,14 +258,16 @@ export default class VentasDatabase {
           `SELECT
                         ca.ID,
                         ca.ID_ARTICULO,
-                        a.UUID AS ARTICULO_UUID,
+                        COALESCE(a.UUID, ca.ID_ARTICULO) AS ARTICULO_UUID,
                         ca.CANTIDAD,
                         ca.PRECIO_VENTA,
                         ca.SUBTOTAL,
                         ca.TOTAL,
                         ca.NOTA
                      FROM COMANDA_ARTICULO ca
-                     LEFT JOIN ARTICULO a ON a.UUID = ca.ID_ARTICULO
+                     LEFT JOIN ARTICULO a
+                       ON a.UUID = ca.ID_ARTICULO
+                       OR CAST(a.ID AS TEXT) = CAST(ca.ID_ARTICULO AS TEXT)
                      WHERE ca.ID_COMANDA = ?
                      ORDER BY ca.ID ASC`,
           [comanda.ID],
@@ -276,14 +278,16 @@ export default class VentasDatabase {
             const complementos = await db.getAllAsync(
               `SELECT
                                 cc.ID_COMPLEMENTO,
-                                comp.UUID AS COMPLEMENTO_UUID,
+                                COALESCE(comp.UUID, cc.ID_COMPLEMENTO) AS COMPLEMENTO_UUID,
                                 cc.CANTIDAD,
                                 cc.PRECIO_VENTA,
                                 cc.SUBTOTAL,
                                 cc.TOTAL,
                                 cc.NOTA
                              FROM COMANDA_COMPLEMENTO cc
-                             LEFT JOIN COMPLEMENTO comp ON comp.UUID = cc.ID_COMPLEMENTO
+                             LEFT JOIN COMPLEMENTO comp
+                               ON comp.UUID = cc.ID_COMPLEMENTO
+                               OR CAST(comp.ID AS TEXT) = CAST(cc.ID_COMPLEMENTO AS TEXT)
                              WHERE cc.ID_COMANDA_ARTICULO = ?`,
               [art.ID],
             );
@@ -292,9 +296,13 @@ export default class VentasDatabase {
         );
 
         const pagos = await db.getAllAsync(
-          `SELECT  mp.UUID AS ID_METODO_PAGO, cp.CANTIDAD
+          `SELECT
+                        COALESCE(mp.UUID, CAST(cp.ID_METODO_PAGO AS TEXT)) AS ID_METODO_PAGO,
+                        cp.CANTIDAD
                      FROM COMANDA_PAGOS cp
-                     LEFT JOIN METODO_PAGO mp ON mp.ID = cp.ID_METODO_PAGO
+                     LEFT JOIN METODO_PAGO mp
+                       ON mp.ID = cp.ID_METODO_PAGO
+                       OR mp.UUID = CAST(cp.ID_METODO_PAGO AS TEXT)
                      WHERE cp.ID_COMANDA = ?`,
           [comanda.ID],
         );

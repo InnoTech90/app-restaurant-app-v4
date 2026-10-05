@@ -40,7 +40,10 @@ const fmtMonto = (valor) => `$${Number(valor ?? 0).toFixed(2)}`;
 
 const Caja = () => {
   const [montoInicial, setMontoInicial] = useState("500");
+  const [conceptoApertura, setConceptoApertura] = useState("");
   const [modalEditar, setModalEditar] = useState(false);
+  const [modalCierre, setModalCierre] = useState(false);
+  const [fondoCierre, setFondoCierre] = useState("");
   const [tipoMovimiento, setTipoMovimiento] = useState(null);
   const [montoMovimiento, setMontoMovimiento] = useState("");
   const [conceptoMovimiento, setConceptoMovimiento] = useState("");
@@ -51,9 +54,25 @@ const Caja = () => {
   const [historial, setHistorial] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
 
-  const cajaAbierta = historial.length > 0 && historial[0].ESTATUS === 1;
-  const sesionActual = historial[0] ?? null;
-  const saldoActual = sesionActual ? sesionActual.SALDO : montoInicial;
+  const ultimaSesion = historial[0] ?? null;
+  const cajaAbierta = !!ultimaSesion && Number(ultimaSesion.ESTATUS) === 1;
+  const sesionActual = cajaAbierta ? ultimaSesion : null;
+  const fondoCerrado =
+    !cajaAbierta && ultimaSesion != null
+      ? Number(ultimaSesion.FONDO ?? 0)
+      : null;
+  const saldoActual = sesionActual
+    ? sesionActual.SALDO
+    : Number.isFinite(fondoCerrado)
+      ? fondoCerrado
+      : 0;
+  const ventasSesionActual = (sesionActual?.ventasPorMetodo ?? []).filter(
+    (metodo) => Number(metodo.total) > 0,
+  );
+  const fondoCierreValido = (() => {
+    const valor = Number(String(fondoCierre).replace(",", "."));
+    return Number.isFinite(valor) && valor >= 0 && String(fondoCierre).trim() !== "";
+  })();
 
   const getData = useCallback(async () => {
     try {
@@ -81,31 +100,69 @@ const Caja = () => {
     }
   };
 
+  const conceptoAperturaValido =
+    String(conceptoApertura ?? "").trim().length > 0;
+
   const abrirCaja = async () => {
+    const concepto = String(conceptoApertura ?? "").trim();
+    if (!concepto) {
+      mostrarAviso(
+        "Concepto requerido",
+        "Indica el concepto de apertura de caja.",
+      );
+      return;
+    }
     const qrData = await AsyncStorage.getItem("qrCode");
     const nombreDispositivo = await Database.getNombreDispocitivo();
     try {
-      await Database.insertarApertura({
+      const resultado = await Database.insertarApertura({
         idSucursal: qrData,
         nombreDispositivo,
         monto: montoInicial,
+        concepto,
       });
+      if (resultado && resultado.ok === false) {
+        mostrarAviso(
+          "No se pudo abrir",
+          resultado.message || "Intenta de nuevo.",
+        );
+        return;
+      }
       setModalEditar(false);
+      setConceptoApertura("");
       await getData();
     } catch (error) {
       console.error("Error al abrir caja:", error);
-      alert("Error al abrir caja");
+      mostrarAviso("No se pudo abrir", "Error al abrir caja.");
     }
   };
 
+  const cerrarModalCierre = () => {
+    setModalCierre(false);
+    setFondoCierre("");
+  };
+
   const cerrarCaja = async () => {
-    if (!cajaAbierta) return;
+    if (!cajaAbierta || !ultimaSesion) return;
+    const fondo = Number(String(fondoCierre).replace(",", "."));
+    if (!Number.isFinite(fondo) || fondo < 0 || String(fondoCierre).trim() === "") {
+      mostrarAviso("Fondo inválido", "Ingresa el fondo que deja en caja.");
+      return;
+    }
     try {
-      await Database.cerrarCaja(historial[0].ID);
+      const resultado = await Database.cerrarCaja(ultimaSesion.ID, fondo);
+      if (resultado && resultado.ok === false) {
+        mostrarAviso(
+          "No se pudo cerrar",
+          resultado.message || "Intenta de nuevo.",
+        );
+        return;
+      }
+      cerrarModalCierre();
       await getData();
     } catch (error) {
       console.error("Error al cerrar caja:", error);
-      alert("Error al cerrar caja");
+      mostrarAviso("No se pudo cerrar", "Error al cerrar caja.");
     }
   };
 
@@ -142,7 +199,9 @@ const Caja = () => {
     const accion = nipAccion;
     setNipAccion(null);
     if (accion === "cerrar") {
-      cerrarCaja();
+      const saldo = Number(sesionActual?.SALDO ?? 0);
+      setFondoCierre(Number.isFinite(saldo) ? String(saldo.toFixed(2)) : "0");
+      setModalCierre(true);
       return;
     }
     if (accion === "eliminarHistorial") {
@@ -166,6 +225,11 @@ const Caja = () => {
 
   const mostrarAviso = (title, message, type = "warning") => {
     setAviso({ title, message, type });
+  };
+
+  const cerrarModalApertura = () => {
+    setModalEditar(false);
+    setConceptoApertura("");
   };
 
   const registrarMovimiento = async () => {
@@ -265,15 +329,15 @@ const Caja = () => {
           </View>
           <View style={s.containerCristal}>
             <View style={s.row}>
-              <Text style={s.text}>En caja:</Text>
+              <Text style={s.text}>{cajaAbierta ? "En caja:" : "Fondo:"}</Text>
               <Text style={[s.text, { fontSize: normalize(16) }]}>
                 {fmtMonto(saldoActual)}
               </Text>
             </View>
-            {sesionActual && (sesionActual.ventasPorMetodo ?? []).length > 0 && (
+            {cajaAbierta && ventasSesionActual.length > 0 && (
               <View style={s.metodosCaja}>
                 <Text style={s.metodosTitulo}>Ventas por pago</Text>
-                {sesionActual.ventasPorMetodo.map((metodo) => (
+                {ventasSesionActual.map((metodo) => (
                   <View key={metodo.nombre} style={s.metodoFila}>
                     <Text style={s.metodoNombre}>{metodo.nombre}</Text>
                     <Text style={s.metodoMonto}>{fmtMonto(metodo.total)}</Text>
@@ -404,8 +468,12 @@ const Caja = () => {
                       )}
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
-                      <Text style={s.historialFechaLabel}>En caja</Text>
-                      <Text style={s.historialMonto}>{fmtMonto(item.SALDO)}</Text>
+                      <Text style={s.historialFechaLabel}>
+                        {abierta ? "En caja" : "Fondo"}
+                      </Text>
+                      <Text style={s.historialMonto}>
+                        {fmtMonto(abierta ? item.SALDO : item.FONDO)}
+                      </Text>
                     </View>
                   </View>
 
@@ -418,6 +486,11 @@ const Caja = () => {
                       <Text style={s.historialApertura}>
                         {fmtMonto(item.MONTO)}
                       </Text>
+                      {!!String(item.CONCEPTO ?? "").trim() && (
+                        <Text style={s.movimientoConcepto} numberOfLines={3}>
+                          {String(item.CONCEPTO).trim()}
+                        </Text>
+                      )}
                     </View>
                     {!abierta && (
                       <View style={s.historialFechaBloque}>
@@ -426,6 +499,9 @@ const Caja = () => {
                           {item.FECHA_CIERRE
                             ? formatearFechaHoraLocal(item.FECHA_CIERRE)
                             : "—"}
+                        </Text>
+                        <Text style={s.historialApertura}>
+                          Fondo {fmtMonto(item.FONDO)}
                         </Text>
                       </View>
                     )}
@@ -508,10 +584,9 @@ const Caja = () => {
         )}
       </ScrollView>
 
-      {/* Modal apertura */}
       <GeneralModal
         visible={modalEditar}
-        onRequestClose={() => setModalEditar(false)}
+        onRequestClose={cerrarModalApertura}
         headerColorGrandien={gb.gradient_blue}
         iconCloseColor={gb.gray50}
         headerColorText={gb.gray50}
@@ -550,6 +625,17 @@ const Caja = () => {
               </Pressable>
             ))}
           </View>
+          <Text style={s.conceptoLabel}>Concepto</Text>
+          <TextInput
+            style={s.conceptoInput}
+            value={conceptoApertura}
+            onChangeText={setConceptoApertura}
+            placeholder="Escribe el motivo de la apertura..."
+            placeholderTextColor={gb.gray400}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
           <View
             style={{
               flexDirection: "row",
@@ -560,7 +646,7 @@ const Caja = () => {
             <Button
               style={s.buttonModalCancel}
               styleContainer={s.buttonModalCancelContainer}
-              onPress={() => setModalEditar(false)}
+              onPress={cerrarModalApertura}
             >
               <Text
                 style={{
@@ -573,9 +659,13 @@ const Caja = () => {
               </Text>
             </Button>
             <Button
-              style={s.buttonModalAccept}
+              style={[
+                s.buttonModalAccept,
+                !conceptoAperturaValido && { opacity: 0.45 },
+              ]}
               styleContainer={s.buttonModalAcceptContainer}
-              onPress={() => abrirCaja()}
+              onPress={abrirCaja}
+              disabled={!conceptoAperturaValido}
             >
               <Text
                 style={{
@@ -585,6 +675,93 @@ const Caja = () => {
                 }}
               >
                 Confirmar
+              </Text>
+            </Button>
+          </View>
+        </View>
+      </GeneralModal>
+
+      <GeneralModal
+        visible={modalCierre}
+        onRequestClose={cerrarModalCierre}
+        headerColorGrandien={["#C53030", "#E53E3E"]}
+        iconCloseColor={gb.gray50}
+        headerColorText={gb.gray50}
+        headerTitle={"Cierre de caja"}
+      >
+        <View style={s.contenidoModal}>
+          <Text style={s.modalDescripcion}>
+            Ingrese el fondo que deja en caja
+          </Text>
+          <Input
+            placeholder="Fondo"
+            keyboardType="numeric"
+            value={fondoCierre}
+            onChange={(text) => setFondoCierre(text)}
+            styleInput={s.input}
+            icon={"cash-outline"}
+            iconColor={gb.purple550}
+          />
+          <Text
+            style={{
+              color: gb.gray400,
+              fontWeight: "bold",
+              marginTop: normalize(10),
+            }}
+          >
+            Montos rápidos
+          </Text>
+          <View style={s.montosRapidosContainer}>
+            {["0", "100", "200", "500", "1000"].map((monto) => (
+              <Pressable
+                key={monto}
+                style={s.montoRapido}
+                onPress={() => setFondoCierre(monto)}
+              >
+                <Text style={{ color: gb.purple550 }}>${monto}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: normalize(20),
+              marginTop: normalize(20),
+            }}
+          >
+            <Button
+              style={s.buttonModalCancel}
+              styleContainer={s.buttonModalCancelContainer}
+              onPress={cerrarModalCierre}
+            >
+              <Text
+                style={{
+                  color: gb.gray500,
+                  fontWeight: "bold",
+                  fontSize: normalize(12),
+                }}
+              >
+                Cancelar
+              </Text>
+            </Button>
+            <Button
+              style={[
+                s.buttonModalAccept,
+                { backgroundColor: "#C53030" },
+                !fondoCierreValido && { opacity: 0.45 },
+              ]}
+              styleContainer={s.buttonModalAcceptContainer}
+              onPress={cerrarCaja}
+              disabled={!fondoCierreValido}
+            >
+              <Text
+                style={{
+                  color: gb.gray50,
+                  fontWeight: "bold",
+                  fontSize: normalize(12),
+                }}
+              >
+                Confirmar cierre
               </Text>
             </Button>
           </View>

@@ -177,8 +177,7 @@ export default function AuthLayout() {
       name: "Clientes",
       label: "Clientes",
       title: "Clientes",
-      keywords: ["customers"],
-      requiereNip: true,
+      accesoLibre: true,
     },
     {
       name: "Gastos",
@@ -200,15 +199,14 @@ export default function AuthLayout() {
       name: "Impresoras/index",
       label: "Impresoras",
       title: "Impresoras",
-      keywords: ["printers"],
-      requiereNip: true,
+      accesoLibre: true,
     },
     {
       name: "Configuraciones/index",
       label: "Configuraciones",
       title: "Configuraciones",
       keywords: ["settings"],
-      restringeConModo: true,
+      requiereNip: true,
       seccionAcceso: "configuraciones",
     },
     {
@@ -270,8 +268,6 @@ export default function AuthLayout() {
   const resolverAccesoYNavegar = async (screen, navigation) => {
     revocarOtrasSecciones(screen.seccionAcceso ?? null);
 
-    if (navigation.isFocused()) return;
-
     const navegar = () => {
       if (screen.seccionAcceso) {
         autorizarSeccion(screen.seccionAcceso);
@@ -285,6 +281,11 @@ export default function AuthLayout() {
         keywords: screen.keywords ?? [],
       });
     };
+
+    if (screen.accesoLibre || screen.siempreVisible) {
+      navegar();
+      return;
+    }
 
     if (screen.restringeConModo) {
       const configuraciones = await dataBase.getConfiguracionesModel();

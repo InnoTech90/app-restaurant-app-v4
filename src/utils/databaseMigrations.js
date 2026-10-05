@@ -39,6 +39,18 @@ export async function runDatabaseMigrations(db) {
     "FECHA_CIERRE",
     "ALTER TABLE HISTORIAL_CAJA ADD COLUMN FECHA_CIERRE DATETIME",
   );
+  await ensureColumn(
+    db,
+    "HISTORIAL_CAJA",
+    "CONCEPTO",
+    "ALTER TABLE HISTORIAL_CAJA ADD COLUMN CONCEPTO NVARCHAR",
+  );
+  await ensureColumn(
+    db,
+    "HISTORIAL_CAJA",
+    "FONDO",
+    "ALTER TABLE HISTORIAL_CAJA ADD COLUMN FONDO REAL",
+  );
 
   await db.runAsync(`
     CREATE TABLE IF NOT EXISTS MOVIMIENTO_CAJA (
@@ -105,7 +117,12 @@ export async function runDatabaseMigrations(db) {
     db,
     "CONFIGURACIONES",
     "NIP_FINALIZAR_TICKET",
-    "ALTER TABLE CONFIGURACIONES ADD COLUMN NIP_FINALIZAR_TICKET INTEGER DEFAULT 0",
+    "ALTER TABLE CONFIGURACIONES ADD COLUMN NIP_FINALIZAR_TICKET INTEGER DEFAULT 1",
+  );
+  await db.runAsync(
+    `UPDATE CONFIGURACIONES
+     SET NIP_FINALIZAR_TICKET = 1
+     WHERE NIP_FINALIZAR_TICKET IS NULL`,
   );
   await ensureColumn(
     db,

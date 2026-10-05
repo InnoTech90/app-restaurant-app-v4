@@ -432,6 +432,9 @@ const Pago = () => {
     }
   };
 
+  const nipFinalizarActivo =
+    Number(configuraciones?.NIP_FINALIZAR_TICKET ?? 1) === 1;
+
   const solicitarFinalizarVenta = () => {
     if (!tieneMetodoPago) {
       Alert.alert(
@@ -441,12 +444,16 @@ const Pago = () => {
       return;
     }
     if (finalizando) return;
-    setOpenNipFinalizar(true);
+    if (nipFinalizarActivo) {
+      setOpenNipFinalizar(true);
+      return;
+    }
+    finalizarVenta();
   };
 
   const handleImprimirCuenta = () => {
     if (imprimiendo || !canPrint) return;
-    if (configuraciones?.NIP_FINALIZAR_TICKET) {
+    if (nipFinalizarActivo) {
       setOpenNipModal(true);
     } else {
       ejecutarImpresion();

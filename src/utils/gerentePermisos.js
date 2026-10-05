@@ -57,7 +57,7 @@ export function tienePermisoKeyword(gerenteSesion, screen) {
  * Cualquier pantalla con keywords pide NIP (dueño o gerente autorizado).
  */
 export function requiereNipAcceso(screen) {
-  if (!screen || screen.siempreVisible) return false;
+  if (!screen || screen.siempreVisible || screen.accesoLibre) return false;
   const requeridos = Array.isArray(screen.keywords)
     ? screen.keywords.map(normalizarKeyword).filter(Boolean)
     : [];

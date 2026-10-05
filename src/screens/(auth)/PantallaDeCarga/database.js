@@ -32,7 +32,7 @@ const CONFIGURACIONES_DEFAULTS = {
   descuentos: 0,
   idFormatoPago: 1,
   protegerVentas: 0,
-  nipFinalizarTicket: 0,
+  nipFinalizarTicket: 1,
   modoRestrictivo: 0,
   habilitarEdicionTicket: 1,
 };

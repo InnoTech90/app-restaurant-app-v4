@@ -364,7 +364,7 @@ export const DatabaseSchema = {
           DESCUENTOS REAL,
           ID_FORMATO_PAGO INTEGER,
           PROTEGER_VENTAS INTEGER,
-          NIP_FINALIZAR_TICKET INTEGER,
+          NIP_FINALIZAR_TICKET INTEGER DEFAULT 1,
           MODO_RESTRICTIVO INTEGER,
           HABILITAR_EDICION_TICKET INTEGER,
           NIP INTEGER
@@ -383,7 +383,9 @@ export const DatabaseSchema = {
           FECHA DATETIME DEFAULT CURRENT_TIMESTAMP,
           FECHA_CIERRE DATETIME,
           ESTATUS INTEGER,
-          MONTO REAL
+          MONTO REAL,
+          CONCEPTO NVARCHAR,
+          FONDO REAL
         )
       `,
       dependencies: ["SUCURSAL"],

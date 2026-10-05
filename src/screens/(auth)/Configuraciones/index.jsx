@@ -128,7 +128,7 @@ export default function Configuraciones() {
 
   const TITULOS_NIP = {
     PROTEGER_VENTAS: "Proteger acceso a ventas",
-    NIP_FINALIZAR_TICKET: "NIP para finalizar ticket",
+    NIP_FINALIZAR_TICKET: "NIP para finalizar venta",
     MODO_RESTRICTIVO: "Modo restrictivo",
     HABILITAR_EDICION_TICKET: "Restringir edición de ticket",
   };
@@ -463,11 +463,11 @@ export default function Configuraciones() {
           <ConfigItem
             icon="keypad-outline"
             iconColor={gb.red600}
-            titulo="NIP para finalizar ticket"
-            subtitulo="Solicita NIP antes de cobrar una comanda"
+            titulo="NIP para finalizar venta"
+            subtitulo="Solicita NIP antes de cobrar o finalizar una comanda"
           >
             <Switch
-              value={!!config.NIP_FINALIZAR_TICKET}
+              value={Number(config.NIP_FINALIZAR_TICKET ?? 1) === 1}
               onValueChange={(v) => guardar("NIP_FINALIZAR_TICKET", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.red600 }}
               thumbColor={gb.gray50}

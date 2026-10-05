@@ -387,6 +387,25 @@ const Ventas = () => {
         contentContainerStyle={{ flexGrow: 1, backgroundColor: gb.gray50 }}
         style={s.scroll}
       >
+        {ventasFiltradasState.length > 0 && (
+          <View style={s.leyendaColores}>
+            <View style={s.leyendaItem}>
+              <View
+                style={[s.leyendaMuestra, { backgroundColor: "#C8E6C9" }]}
+              />
+              <Text style={s.leyendaTexto}>Al día</Text>
+            </View>
+            <View style={s.leyendaItem}>
+              <LinearGradient
+                colors={["#F6C9A4", "#FBE6D4"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.leyendaMuestra}
+              />
+              <Text style={s.leyendaTexto}>Ventas por sincronizar</Text>
+            </View>
+          </View>
+        )}
         <View style={s.container}>
           {cargando ? (
             <ActivityIndicator
@@ -523,7 +542,8 @@ const Ventas = () => {
               console.error("Error sincronizando ventas:", e);
               Alert.alert(
                 "Error",
-                "No se pudieron sincronizar las ventas. Intenta de nuevo.",
+                e?.message ||
+                  "No se pudieron sincronizar las ventas. Intenta de nuevo.",
               );
             }
           } finally {

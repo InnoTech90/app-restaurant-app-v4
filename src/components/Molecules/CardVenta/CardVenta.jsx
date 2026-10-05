@@ -6,6 +6,8 @@ import { gb } from '../../../screens/globalStyles';
 import EstatusSincronizado from '../../atoms/EstatusSincronizado/EstatusSincronizado';
 import { s } from './styles';
 
+const GRADIENTE_PENDIENTE_SYNC = ["#F6C9A4", "#FBE6D4"];
+
 const CardVenta = ({
     ficha = '34GGGDFDD',
     mesa = 'Mesa 2',
@@ -27,18 +29,19 @@ const CardVenta = ({
         router.push(`Ventas/DetalleVentas?id=${idComanda ?? ficha}`);
     };
 
+    const coloresHeader = !sincronizado
+        ? GRADIENTE_PENDIENTE_SYNC
+        : status === 'Terminado' || status === 'Pagado'
+            ? ['#E8F5E8', '#F1F8E9']
+            : status === 'Pendiente'
+                ? ['#FFF3E0', '#FFECB3']
+                : ['#FFEBEE', '#FFCDD2'];
+
     return (
-        <View style={s.shadow}>
+        <View style={[s.shadow, !sincronizado && s.shadowPendiente]}>
             <View style={s.container}>
                 {/* HEADER */}
-                <LinearGradient style={s.header}
-                    colors={
-                        status === 'Terminado' || status === 'Pagado'
-                            ? ['#E8F5E8', '#F1F8E9']
-                            : status === 'Pendiente'
-                                ? ['#FFF3E0', '#FFECB3']
-                                : ['#FFEBEE', '#FFCDD2']
-                    }>
+                <LinearGradient style={s.header} colors={coloresHeader}>
                     <View style={s.fichaContainer}>
 
                         {/* Checkbox */}
@@ -59,27 +62,27 @@ const CardVenta = ({
                         {/* Estatus sincronización */}
                         <EstatusSincronizado sincronizado={sincronizado} />
 
-                        {/* Status badge */}
-                        {
-                            status === 'Terminado' || status === 'Pagado' ? (
-                                <View style={[s.status, { backgroundColor: '#4CAF50' }]}>
-                                    <Ionicons name="checkmark-circle" size={14} color="white" />
-                                    <Text style={s.statusText}>{status}</Text>
-                                </View>
-                            )
-                                :
-                                status === 'Pendiente' ? (
-                                    <View style={[s.status, { backgroundColor: '#FF9800' }]}>
-                                        <Ionicons name="time" size={14} color="white" />
-                                        <Text style={s.statusText}>{status}</Text>
-                                    </View>
-                                ) :
-                                    <View style={[s.status, { backgroundColor: '#F44336' }]}>
-                                        <Ionicons name="alert-circle" size={14} color="white" />
-                                        <Text style={s.statusText}>{status}</Text>
-                                    </View>
-
-                        }
+                        {!sincronizado ? (
+                            <View style={[s.status, { backgroundColor: '#E65100' }]}>
+                                <Ionicons name="cloud-upload-outline" size={14} color="white" />
+                                <Text style={s.statusText}>Por sincronizar</Text>
+                            </View>
+                        ) : status === 'Terminado' || status === 'Pagado' ? (
+                            <View style={[s.status, { backgroundColor: '#4CAF50' }]}>
+                                <Ionicons name="checkmark-circle" size={14} color="white" />
+                                <Text style={s.statusText}>{status}</Text>
+                            </View>
+                        ) : status === 'Pendiente' ? (
+                            <View style={[s.status, { backgroundColor: '#FF9800' }]}>
+                                <Ionicons name="time" size={14} color="white" />
+                                <Text style={s.statusText}>{status}</Text>
+                            </View>
+                        ) : (
+                            <View style={[s.status, { backgroundColor: '#F44336' }]}>
+                                <Ionicons name="alert-circle" size={14} color="white" />
+                                <Text style={s.statusText}>{status}</Text>
+                            </View>
+                        )}
 
                     </View>
                 </LinearGradient>

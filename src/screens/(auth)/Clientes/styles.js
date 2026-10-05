@@ -63,6 +63,31 @@ export const s = StyleSheet.create({
     flex: 1,
     backgroundColor: gb.gray100,
   },
+  leyendaColores: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: normalize(14),
+    paddingHorizontal: normalize(16),
+    paddingVertical: normalize(8),
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: gb.gray200,
+  },
+  leyendaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: normalize(6),
+  },
+  leyendaMuestra: {
+    width: normalize(14),
+    height: normalize(14),
+    borderRadius: normalize(4),
+  },
+  leyendaTexto: {
+    color: gb.gray600,
+    fontSize: normalize(12),
+  },
   listContent: {
     paddingVertical: normalize(14),
     paddingHorizontal: isTablet
@@ -110,11 +135,29 @@ export const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FCA5A5",
   },
+  cardPendiente: {
+    borderWidth: 1,
+    borderColor: "#F6C9A4",
+  },
   cardBadges: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: normalize(6),
     alignItems: "center",
+  },
+  cardPendienteBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#FFF3E0",
+    borderRadius: normalize(8),
+    paddingHorizontal: normalize(8),
+    paddingVertical: normalize(3),
+    borderWidth: 1,
+    borderColor: "#FF9800",
+  },
+  cardPendienteBadgeText: {
+    color: "#E65100",
+    fontSize: normalize(11),
+    fontWeight: "700",
   },
   cardInactivoBadge: {
     alignSelf: "flex-start",

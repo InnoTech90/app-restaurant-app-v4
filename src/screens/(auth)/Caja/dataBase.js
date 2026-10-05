@@ -210,22 +210,30 @@ export class Database {
   }
 
   static async insertarApertura(params) {
+    const concepto = String(params?.concepto ?? "").trim();
+    if (!concepto) {
+      return { ok: false, message: "Indica el concepto de apertura." };
+    }
+
     return withDb("Caja.insertarApertura", async (db) => {
+      await runDatabaseMigrations(db);
       const { idSucursal, nombreDispositivo, monto } = params;
 
-      return await db.runAsync(
+      await db.runAsync(
         `
                 INSERT INTO HISTORIAL_CAJA
                 (
                     ID_SUCURSAL,
                     NOMBRE_DISPOCITIVO,
                     MONTO,
-                    ESTATUS
+                    ESTATUS,
+                    CONCEPTO
                 )
-                VALUES (?, ?, ?, 1)
+                VALUES (?, ?, ?, 1, ?)
                 `,
-        [idSucursal, nombreDispositivo, monto],
+        [idSucursal, nombreDispositivo, monto, concepto],
       );
+      return { ok: true };
     });
   }
 
@@ -301,18 +309,36 @@ export class Database {
     });
   }
 
-  static async cerrarCaja(id) {
+  static async cerrarCaja(id, fondo) {
+    const montoFondo = Number(fondo);
+    if (!id) {
+      return { ok: false, message: "No hay una caja activa." };
+    }
+    if (!Number.isFinite(montoFondo) || montoFondo < 0) {
+      return { ok: false, message: "Ingresa un fondo válido." };
+    }
+
     return withDb("Caja.cerrarCaja", async (db) => {
       await runDatabaseMigrations(db);
+      const caja = await db.getFirstAsync(
+        `SELECT ID, ESTATUS FROM HISTORIAL_CAJA WHERE ID = ?`,
+        [id],
+      );
+      if (!caja || Number(caja.ESTATUS) !== 1) {
+        return { ok: false, message: "La caja ya está cerrada." };
+      }
+
       await db.runAsync(
         `
                 UPDATE HISTORIAL_CAJA
                 SET ESTATUS = 0,
-                    FECHA_CIERRE = CURRENT_TIMESTAMP
+                    FECHA_CIERRE = CURRENT_TIMESTAMP,
+                    FONDO = ?
                 WHERE ID = ?
                 `,
-        [id],
+        [montoFondo, id],
       );
+      return { ok: true };
     });
   }
 

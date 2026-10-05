@@ -13,11 +13,11 @@ export const revocarTodasLasSecciones = () => {
 };
 
 export const revocarOtrasSecciones = (seccionActual) => {
-  for (const seccion of seccionesAutorizadas) {
+  [...seccionesAutorizadas].forEach((seccion) => {
     if (seccion !== seccionActual) {
       seccionesAutorizadas.delete(seccion);
     }
-  }
+  });
 };
 
 export const tieneAccesoSeccion = (seccion) =>
