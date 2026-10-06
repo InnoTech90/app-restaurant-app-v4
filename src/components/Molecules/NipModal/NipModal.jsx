@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { guardarSesionAcceso } from "../../../utils/gerentePermisos";
 import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
@@ -134,12 +134,13 @@ const NipModal = ({
           placeholder="NIP"
           secureTextEntry={true}
           style={s.inputContainer}
-          icon="apps"
-          iconColor={gb.purple500}
           value={nip}
-          onChange={(text) => setNip(text)}
-          keyboardType="numeric"
+          onChange={(text) => setNip(String(text ?? "").replace(/[^0-9]/g, ""))}
+          keyboardType="number-pad"
           maxLength={8}
+          textAlign="center"
+          multiline={Platform.OS === "android"}
+          numberOfLines={1}
           styleInput={s.inputField}
         />
         <View style={s.buttonsContainer}>

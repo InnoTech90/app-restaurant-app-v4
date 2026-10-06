@@ -1,5 +1,4 @@
 import axios from "axios";
-// import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { asegurarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
@@ -9,6 +8,8 @@ import {
 } from "../../../../utils/config/api";
 
 const REQUEST_TIMEOUT_MS = 8000;
+
+const fallo = (message) => ({ ok: false, message });
 
 export class ApiLogin {
   static async login(codigoSucursal) {
@@ -26,9 +27,7 @@ export class ApiLogin {
           Device.designName || "",
           Device.productName || "",
         ].join("|");
-        // Generar hash único basado en las características del dispositivo
         const hash = this.generateDeviceHash(uniqueString);
-        // Formato: MARCA-MODELO-HASH
         id = `${(Device.brand || "UNK").toUpperCase()}-${(Device.modelName || "UNK").replace(/[^a-zA-Z0-9]/g, "")}-${hash}`;
       } else {
         id = await Application.getIosIdForVendorAsync();
@@ -50,7 +49,7 @@ export class ApiLogin {
           ? API_BASE_URL_CANDIDATES
           : [API_BASE_URL];
 
-      let lastNetworkError = null;
+      let huboErrorRed = false;
 
       for (const baseUrl of baseUrls) {
         try {
@@ -63,30 +62,35 @@ export class ApiLogin {
             },
           );
 
-          return response.data;
+          return { ok: true, data: response.data };
         } catch (error) {
           if (error?.response) {
             const status = error.response?.status;
-            const message = error.response.data?.message;
+            const message = String(error.response.data?.message ?? "");
 
             if (status === 403) {
-              if (message?.includes("Device limit reached")) {
-                throw new Error(
+              if (
+                /device limit reached|l[ií]mite de dispositivos/i.test(message)
+              ) {
+                return fallo(
                   "Se alcanzó el límite de dispositivos permitidos para este plan. Desvincula un dispositivo existente o contacta a soporte.",
                 );
               }
 
-              throw new Error(
+              return fallo(
                 "No tienes permisos para asociar este dispositivo.",
               );
             }
 
-            // console.error("Error HTTP en asociación:", {
-            //   baseUrl,
-            //   status: error.response.status,
-            //   data: error.response.data,
-            // });
-            throw error;
+            if (status === 401 || status === 404) {
+              return fallo(
+                "El código de sucursal no es válido o no está disponible.",
+              );
+            }
+
+            return fallo(
+              "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+            );
           }
 
           const isNetworkError =
@@ -98,20 +102,41 @@ export class ApiLogin {
                 .includes("network"));
 
           if (!isNetworkError) {
-            throw error;
+            return fallo(
+              "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+            );
           }
 
-          lastNetworkError = error;
-          console.warn("No se pudo conectar con:", baseUrl, error?.message);
+          huboErrorRed = true;
         }
       }
 
-      throw (
-        lastNetworkError || new Error("No se pudo conectar al backend local")
+      if (huboErrorRed) {
+        return fallo(
+          "No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.",
+        );
+      }
+
+      return fallo(
+        "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
       );
     } catch (error) {
-      console.error("Error during login:", error);
-      throw error;
+      const msg = String(error?.message ?? "").toLowerCase();
+      if (
+        msg.includes("internet") ||
+        msg.includes("conexi") ||
+        msg.includes("network") ||
+        error?.code === "ERR_NETWORK" ||
+        error?.code === "ECONNABORTED"
+      ) {
+        return fallo(
+          "No hay conexión a internet. Verifica tu red e intenta de nuevo.",
+        );
+      }
+
+      return fallo(
+        "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+      );
     }
   }
   static generateDeviceHash = (str) => {

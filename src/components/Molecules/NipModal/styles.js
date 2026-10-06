@@ -46,10 +46,10 @@ export const s = StyleSheet.create({
     height: normalize(isTablet ? 58 : 52),
     minHeight: normalize(isTablet ? 58 : 52),
     paddingVertical: normalize(12),
-    paddingLeft: normalize(40),
-    paddingRight: normalize(40),
+    paddingHorizontal: normalize(16),
     backgroundColor: gb.gray50,
     color: gb.gray800,
+    width: "100%",
   },
   btnConfirmarText: {
     color: "white",

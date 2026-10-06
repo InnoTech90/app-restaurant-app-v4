@@ -16,6 +16,10 @@ function Input({
   maxLength,
   keyboardType,
   onFocus,
+  textAlign,
+  editable = true,
+  multiline,
+  numberOfLines,
 }) {
   return (
     <>
@@ -37,6 +41,10 @@ function Input({
             maxLength={maxLength}
             keyboardType={keyboardType}
             onFocus={onFocus}
+            textAlign={textAlign}
+            editable={editable}
+            multiline={multiline}
+            numberOfLines={numberOfLines}
           />
         </View>
       </View>
