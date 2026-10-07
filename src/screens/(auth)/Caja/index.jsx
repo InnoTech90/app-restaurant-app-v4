@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -18,6 +18,7 @@ import Input from "../../../components/atoms/Input/Input";
 import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { setAuthHeaderTitulo } from "../../../utils/authHeaderTitle";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./dataBase";
@@ -39,6 +40,19 @@ const formatearFechaHoraLocal = (fechaStr) => {
 const fmtMonto = (valor) => `$${Number(valor ?? 0).toFixed(2)}`;
 
 const Caja = () => {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const returnTo = Array.isArray(params.returnTo)
+    ? params.returnTo[0]
+    : params.returnTo;
+  const idMesaRetorno = Array.isArray(params.id_mesa)
+    ? params.id_mesa[0]
+    : params.id_mesa;
+  const abrir = Array.isArray(params.abrir) ? params.abrir[0] : params.abrir;
+  const vieneDePago = returnTo === "Pago" && !!idMesaRetorno;
+  const abrirAlEntrar = abrir === "1";
+  const modalAperturaSolicitadoRef = useRef(false);
+
   const [montoInicial, setMontoInicial] = useState("500");
   const [conceptoApertura, setConceptoApertura] = useState("");
   const [modalEditar, setModalEditar] = useState(false);
@@ -74,19 +88,59 @@ const Caja = () => {
     return Number.isFinite(valor) && valor >= 0 && String(fondoCierre).trim() !== "";
   })();
 
+  const regresarAPago = useCallback(() => {
+    setAuthHeaderTitulo("Pagar");
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace({
+      pathname: "/Pago",
+      params: { id_mesa: String(idMesaRetorno) },
+    });
+  }, [idMesaRetorno, router]);
+
   const getData = useCallback(async () => {
     try {
       const res = await Database.getHistorial();
       setHistorial(res || []);
+      return res || [];
     } catch (error) {
       console.error("Error fetching historial:", error);
+      return [];
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      getData();
-    }, [getData]),
+      let activo = true;
+      modalAperturaSolicitadoRef.current = false;
+
+      (async () => {
+        const res = await getData();
+        if (!activo) return;
+
+        const abierta = !!res[0] && Number(res[0].ESTATUS) === 1;
+
+        if (vieneDePago && abrirAlEntrar && abierta) {
+          regresarAPago();
+          return;
+        }
+
+        if (
+          abrirAlEntrar &&
+          !abierta &&
+          !modalAperturaSolicitadoRef.current
+        ) {
+          modalAperturaSolicitadoRef.current = true;
+          setModalEditar(true);
+        }
+      })();
+
+      return () => {
+        activo = false;
+      };
+    }, [abrirAlEntrar, getData, regresarAPago, vieneDePago]),
   );
 
   const actualizarCajaAbierta = async () => {
@@ -131,6 +185,9 @@ const Caja = () => {
       setModalEditar(false);
       setConceptoApertura("");
       await getData();
+      if (vieneDePago) {
+        regresarAPago();
+      }
     } catch (error) {
       console.error("Error al abrir caja:", error);
       mostrarAviso("No se pudo abrir", "Error al abrir caja.");

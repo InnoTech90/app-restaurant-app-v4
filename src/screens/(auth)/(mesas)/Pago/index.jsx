@@ -35,6 +35,7 @@ import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { sesionPuedeEntrar } from "../../../../utils/gerentePermisos";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
+import { autorizarSeccion } from "../../../../utils/sectionAccess";
 import { gb } from "../../../globalStyles";
 import { integracionVentas } from "../../Ventas/integracion";
 import ConfiguracionesDatabase from "../../Configuraciones/database";
@@ -449,6 +450,20 @@ const Pago = () => {
       return;
     }
     finalizarVenta();
+  };
+
+  const irAbrirCajaDesdePago = () => {
+    setMostrarCajaCerrada(false);
+    autorizarSeccion("caja");
+    setAuthHeaderTitulo("Caja");
+    router.push({
+      pathname: "/Caja",
+      params: {
+        returnTo: "Pago",
+        id_mesa: idMesa ? String(idMesa) : "",
+        abrir: "1",
+      },
+    });
   };
 
   const handleImprimirCuenta = () => {
@@ -1175,18 +1190,32 @@ const Pago = () => {
         headerTitle="Caja cerrada"
         scrollable={false}
       >
-        <View style={{ alignItems: "center", padding: normalize(12) }}>
+        <View style={s.modalCajaCerradaContent}>
           <Ionicons
             name="lock-closed-outline"
             size={normalize(42)}
             color={gb.red600}
           />
-          <Text style={{ textAlign: "center", marginVertical: normalize(14) }}>
-            No hay una caja abierta. Abre la caja para poder cobrar.
+          <Text style={s.modalCajaCerradaTexto}>
+            No hay una caja abierta. Ábrela para poder cobrar y luego
+            regresaremos a esta comanda.
           </Text>
-          <Button onPress={() => setMostrarCajaCerrada(false)}>
-            <Text style={{ color: gb.gray50 }}>Cerrar</Text>
-          </Button>
+          <View style={s.modalCajaCerradaBotones}>
+            <Button
+              onPress={() => setMostrarCajaCerrada(false)}
+              styleContainer={s.modalCajaCerradaBtnContainer}
+              style={s.modalCajaCerradaBtnCancelar}
+            >
+              <Text style={s.modalCajaCerradaBtnCancelarTexto}>Cancelar</Text>
+            </Button>
+            <Button
+              onPress={irAbrirCajaDesdePago}
+              styleContainer={s.modalCajaCerradaBtnContainer}
+              style={s.modalCajaCerradaBtnAbrir}
+            >
+              <Text style={s.modalCajaCerradaBtnAbrirTexto}>Abrir caja</Text>
+            </Button>
+          </View>
         </View>
       </GeneralModal>
 

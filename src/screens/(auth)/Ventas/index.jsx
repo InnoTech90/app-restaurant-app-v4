@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
@@ -10,6 +10,7 @@ import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton
 import CardVenta from "../../../components/Molecules/CardVenta/CardVenta";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import { dataBase } from "../../../components/Molecules/NipModal/database";
+import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import SincronizadoFooter from "../../../components/Molecules/SincronizadoFooter/SincronizadoFooter";
 import {
   autorizarVentas,
@@ -27,11 +28,18 @@ import { integracionVentas } from "./integracion";
 import { s } from "./styles";
 import { imprimirCorteGeneral, imprimirCorteResumen } from "./ticket";
 
-// Convierte ESTATUS numérico a la cadena que muestra la UI
+const ventaEstaSincronizada = (venta) => Number(venta?.SINCRONIZADO) === 1;
+
+const ventaEsLimpiable = (venta) => {
+  const estatus = Number(venta?.ESTATUS);
+  return ventaEstaSincronizada(venta) && (estatus === 1 || estatus === 2);
+};
+
 const estatusTexto = (estatus) => {
-  if (estatus === 1) return "Pagado";
-  if (estatus === 2) return "Cancelado";
-  if (estatus === 3) return "Pendiente";
+  const valor = Number(estatus);
+  if (valor === 1) return "Pagado";
+  if (valor === 2) return "Cancelado";
+  if (valor === 3) return "Pendiente";
   return "Desconocido";
 };
 
@@ -70,14 +78,29 @@ const formatFecha = (fechaStr) => {
 const formatTotal = (total) =>
   `$${(total ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
+const esVentaDeHoy = (fechaStr) => {
+  const fecha = parseFechaLocal(fechaStr);
+  if (!fecha) return false;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const manana = new Date(hoy);
+  manana.setDate(manana.getDate() + 1);
+  return fecha >= hoy && fecha < manana;
+};
+
 const Ventas = () => {
+  const [filtroPeriodo, setFiltroPeriodo] = useState("Hoy");
   const [filtroSeleccionado, setFiltroSeleccionado] = useState("Todas");
   const [modalNip, setModalNip] = useState(false);
   const [modalAcceso, setModalAcceso] = useState(false);
   const [accesoPermitido, setAccesoPermitido] = useState(false);
   const [modalNoBorrar, setModalNoBorrar] = useState(false);
+  const [modalConfirmLimpiar, setModalConfirmLimpiar] = useState(false);
+  const [cantidadALimpiar, setCantidadALimpiar] = useState(0);
+  const [aviso, setAviso] = useState(null);
   const [modalCorte, setModalCorte] = useState(false);
   const [imprimiendoCorte, setImprimiendoCorte] = useState(false);
+  const idsALimpiarRef = useRef([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(null);
   const [ventas, setVentas] = useState([]);
@@ -154,33 +177,44 @@ const Ventas = () => {
       };
     }, [accesoPermitido]),
   );
-  const ventasFiltradasState = useMemo(() => {
-    if (filtroSeleccionado === "Pendientes")
-      return ventas.filter((v) => v.ESTATUS === 3);
-    if (filtroSeleccionado === "Canceladas")
-      return ventas.filter((v) => v.ESTATUS === 2);
-    return ventas;
-  }, [ventas, filtroSeleccionado]);
+  const ventasDelPeriodo = useMemo(() => {
+    if (filtroPeriodo === "Anteriores") {
+      return ventas.filter((v) => !esVentaDeHoy(v.FECHA));
+    }
+    return ventas.filter((v) => esVentaDeHoy(v.FECHA));
+  }, [ventas, filtroPeriodo]);
 
-  // ── Totales ────────────────────────────────────────────────────────────
-  // "Total filtrado" = ventas pagadas EN EFECTIVO (ESTATUS=1, FORMATO_PAGO contiene "efectivo")
+  const ventasFiltradasState = useMemo(() => {
+    if (filtroSeleccionado === "Pendientes") {
+      return ventasDelPeriodo.filter((v) => Number(v.ESTATUS) === 3);
+    }
+    if (filtroSeleccionado === "Canceladas") {
+      return ventasDelPeriodo.filter((v) => Number(v.ESTATUS) === 2);
+    }
+    return ventasDelPeriodo;
+  }, [ventasDelPeriodo, filtroSeleccionado]);
+
   const totalFiltrado = useMemo(
     () =>
-      ventas
+      ventasDelPeriodo
         .filter(
           (v) =>
-            v.ESTATUS === 1 &&
+            Number(v.ESTATUS) === 1 &&
             (v.FORMATO_PAGO ?? "").toLowerCase().includes("efectivo"),
         )
-        .reduce((sum, v) => sum + (v.TOTAL ?? 0), 0),
-    [ventas],
+        .reduce((sum, v) => sum + (Number(v.TOTAL) || 0), 0),
+    [ventasDelPeriodo],
   );
-  // "Total general" = todas las ventas pagadas (ESTATUS=1), sin pendientes ni canceladas
   const totalGeneral = useMemo(
     () =>
-      ventas
-        .filter((v) => v.ESTATUS === 1)
-        .reduce((sum, v) => sum + (v.TOTAL ?? 0), 0),
+      ventasDelPeriodo
+        .filter((v) => Number(v.ESTATUS) === 1)
+        .reduce((sum, v) => sum + (Number(v.TOTAL) || 0), 0),
+    [ventasDelPeriodo],
+  );
+
+  const cantidadAnteriores = useMemo(
+    () => ventas.filter((v) => !esVentaDeHoy(v.FECHA)).length,
     [ventas],
   );
 
@@ -210,39 +244,78 @@ const Ventas = () => {
 
   const toggleSeleccionarTodo = () => {
     const nuevoValor = !todoSeleccionado;
-    const idsVistual = new Set(ventasFiltradasState.map((v) => v.ID));
+    const idsVistual = new Set(
+      ventasFiltradasState.map((v) => Number(v.ID)),
+    );
     setVentas((prev) =>
       prev.map((v) =>
-        idsVistual.has(v.ID) ? { ...v, seleccionado: nuevoValor } : v,
+        idsVistual.has(Number(v.ID))
+          ? { ...v, seleccionado: nuevoValor }
+          : v,
       ),
     );
   };
 
-  // ── Limpiar ventas ────────────────────────────────────────────────────
-  const limpiarVentas = async () => {
-    // Solo se eliminan las seleccionadas que además estén sincronizadas y no sean pendientes.
-    // Las seleccionadas no sincronizadas simplemente se ignoran (no se eliminan).
-    const hayElegibles = ventasFiltradasState.some(
-      (v) => v.seleccionado && !!v.SINCRONIZADO && v.ESTATUS !== 3,
-    );
-    if (!hayElegibles) {
-      setModalNoBorrar(true);
-      setModalNip(false);
+  const solicitarLimpiarVentas = () => {
+    const seleccionadas = ventas.filter((v) => v.seleccionado);
+    if (seleccionadas.length === 0) {
+      setAviso({
+        type: "warning",
+        title: "Sin selección",
+        message: "Selecciona al menos una venta para limpiar.",
+      });
       return;
     }
-    const idsAEliminar = ventasFiltradasState
-      .filter((v) => v.seleccionado && !!v.SINCRONIZADO && v.ESTATUS !== 3)
+
+    const idsAEliminar = seleccionadas
+      .filter((v) => ventaEsLimpiable(v))
       .map((v) => v.ID);
+
+    if (idsAEliminar.length === 0) {
+      setModalNoBorrar(true);
+      return;
+    }
+
+    idsALimpiarRef.current = idsAEliminar;
+    setCantidadALimpiar(idsAEliminar.length);
+    setModalConfirmLimpiar(true);
+  };
+
+  const cancelarLimpiarVentas = () => {
+    setModalConfirmLimpiar(false);
+    setCantidadALimpiar(0);
+    idsALimpiarRef.current = [];
+  };
+
+  const confirmarLimpiarVentas = () => {
+    setModalConfirmLimpiar(false);
+    setModalNip(true);
+  };
+
+  const limpiarVentas = async () => {
+    const idsAEliminar = idsALimpiarRef.current;
+    if (!idsAEliminar?.length) {
+      setModalNip(false);
+      setModalNoBorrar(true);
+      return;
+    }
 
     try {
       await VentasDatabase.eliminarVentas(idsAEliminar);
-      setVentas((prev) => prev.filter((v) => !idsAEliminar.includes(v.ID)));
+      const idsSet = new Set(idsAEliminar.map((id) => Number(id)));
+      setVentas((prev) =>
+        prev.filter((v) => !idsSet.has(Number(v.ID))),
+      );
+      idsALimpiarRef.current = [];
+      setCantidadALimpiar(0);
     } catch (e) {
       console.error("Error eliminando ventas:", e);
-      Alert.alert(
-        "Error",
-        "No se pudieron eliminar las ventas seleccionadas. Intenta de nuevo.",
-      );
+      setAviso({
+        type: "danger",
+        title: "Error",
+        message:
+          "No se pudieron eliminar las ventas seleccionadas. Intenta de nuevo.",
+      });
     } finally {
       setModalNip(false);
     }
@@ -302,7 +375,7 @@ const Ventas = () => {
           </View>
         )}
 
-        <Button style={s.btnLimpiar} onPress={() => setModalNip(true)}>
+        <Button style={s.btnLimpiar} onPress={solicitarLimpiarVentas}>
           <Ionicons name="trash" size={normalize(14)} color={gb.gray50} />
           <Text style={s.btnLimpiarText}>Limpiar Ventas</Text>
         </Button>
@@ -317,6 +390,39 @@ const Ventas = () => {
           elevation: 5,
         }}
       >
+        <View style={s.filtrosPeriodo}>
+          {[
+            { label: "Hoy", icono: "today-outline" },
+            { label: "Anteriores", icono: "calendar-outline" },
+          ].map(({ label, icono }) => {
+            const activo = filtroPeriodo === label;
+            const extra =
+              label === "Anteriores" && cantidadAnteriores > 0
+                ? ` (${cantidadAnteriores})`
+                : "";
+            return (
+              <Button
+                key={label}
+                style={[s.ButtonFiltro, activo && s.botonFiltroSeleccionado]}
+                styleContainer={s.buttonCOntainer}
+                onPress={() => setFiltroPeriodo(label)}
+              >
+                <View style={s.buttonContent}>
+                  <Ionicons
+                    name={icono}
+                    size={normalize(14)}
+                    color={activo ? gb.gray50 : gb.purple550}
+                  />
+                  <Text style={{ color: activo ? gb.gray50 : gb.gray400 }}>
+                    {label}
+                    {extra}
+                  </Text>
+                </View>
+              </Button>
+            );
+          })}
+        </View>
+
         <View style={s.filtros}>
           {[
             { label: "Todas", icono: "list" },
@@ -347,7 +453,6 @@ const Ventas = () => {
           })}
         </View>
 
-        {/* ----------- totales ----------- */}
         <View style={s.totalesContainer}>
           <LinearGradient
             colors={["#2196F3", "#42A5F5"]}
@@ -362,7 +467,11 @@ const Ventas = () => {
               />
               <Text style={s.precio}>{formatTotal(totalFiltrado)}</Text>
             </View>
-            <Text style={s.descripcion}>Total efectivo</Text>
+            <Text style={s.descripcion}>
+              {filtroPeriodo === "Hoy"
+                ? "Efectivo de hoy"
+                : "Efectivo anteriores"}
+            </Text>
           </LinearGradient>
           <LinearGradient
             colors={["#FF9800", "#FFB74D"]}
@@ -377,7 +486,11 @@ const Ventas = () => {
               />
               <Text style={s.precio}>{formatTotal(totalGeneral)}</Text>
             </View>
-            <Text style={s.descripcion}>Total general</Text>
+            <Text style={s.descripcion}>
+              {filtroPeriodo === "Hoy"
+                ? "Total de hoy"
+                : "Total anteriores"}
+            </Text>
           </LinearGradient>
         </View>
       </View>
@@ -449,11 +562,15 @@ const Ventas = () => {
                   color: gb.gray400,
                   marginTop: normalize(12),
                   fontSize: normalize(14),
+                  textAlign: "center",
+                  paddingHorizontal: normalize(20),
                 }}
               >
-                No hay ventas
+                {filtroPeriodo === "Hoy"
+                  ? "No hay ventas de hoy"
+                  : "No hay ventas de días anteriores"}
                 {filtroSeleccionado !== "Todas"
-                  ? ` ${filtroSeleccionado.toLowerCase()}`
+                  ? ` (${filtroSeleccionado.toLowerCase()})`
                   : ""}
                 .
               </Text>
@@ -475,13 +592,15 @@ const Ventas = () => {
                   productos={venta.NUM_ARTICULOS ?? 0}
                   fecha={formatFecha(venta.FECHA)}
                   status={estatusTexto(venta.ESTATUS)}
-                  sincronizado={!!venta.SINCRONIZADO}
+                  sincronizado={ventaEstaSincronizada(venta)}
                   seleccionado={venta.seleccionado}
                   idComanda={venta.ID}
                   onSeleccionar={(valor) => {
                     setVentas((prev) =>
                       prev.map((v) =>
-                        v.ID === venta.ID ? { ...v, seleccionado: valor } : v,
+                        Number(v.ID) === Number(venta.ID)
+                          ? { ...v, seleccionado: valor }
+                          : v,
                       ),
                     );
                   }}
@@ -632,14 +751,40 @@ const Ventas = () => {
             <Ionicons name="warning" size={normalize(40)} color={gb.gray50} />
           </LinearGradient>
           <Text style={s.modalTitle}>
-            Solo se pueden limpiar ventas sincronizadas que estén pagadas o
-            canceladas
+            Solo se pueden limpiar ventas ya sincronizadas que estén pagadas o
+            canceladas. Las pendientes de pago o de sincronizar no se eliminan.
           </Text>
           <Button onPress={() => setModalNoBorrar(false)} style={s.modalButton}>
             <Text style={s.modalButtonText}>Aceptar</Text>
           </Button>
         </View>
       </GeneralModal>
+
+      <ModalWarning
+        visible={modalConfirmLimpiar}
+        type="danger"
+        title="¿Limpiar ventas?"
+        message={
+          cantidadALimpiar === 1
+            ? "Se eliminará 1 venta sincronizada de este dispositivo. Esta acción no se puede deshacer."
+            : `Se eliminarán ${cantidadALimpiar} ventas sincronizadas de este dispositivo. Esta acción no se puede deshacer.`
+        }
+        confirmText="Continuar"
+        cancelText="Cancelar"
+        onCancel={cancelarLimpiarVentas}
+        onConfirm={confirmarLimpiarVentas}
+      />
+
+      <ModalWarning
+        visible={!!aviso}
+        type={aviso?.type ?? "warning"}
+        title={aviso?.title ?? ""}
+        message={aviso?.message ?? ""}
+        confirmText="Entendido"
+        cancelText="Cerrar"
+        onCancel={() => setAviso(null)}
+        onConfirm={() => setAviso(null)}
+      />
     </SafeAreaView>
   );
 };

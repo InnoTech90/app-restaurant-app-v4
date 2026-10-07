@@ -36,15 +36,17 @@ function Input({
             placeholder={placeholder}
             value={value}
             onChangeText={onChange}
-            secureTextEntry={secureTextEntry}
+            secureTextEntry={!!secureTextEntry}
             placeholderTextColor={gb.gray300}
             maxLength={maxLength}
             keyboardType={keyboardType}
             onFocus={onFocus}
             textAlign={textAlign}
             editable={editable}
-            multiline={multiline}
-            numberOfLines={numberOfLines}
+            multiline={secureTextEntry ? false : multiline}
+            numberOfLines={secureTextEntry ? 1 : numberOfLines}
+            textContentType={secureTextEntry ? "password" : undefined}
+            autoComplete={secureTextEntry ? "password" : undefined}
           />
         </View>
       </View>

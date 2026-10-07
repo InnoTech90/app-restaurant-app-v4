@@ -75,38 +75,50 @@ export async function getSchemaStatus() {
   }
 }
 
+async function clearAllTables(database) {
+  const tables = DatabaseSchema.getTableCreationOrder()
+    .map((table) => table.name)
+    .filter((tableName) => tableName !== "_SCHEMA_VERSION")
+    .reverse();
+
+  await database.execAsync("BEGIN TRANSACTION");
+  try {
+    for (const tableName of tables) {
+      await database.runAsync(`DELETE FROM "${tableName}"`);
+    }
+    await database.execAsync("COMMIT");
+  } catch (error) {
+    await database.execAsync("ROLLBACK");
+    throw error;
+  }
+}
+
+export async function clearLocalTables() {
+  return withDb("clearLocalTables", async (database) => {
+    await clearAllTables(database);
+    await AsyncStorage.multiRemove(["MesaSeleccionada", "montoRecibido"]);
+    console.log("✅ Tablas locales limpiadas correctamente");
+  });
+}
+
 /**
  * Elimina los datos locales y conserva las tablas para que la siguiente
  * autenticación pueda descargarlos nuevamente desde la API.
  */
 export async function resetLocalData() {
   return withDb("resetLocalData", async (database) => {
-    const tables = DatabaseSchema.getTableCreationOrder()
-      .map((table) => table.name)
-      .filter((tableName) => tableName !== "_SCHEMA_VERSION")
-      .reverse();
+    await clearAllTables(database);
 
-    await database.execAsync("BEGIN TRANSACTION");
-    try {
-      for (const tableName of tables) {
-        await database.runAsync(`DELETE FROM "${tableName}"`);
-      }
-      await database.execAsync("COMMIT");
+    await AsyncStorage.multiRemove([
+      "deviceKey",
+      "qrCode",
+      "MesaSeleccionada",
+      "montoRecibido",
+      "authData",
+      "gerenteSesion",
+    ]);
 
-      await AsyncStorage.multiRemove([
-        "deviceKey",
-        "qrCode",
-        "MesaSeleccionada",
-        "montoRecibido",
-        "authData",
-        "gerenteSesion",
-      ]);
-
-      console.log("✅ Datos locales eliminados correctamente");
-    } catch (error) {
-      await database.execAsync("ROLLBACK");
-      throw error;
-    }
+    console.log("✅ Datos locales eliminados correctamente");
   });
 }
 

@@ -1,22 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { guardarSesionAcceso } from "../../../utils/gerentePermisos";
 import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
 import Input from "../../atoms/Input/Input";
+import ModalWarning from "../ModalWarning/ModalWarning";
 import { dataBase } from "./database";
 import { s } from "./styles";
 
-/**
- * Valida NIP.
- * modo="dueño"   → solo CONFIGURACIONES.NIP
- * modo="gerente" → solo GERENTES.NIP (sin checar permisos)
- * modo="acceso"  → dueño siempre; gerente solo con keywords (default si pasas keywords)
- */
 const NipModal = ({
   visible,
   onClose,
@@ -27,6 +22,7 @@ const NipModal = ({
 }) => {
   const [nip, setNip] = useState("");
   const [nombreSucursal, setNombreSucursal] = useState(null);
+  const [aviso, setAviso] = useState(null);
 
   const keywordsList = Array.isArray(keywords) ? keywords : null;
   const modoEfectivo =
@@ -35,6 +31,7 @@ const NipModal = ({
   useEffect(() => {
     if (!visible) {
       setNip("");
+      setAviso(null);
       return;
     }
 
@@ -48,21 +45,29 @@ const NipModal = ({
     };
   }, [visible]);
 
+  const mostrarAviso = (title, message, type = "warning") => {
+    setAviso({ title, message, type });
+  };
+
+  const cerrarAviso = () => setAviso(null);
+
   const verificarNip = async () => {
     if (modoEfectivo === "gerente") {
       const result = await dataBase.validarNipGerente(nip);
       if (result.reason === "no_gerentes") {
-        alert(
+        mostrarAviso(
+          "Sin gerentes",
           "No hay gerentes con NIP configurado. Sincroniza los datos e intenta de nuevo.",
         );
         return;
       }
       if (result.reason === "empty") {
-        alert("Ingresa el NIP del gerente.");
+        mostrarAviso("NIP requerido", "Ingresa el NIP del gerente.");
         return;
       }
       if (!result.ok) {
-        alert("NIP incorrecto");
+        mostrarAviso("NIP incorrecto", "El NIP ingresado no es válido. Intenta de nuevo.");
+        setNip("");
         return;
       }
       await onSubmit(result.gerente);
@@ -72,15 +77,21 @@ const NipModal = ({
     if (modoEfectivo === "acceso") {
       const result = await dataBase.validarNipAcceso(nip, keywordsList ?? []);
       if (result.reason === "empty") {
-        alert("Ingresa el NIP.");
+        mostrarAviso("NIP requerido", "Ingresa el NIP.");
         return;
       }
       if (result.reason === "sin_permiso") {
-        alert("No tiene permisos para acceder a esta opción.");
+        mostrarAviso(
+          "Sin permiso",
+          "No tiene permisos para acceder a esta opción.",
+          "danger",
+        );
+        setNip("");
         return;
       }
       if (!result.ok) {
-        alert("NIP incorrecto");
+        mostrarAviso("NIP incorrecto", "El NIP ingresado no es válido. Intenta de nuevo.");
+        setNip("");
         return;
       }
       await guardarSesionAcceso(result);
@@ -88,10 +99,10 @@ const NipModal = ({
       return;
     }
 
-    // modo dueño
     const nipDueño = await dataBase.getNipDueño();
     if (nipDueño == null || String(nipDueño).trim() === "") {
-      alert(
+      mostrarAviso(
+        "NIP no configurado",
         "No hay NIP configurado. Sincroniza los datos e intenta de nuevo.",
       );
       return;
@@ -100,7 +111,8 @@ const NipModal = ({
     if (String(nip).trim() === String(nipDueño).trim()) {
       await onSubmit({ tipo: "owner" });
     } else {
-      alert("NIP incorrecto");
+      mostrarAviso("NIP incorrecto", "El NIP ingresado no es válido. Intenta de nuevo.");
+      setNip("");
     }
   };
 
@@ -114,45 +126,56 @@ const NipModal = ({
           : "Ingresa el NIP de la sucursal para continuar";
 
   return (
-    <GeneralModal visible={visible} onRequestClose={onClose}>
-      <View style={s.container}>
-        <LinearGradient
-          style={s.iconContainer}
-          colors={gb.gradient_blue}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Ionicons
-            name="shield-checkmark"
-            size={normalize(isTablet ? 36 : 32)}
-            color={gb.gray50}
+    <>
+      <GeneralModal visible={visible} onRequestClose={onClose}>
+        <View style={s.container}>
+          <LinearGradient
+            style={s.iconContainer}
+            colors={gb.gradient_blue}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons
+              name="shield-checkmark"
+              size={normalize(isTablet ? 36 : 32)}
+              color={gb.gray50}
+            />
+          </LinearGradient>
+          <Text style={s.titleModal}>{titulo}</Text>
+          <Text style={s.subTitleModal}>{subtitulo}</Text>
+          <Input
+            placeholder="NIP"
+            secureTextEntry
+            style={s.inputContainer}
+            value={nip}
+            onChange={(text) => setNip(String(text ?? "").replace(/[^0-9]/g, ""))}
+            keyboardType="number-pad"
+            maxLength={8}
+            textAlign="center"
+            styleInput={s.inputField}
           />
-        </LinearGradient>
-        <Text style={s.titleModal}>{titulo}</Text>
-        <Text style={s.subTitleModal}>{subtitulo}</Text>
-        <Input
-          placeholder="NIP"
-          secureTextEntry={true}
-          style={s.inputContainer}
-          value={nip}
-          onChange={(text) => setNip(String(text ?? "").replace(/[^0-9]/g, ""))}
-          keyboardType="number-pad"
-          maxLength={8}
-          textAlign="center"
-          multiline={Platform.OS === "android"}
-          numberOfLines={1}
-          styleInput={s.inputField}
-        />
-        <View style={s.buttonsContainer}>
-          <Button onPress={onClose} style={s.btnCancelar}>
-            <Text style={s.btnCancelarText}>Cancelar</Text>
-          </Button>
-          <Button onPress={verificarNip} style={s.btnConfirmar}>
-            <Text style={s.btnConfirmarText}>Confirmar</Text>
-          </Button>
+          <View style={s.buttonsContainer}>
+            <Button onPress={onClose} style={s.btnCancelar}>
+              <Text style={s.btnCancelarText}>Cancelar</Text>
+            </Button>
+            <Button onPress={verificarNip} style={s.btnConfirmar}>
+              <Text style={s.btnConfirmarText}>Confirmar</Text>
+            </Button>
+          </View>
         </View>
-      </View>
-    </GeneralModal>
+      </GeneralModal>
+
+      <ModalWarning
+        visible={!!aviso}
+        type={aviso?.type ?? "warning"}
+        title={aviso?.title ?? ""}
+        message={aviso?.message ?? ""}
+        confirmText="Entendido"
+        cancelText="Cerrar"
+        onCancel={cerrarAviso}
+        onConfirm={cerrarAviso}
+      />
+    </>
   );
 };
 

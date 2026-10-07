@@ -2,12 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Alert, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import ConfigItem from "../../../components/atoms/ConfigItem/ConfigItem";
 import InputToggle from "../../../components/atoms/InputToggle/InputToggle";
 import Select from "../../../components/atoms/Select/Select";
+import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import {
   MENSAJE_SIN_INTERNET,
@@ -15,16 +16,89 @@ import {
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { AuthContext } from "../../../utils/AuthContext/AuthContext";
-import { resetLocalData } from "../../../utils/db";
+import { clearLocalTables, resetLocalData, withDb } from "../../../utils/db";
 import {
   autorizarSeccion,
   tieneAccesoSeccion,
 } from "../../../utils/sectionAccess";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
+import { Database as ClientesDatabase } from "../Clientes/Database";
+import { Database as GastosDatabase } from "../Gastos/database";
+import InventariosDatabase from "../Inventarios/database";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
+import VentasDatabase from "../Ventas/database";
 import Database from "./database";
 import { s } from "./styles";
+
+const obtenerPendientesSincronizacion = async () => {
+  const [
+    bloqueosVentas,
+    gastosPendientes,
+    clientesPendientes,
+    inventarioPendientes,
+    comandasAbiertas,
+  ] = await Promise.all([
+    VentasDatabase.getBloqueosCierreSesion(),
+    GastosDatabase.getRegistrosPendientes(),
+    ClientesDatabase.getClientesPendientes(),
+    InventariosDatabase.getCantidadPendientes(),
+    withDb("Configuraciones.getComandasAbiertas", async (db) => {
+      const row = await db.getFirstAsync(
+        `SELECT COUNT(*) AS total
+         FROM COMANDA
+         WHERE ACTIVO = 1 AND ESTATUS IN (0, 4)`,
+      );
+      return Number(row?.total ?? 0);
+    }),
+  ]);
+
+  return {
+    ventas: Number(bloqueosVentas?.sinSincronizar ?? 0),
+    ventasPendientes: Number(bloqueosVentas?.pendientes ?? 0),
+    gastos: gastosPendientes?.length ?? 0,
+    clientes: clientesPendientes?.length ?? 0,
+    inventario: Number(inventarioPendientes ?? 0),
+    comandasAbiertas: Number(comandasAbiertas ?? 0),
+  };
+};
+
+const construirMensajePendientes = (pendientes) => {
+  const partes = [];
+
+  if (pendientes.comandasAbiertas > 0) {
+    partes.push(
+      `${pendientes.comandasAbiertas} comanda${pendientes.comandasAbiertas === 1 ? "" : "s"} abierta${pendientes.comandasAbiertas === 1 ? "" : "s"}`,
+    );
+  }
+  if (pendientes.ventas > 0) {
+    partes.push(
+      `${pendientes.ventas} venta${pendientes.ventas === 1 ? "" : "s"} sin sincronizar`,
+    );
+  }
+  if (pendientes.ventasPendientes > 0) {
+    partes.push(
+      `${pendientes.ventasPendientes} venta${pendientes.ventasPendientes === 1 ? "" : "s"} pendiente${pendientes.ventasPendientes === 1 ? "" : "s"}`,
+    );
+  }
+  if (pendientes.gastos > 0) {
+    partes.push(
+      `${pendientes.gastos} gasto${pendientes.gastos === 1 ? "" : "s"}`,
+    );
+  }
+  if (pendientes.clientes > 0) {
+    partes.push(
+      `${pendientes.clientes} cliente${pendientes.clientes === 1 ? "" : "s"}`,
+    );
+  }
+  if (pendientes.inventario > 0) {
+    partes.push(
+      `${pendientes.inventario} movimiento${pendientes.inventario === 1 ? "" : "s"} de inventario`,
+    );
+  }
+
+  return `Hay datos pendientes de sincronizar: ${partes.join(", ")}. Sincronízalos primero desde sus secciones antes de actualizar toda la data.`;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Encabezado de sección con degradado
@@ -55,8 +129,11 @@ export default function Configuraciones() {
   const [formatosPago, setFormatosPago] = useState([]);
   const [tamañoFuentes, setTamañoFuentes] = useState([]);
   const [modalNipGeneral, setModalNipGeneral] = useState(false);
+  const [modalConfirmSync, setModalConfirmSync] = useState(false);
+  const [modalConfirmReinicio, setModalConfirmReinicio] = useState(false);
   const [sincronizandoGeneral, setSincronizandoGeneral] = useState(false);
   const [reiniciandoDatos, setReiniciandoDatos] = useState(false);
+  const [aviso, setAviso] = useState(null);
   const debounceRef = useRef({});
 
   const [nipModal, setNipModal] = useState({
@@ -65,6 +142,12 @@ export default function Configuraciones() {
     accion: null,
   });
   const [finanzasDesbloqueada, setFinanzasDesbloqueada] = useState(false);
+
+  const cerrarAviso = useCallback(() => setAviso(null), []);
+
+  const mostrarAviso = useCallback((type, title, message) => {
+    setAviso({ type, title, message });
+  }, []);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useFocusEffect(
@@ -162,15 +245,51 @@ export default function Configuraciones() {
     }, 600);
   }, []);
 
-  const sincronizarDatosGenerales = useCallback(async () => {
+  const prepararSincronizacion = useCallback(async () => {
+    setModalNipGeneral(false);
+
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso("warning", "Sin conexión", MENSAJE_SIN_INTERNET);
       return;
     }
 
-    setSincronizandoGeneral(true);
     try {
+      const pendientes = await obtenerPendientesSincronizacion();
+      const hayPendientes =
+        pendientes.ventas > 0 ||
+        pendientes.ventasPendientes > 0 ||
+        pendientes.gastos > 0 ||
+        pendientes.clientes > 0 ||
+        pendientes.inventario > 0 ||
+        pendientes.comandasAbiertas > 0;
+
+      if (hayPendientes) {
+        mostrarAviso(
+          "warning",
+          "Sincronizaciones pendientes",
+          construirMensajePendientes(pendientes),
+        );
+        return;
+      }
+
+      setModalConfirmSync(true);
+    } catch (error) {
+      console.error("Error verificando pendientes:", error);
+      mostrarAviso(
+        "danger",
+        "Error",
+        "No se pudo verificar si hay datos pendientes de sincronizar.",
+      );
+    }
+  }, [mostrarAviso]);
+
+  const ejecutarSincronizacion = useCallback(async () => {
+    setModalConfirmSync(false);
+    setSincronizandoGeneral(true);
+
+    try {
+      await clearLocalTables();
       await integracionPantallaDeCarga.initializeDatabase();
       const generalData = await integracionPantallaDeCarga.general();
       await Promise.all([
@@ -180,14 +299,27 @@ export default function Configuraciones() {
         integracionPantallaDeCarga.menu(),
       ]);
       await integracionPantallaDeCarga.configuraciones(generalData);
+      await integracionPantallaDeCarga.historialCaja();
+      await integracionPantallaDeCarga.comandaTable();
 
-      Alert.alert(
+      const [cfg, fp, tf] = await Promise.all([
+        Database.getConfiguraciones(),
+        Database.getFormatosPago(),
+        Database.getTamañoFuentes(),
+      ]);
+      setConfig(cfg ?? {});
+      setFormatosPago(fp.map((f) => ({ label: f.NOMBRE, value: f.ID })));
+      setTamañoFuentes(tf.map((f) => ({ label: f.NOMBRE, value: f.ID })));
+
+      mostrarAviso(
+        "info",
         "Sincronización completa",
-        "La información general se actualizó correctamente.",
+        "Se limpiaron los datos locales y se descargó nuevamente la información general.",
       );
     } catch (error) {
       console.error("Error sincronizando datos generales:", error);
-      Alert.alert(
+      mostrarAviso(
+        "danger",
         "Error de sincronización",
         obtenerMensajeErrorRed(
           error,
@@ -196,38 +328,22 @@ export default function Configuraciones() {
       );
     } finally {
       setSincronizandoGeneral(false);
-      setModalNipGeneral(false);
     }
-  }, []);
+  }, [mostrarAviso]);
 
-  const confirmarReinicioDatos = useCallback(() => {
-    Alert.alert(
-      "Borrar datos locales",
-      "Se eliminarán mesas, menú, clientes, comandas, ventas, inventario y configuraciones de este dispositivo. Después tendrás que iniciar sesión nuevamente.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Borrar todo",
-          style: "destructive",
-          onPress: async () => {
-            setReiniciandoDatos(true);
-            try {
-              await resetLocalData();
-              contextoAutenticacion.desautenticar();
-            } catch (error) {
-              console.error("Error eliminando datos locales:", error);
-              Alert.alert(
-                "Error",
-                "No se pudieron eliminar los datos locales.",
-              );
-            } finally {
-              setReiniciandoDatos(false);
-            }
-          },
-        },
-      ],
-    );
-  }, [contextoAutenticacion]);
+  const ejecutarReinicioDatos = useCallback(async () => {
+    setModalConfirmReinicio(false);
+    setReiniciandoDatos(true);
+    try {
+      await resetLocalData();
+      contextoAutenticacion.desautenticar();
+    } catch (error) {
+      console.error("Error eliminando datos locales:", error);
+      mostrarAviso("danger", "Error", "No se pudieron eliminar los datos locales.");
+    } finally {
+      setReiniciandoDatos(false);
+    }
+  }, [contextoAutenticacion, mostrarAviso]);
 
   if (cargando || !config) {
     return (
@@ -520,8 +636,9 @@ export default function Configuraciones() {
           <View style={s.syncPanel}>
             <Text style={s.syncTitle}>Actualizar toda la data</Text>
             <Text style={s.syncSubtitle}>
-              Descarga información general, mesas, clientes, inventario y menú
-              desde el servidor.
+              Si no hay datos pendientes de sincronizar, limpia la base local y
+              vuelve a descargar información general, mesas, clientes,
+              inventario y menú.
             </Text>
 
             <Button
@@ -541,7 +658,7 @@ export default function Configuraciones() {
             </Button>
 
             <Button
-              onPress={confirmarReinicioDatos}
+              onPress={() => setModalConfirmReinicio(true)}
               style={s.syncButton}
               styleContainer={s.syncButtonContainer}
               disabled={sincronizandoGeneral || reiniciandoDatos}
@@ -562,7 +679,7 @@ export default function Configuraciones() {
         titulo="Sincronizar app"
         modo="acceso"
         keywords={["settings"]}
-        onSubmit={sincronizarDatosGenerales}
+        onSubmit={prepararSincronizacion}
       />
       <NipModal
         visible={nipModal.visible}
@@ -571,6 +688,39 @@ export default function Configuraciones() {
         keywords={["settings"]}
         onClose={cerrarNipModal}
         onSubmit={onNipCorrecto}
+      />
+
+      <ModalWarning
+        visible={modalConfirmSync}
+        type="warning"
+        title="¿Sincronizar ahora?"
+        message="Se limpiará toda la base de datos local y se volverán a descargar los datos generales, mesas, clientes, inventario y menú. Esta acción no se puede deshacer."
+        confirmText="Sincronizar"
+        cancelText="Cancelar"
+        onCancel={() => setModalConfirmSync(false)}
+        onConfirm={ejecutarSincronizacion}
+      />
+
+      <ModalWarning
+        visible={modalConfirmReinicio}
+        type="danger"
+        title="Borrar datos locales"
+        message="Se eliminarán mesas, menú, clientes, comandas, ventas, inventario y configuraciones de este dispositivo. Después tendrás que iniciar sesión nuevamente."
+        confirmText="Borrar todo"
+        cancelText="Cancelar"
+        onCancel={() => setModalConfirmReinicio(false)}
+        onConfirm={ejecutarReinicioDatos}
+      />
+
+      <ModalWarning
+        visible={!!aviso}
+        type={aviso?.type ?? "info"}
+        title={aviso?.title ?? ""}
+        message={aviso?.message ?? ""}
+        confirmText="Entendido"
+        cancelText="Cerrar"
+        onCancel={cerrarAviso}
+        onConfirm={cerrarAviso}
       />
     </SafeAreaView>
   );
