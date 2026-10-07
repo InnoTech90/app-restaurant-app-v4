@@ -1,9 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Mesa from "../../../../components/Molecules/Mesa/Mesa";
+import ModalWarning from "../../../../components/Molecules/ModalWarning/ModalWarning";
 import {
   MENSAJE_SIN_INTERNET,
   obtenerMensajeErrorRed,
@@ -13,6 +14,10 @@ import {
   clearAuthHeaderTitulo,
   setAuthHeaderTitulo,
 } from "../../../../utils/authHeaderTitle";
+import {
+  marcarBienvenidaMostrada,
+  prepararBienvenidaDelDia,
+} from "../../../../utils/bienvenidaDia";
 import { initializeSchema } from "../../../../utils/db";
 import { gb } from "../../../globalStyles";
 import { Database } from "./database";
@@ -22,6 +27,8 @@ const Inicio = () => {
   const router = useRouter();
   const [mesas, setMesas] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [bienvenida, setBienvenida] = useState(null);
+  const bienvenidaRevisadaRef = useRef(false);
 
   useEffect(() => {
     getMesas();
@@ -35,8 +42,36 @@ const Inicio = () => {
       ]).catch(() => {});
       clearAuthHeaderTitulo();
       getMesas();
+
+      let activo = true;
+      (async () => {
+        if (bienvenidaRevisadaRef.current) return;
+        bienvenidaRevisadaRef.current = true;
+        try {
+          await initializeSchema();
+          const contenido = await prepararBienvenidaDelDia();
+          if (!activo || !contenido) return;
+          setBienvenida(contenido);
+        } catch (error) {
+          console.error("Error preparando bienvenida del día:", error);
+          bienvenidaRevisadaRef.current = false;
+        }
+      })();
+
+      return () => {
+        activo = false;
+      };
     }, []),
   );
+
+  const cerrarBienvenida = useCallback(async () => {
+    setBienvenida(null);
+    try {
+      await marcarBienvenidaMostrada();
+    } catch (error) {
+      console.error("Error marcando bienvenida:", error);
+    }
+  }, []);
 
   const getMesas = async () => {
     try {
@@ -139,6 +174,17 @@ const Inicio = () => {
           ))}
         </View>
       </ScrollView>
+
+      <ModalWarning
+        visible={!!bienvenida}
+        type={bienvenida?.type ?? "info"}
+        title={bienvenida?.titulo ?? ""}
+        message={bienvenida?.message ?? ""}
+        confirmText="Entendido"
+        cancelText="Cerrar"
+        onCancel={cerrarBienvenida}
+        onConfirm={cerrarBienvenida}
+      />
     </SafeAreaView>
   );
 };

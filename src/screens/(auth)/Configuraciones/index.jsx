@@ -16,89 +16,21 @@ import {
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { AuthContext } from "../../../utils/AuthContext/AuthContext";
-import { clearLocalTables, resetLocalData, withDb } from "../../../utils/db";
+import { clearLocalTables, resetLocalData } from "../../../utils/db";
+import {
+  construirMensajePendientes,
+  hayPendientesParaSincronizacionGeneral,
+  obtenerPendientesSincronizacion,
+} from "../../../utils/pendientesSincronizacion";
 import {
   autorizarSeccion,
   tieneAccesoSeccion,
 } from "../../../utils/sectionAccess";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
-import { Database as ClientesDatabase } from "../Clientes/Database";
-import { Database as GastosDatabase } from "../Gastos/database";
-import InventariosDatabase from "../Inventarios/database";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
-import VentasDatabase from "../Ventas/database";
 import Database from "./database";
 import { s } from "./styles";
-
-const obtenerPendientesSincronizacion = async () => {
-  const [
-    bloqueosVentas,
-    gastosPendientes,
-    clientesPendientes,
-    inventarioPendientes,
-    comandasAbiertas,
-  ] = await Promise.all([
-    VentasDatabase.getBloqueosCierreSesion(),
-    GastosDatabase.getRegistrosPendientes(),
-    ClientesDatabase.getClientesPendientes(),
-    InventariosDatabase.getCantidadPendientes(),
-    withDb("Configuraciones.getComandasAbiertas", async (db) => {
-      const row = await db.getFirstAsync(
-        `SELECT COUNT(*) AS total
-         FROM COMANDA
-         WHERE ACTIVO = 1 AND ESTATUS IN (0, 4)`,
-      );
-      return Number(row?.total ?? 0);
-    }),
-  ]);
-
-  return {
-    ventas: Number(bloqueosVentas?.sinSincronizar ?? 0),
-    ventasPendientes: Number(bloqueosVentas?.pendientes ?? 0),
-    gastos: gastosPendientes?.length ?? 0,
-    clientes: clientesPendientes?.length ?? 0,
-    inventario: Number(inventarioPendientes ?? 0),
-    comandasAbiertas: Number(comandasAbiertas ?? 0),
-  };
-};
-
-const construirMensajePendientes = (pendientes) => {
-  const partes = [];
-
-  if (pendientes.comandasAbiertas > 0) {
-    partes.push(
-      `${pendientes.comandasAbiertas} comanda${pendientes.comandasAbiertas === 1 ? "" : "s"} abierta${pendientes.comandasAbiertas === 1 ? "" : "s"}`,
-    );
-  }
-  if (pendientes.ventas > 0) {
-    partes.push(
-      `${pendientes.ventas} venta${pendientes.ventas === 1 ? "" : "s"} sin sincronizar`,
-    );
-  }
-  if (pendientes.ventasPendientes > 0) {
-    partes.push(
-      `${pendientes.ventasPendientes} venta${pendientes.ventasPendientes === 1 ? "" : "s"} pendiente${pendientes.ventasPendientes === 1 ? "" : "s"}`,
-    );
-  }
-  if (pendientes.gastos > 0) {
-    partes.push(
-      `${pendientes.gastos} gasto${pendientes.gastos === 1 ? "" : "s"}`,
-    );
-  }
-  if (pendientes.clientes > 0) {
-    partes.push(
-      `${pendientes.clientes} cliente${pendientes.clientes === 1 ? "" : "s"}`,
-    );
-  }
-  if (pendientes.inventario > 0) {
-    partes.push(
-      `${pendientes.inventario} movimiento${pendientes.inventario === 1 ? "" : "s"} de inventario`,
-    );
-  }
-
-  return `Hay datos pendientes de sincronizar: ${partes.join(", ")}. Sincronízalos primero desde sus secciones antes de actualizar toda la data.`;
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Encabezado de sección con degradado
@@ -256,15 +188,8 @@ export default function Configuraciones() {
 
     try {
       const pendientes = await obtenerPendientesSincronizacion();
-      const hayPendientes =
-        pendientes.ventas > 0 ||
-        pendientes.ventasPendientes > 0 ||
-        pendientes.gastos > 0 ||
-        pendientes.clientes > 0 ||
-        pendientes.inventario > 0 ||
-        pendientes.comandasAbiertas > 0;
 
-      if (hayPendientes) {
+      if (hayPendientesParaSincronizacionGeneral(pendientes)) {
         mostrarAviso(
           "warning",
           "Sincronizaciones pendientes",
@@ -625,6 +550,31 @@ export default function Configuraciones() {
           </ConfigItem>
         </View>
 
+        <View style={s.seccion}>
+          <SectionHeader
+            titulo="Inicio del día"
+            iconName="sunny-outline"
+            color={gb.yellow500}
+          />
+
+          <ConfigItem
+            icon="notifications-outline"
+            iconColor={gb.yellow500}
+            titulo="Bienvenida al iniciar el día"
+            subtitulo="Al abrir la app en un día nuevo, muestra un aviso con pendientes del día anterior (sincronizar, caja, comandas, limpiar ventas)."
+            border={false}
+          >
+            <Switch
+              value={Number(config.BIENVENIDA_INICIO_DIA ?? 1) === 1}
+              onValueChange={(v) =>
+                guardar("BIENVENIDA_INICIO_DIA", v ? 1 : 0)
+              }
+              trackColor={{ false: gb.gray200, true: gb.yellow500 }}
+              thumbColor={gb.gray50}
+            />
+          </ConfigItem>
+        </View>
+
         {/* ── Sincronización general ─────────────────────────────────────── */}
         <View style={s.seccion}>
           <SectionHeader
@@ -657,18 +607,20 @@ export default function Configuraciones() {
               </Text>
             </Button>
 
-            <Button
-              onPress={() => setModalConfirmReinicio(true)}
-              style={s.syncButton}
-              styleContainer={s.syncButtonContainer}
-              disabled={sincronizandoGeneral || reiniciandoDatos}
-            >
-              <Text style={s.syncButtonText}>
-                {reiniciandoDatos
-                  ? "Borrando datos..."
-                  : "Borrar datos locales"}
-              </Text>
-            </Button>
+            {__DEV__ && (
+              <Button
+                onPress={() => setModalConfirmReinicio(true)}
+                style={s.syncButton}
+                styleContainer={s.syncButtonContainer}
+                disabled={sincronizandoGeneral || reiniciandoDatos}
+              >
+                <Text style={s.syncButtonText}>
+                  {reiniciandoDatos
+                    ? "Borrando datos..."
+                    : "Borrar datos locales"}
+                </Text>
+              </Button>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -701,16 +653,18 @@ export default function Configuraciones() {
         onConfirm={ejecutarSincronizacion}
       />
 
-      <ModalWarning
-        visible={modalConfirmReinicio}
-        type="danger"
-        title="Borrar datos locales"
-        message="Se eliminarán mesas, menú, clientes, comandas, ventas, inventario y configuraciones de este dispositivo. Después tendrás que iniciar sesión nuevamente."
-        confirmText="Borrar todo"
-        cancelText="Cancelar"
-        onCancel={() => setModalConfirmReinicio(false)}
-        onConfirm={ejecutarReinicioDatos}
-      />
+      {__DEV__ && (
+        <ModalWarning
+          visible={modalConfirmReinicio}
+          type="danger"
+          title="Borrar datos locales"
+          message="Se eliminarán mesas, menú, clientes, comandas, ventas, inventario y configuraciones de este dispositivo. Después tendrás que iniciar sesión nuevamente."
+          confirmText="Borrar todo"
+          cancelText="Cancelar"
+          onCancel={() => setModalConfirmReinicio(false)}
+          onConfirm={ejecutarReinicioDatos}
+        />
+      )}
 
       <ModalWarning
         visible={!!aviso}

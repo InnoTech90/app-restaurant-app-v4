@@ -142,6 +142,17 @@ export async function runDatabaseMigrations(db) {
     "NIP",
     "ALTER TABLE CONFIGURACIONES ADD COLUMN NIP INTEGER",
   );
+  await ensureColumn(
+    db,
+    "CONFIGURACIONES",
+    "BIENVENIDA_INICIO_DIA",
+    "ALTER TABLE CONFIGURACIONES ADD COLUMN BIENVENIDA_INICIO_DIA INTEGER DEFAULT 1",
+  );
+  await db.runAsync(
+    `UPDATE CONFIGURACIONES
+     SET BIENVENIDA_INICIO_DIA = 1
+     WHERE BIENVENIDA_INICIO_DIA IS NULL`,
+  );
 
   await ensureColumn(
     db,

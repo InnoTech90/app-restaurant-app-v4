@@ -367,6 +367,7 @@ export const DatabaseSchema = {
           NIP_FINALIZAR_TICKET INTEGER DEFAULT 1,
           MODO_RESTRICTIVO INTEGER,
           HABILITAR_EDICION_TICKET INTEGER,
+          BIENVENIDA_INICIO_DIA INTEGER DEFAULT 1,
           NIP INTEGER
         )
       `,

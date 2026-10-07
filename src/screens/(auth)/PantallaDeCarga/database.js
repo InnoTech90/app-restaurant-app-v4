@@ -35,6 +35,7 @@ const CONFIGURACIONES_DEFAULTS = {
   nipFinalizarTicket: 1,
   modoRestrictivo: 0,
   habilitarEdicionTicket: 1,
+  bienvenidaInicioDia: 1,
 };
 
 /**
@@ -108,8 +109,8 @@ export class Database {
         ID_SUCURSAL, NOMBRE_DISPOCITIVO, ABIERTO_PEDIDOS, IMPRIMIR_FICHA,
         SOLO_PRODUCTOS_NUEVOS, ID_TAMAÑO_FUENTE, COSTO_ENVIO, IMPUESTOS,
         DESCUENTOS, ID_FORMATO_PAGO, PROTEGER_VENTAS, NIP_FINALIZAR_TICKET,
-        MODO_RESTRICTIVO, HABILITAR_EDICION_TICKET, NIP
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        MODO_RESTRICTIVO, HABILITAR_EDICION_TICKET, BIENVENIDA_INICIO_DIA, NIP
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         idSucursal,
         nombre,
@@ -125,6 +126,7 @@ export class Database {
         d.nipFinalizarTicket,
         d.modoRestrictivo,
         d.habilitarEdicionTicket,
+        d.bienvenidaInicioDia,
         nipValor,
       ],
     );
