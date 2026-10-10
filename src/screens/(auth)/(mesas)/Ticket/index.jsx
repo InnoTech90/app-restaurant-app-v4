@@ -331,10 +331,12 @@ const Ticket = () => {
     if (imprimiendo || !comanda || soloLectura) return;
     setImprimiendo(true);
     try {
-      // sinPrecios=true: ticket de cocina/barra, nunca mostrar precios
+      const articulosActuales =
+        (await Database.getArticulosComanda(comanda.ID)) ?? articulos;
+
       const resultado = await imprimirComanda(
         { ...comanda, NOTA: nota },
-        articulos,
+        articulosActuales,
         mesa,
         true,
       );
@@ -720,8 +722,8 @@ const Ticket = () => {
                 {imprimiendo
                   ? "Imprimiendo..."
                   : preparacionImpresa
-                    ? "Preparación ya impresa"
-                    : "Imprimir preparación"}
+                    ? "Comanda ya impresa"
+                    : "Imprimir comanda"}
               </Text>
             </Button>
           )}

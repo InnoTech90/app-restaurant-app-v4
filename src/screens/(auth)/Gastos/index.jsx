@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
+import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import {
@@ -60,7 +61,9 @@ const GastoRow = ({ registro, onEdit, onDelete }) => (
           </Text>
         )}
       </View>
-      <Text style={s.gastoMonto}>${Number(registro.MONTO ?? 0).toFixed(2)}</Text>
+      <Text style={s.gastoMonto}>
+        ${Number(registro.MONTO ?? 0).toFixed(2)}
+      </Text>
       <EstatusSincronizado sincronizado={!!registro.SINCRONIZADO} />
     </Pressable>
     <Pressable
@@ -158,59 +161,62 @@ const CategoriaAccordion = ({
   const tienePendientes = categoriaTienePendientes(categoria);
 
   return (
-  <View style={s.seccion}>
-    <Pressable onPress={onToggleCategoria}>
-      <LinearGradient
-        style={s.seccionHeader}
-        colors={tienePendientes ? GRADIENTE_PENDIENTE : gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
-        <Ionicons
-          name={expandida ? "chevron-down" : "chevron-forward"}
-          size={normalize(18)}
-          color={tienePendientes ? COLOR_PENDIENTE : "white"}
-        />
-        <Text
-          style={[s.seccionNombre, tienePendientes && s.seccionNombrePendiente]}
-          numberOfLines={1}
+    <View style={s.seccion}>
+      <Pressable onPress={onToggleCategoria}>
+        <LinearGradient
+          style={s.seccionHeader}
+          colors={tienePendientes ? GRADIENTE_PENDIENTE : gb.gradient_blue}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
         >
-          {categoria.NOMBRE}
-        </Text>
-        <Text
-          style={[
-            s.seccionHeaderTotal,
-            tienePendientes && s.seccionHeaderTotalPendiente,
-          ]}
-        >
-          ${Number(categoria.TOTAL ?? 0).toFixed(2)}
-        </Text>
-      </LinearGradient>
-    </Pressable>
+          <Ionicons
+            name={expandida ? "chevron-down" : "chevron-forward"}
+            size={normalize(18)}
+            color={tienePendientes ? COLOR_PENDIENTE : "white"}
+          />
+          <Text
+            style={[
+              s.seccionNombre,
+              tienePendientes && s.seccionNombrePendiente,
+            ]}
+            numberOfLines={1}
+          >
+            {categoria.NOMBRE}
+          </Text>
+          <Text
+            style={[
+              s.seccionHeaderTotal,
+              tienePendientes && s.seccionHeaderTotalPendiente,
+            ]}
+          >
+            ${Number(categoria.TOTAL ?? 0).toFixed(2)}
+          </Text>
+        </LinearGradient>
+      </Pressable>
 
-    {expandida && (
-      <View style={s.conceptosWrap}>
-        {(categoria.conceptos ?? []).length === 0 ? (
-          <View style={s.seccionVacia}>
-            <Text style={s.seccionVaciaText}>Sin conceptos</Text>
-          </View>
-        ) : (
-          (categoria.conceptos ?? []).map((c) => (
-            <ConceptoAccordion
-              key={String(c.ID)}
-              concepto={c}
-              categoria={categoria}
-              expandido={!!conceptosExpandidos[c.UUID]}
-              onToggle={() => onToggleConcepto(c.UUID)}
-              onAddGasto={onAddGasto}
-              onEditGasto={onEditGasto}
-              onDeleteGasto={onDeleteGasto}
-            />
-          ))
-        )}
-      </View>
-    )}
-  </View>
+      {expandida && (
+        <View style={s.conceptosWrap}>
+          {(categoria.conceptos ?? []).length === 0 ? (
+            <View style={s.seccionVacia}>
+              <Text style={s.seccionVaciaText}>Sin conceptos</Text>
+            </View>
+          ) : (
+            (categoria.conceptos ?? []).map((c) => (
+              <ConceptoAccordion
+                key={String(c.ID)}
+                concepto={c}
+                categoria={categoria}
+                expandido={!!conceptosExpandidos[c.UUID]}
+                onToggle={() => onToggleConcepto(c.UUID)}
+                onAddGasto={onAddGasto}
+                onEditGasto={onEditGasto}
+                onDeleteGasto={onDeleteGasto}
+              />
+            ))
+          )}
+        </View>
+      )}
+    </View>
   );
 };
 
@@ -238,7 +244,7 @@ const Gastos = () => {
   const [conceptosExpandidos, setConceptosExpandidos] = useState({});
   const [modalNipCrud, setModalNipCrud] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
-  // accionPendiente: { tipo: 'agregar'|'editar'|'eliminar', ...payload }
+  const [aviso, setAviso] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -260,7 +266,6 @@ const Gastos = () => {
     const sub = DeviceEventEmitter.addListener(GASTOS_REFRESH_EVENT, cargar);
     return () => sub.remove();
   }, [cargar]);
-
 
   const totalGeneral = categorias.reduce(
     (sum, cat) => sum + Number(cat.TOTAL ?? 0),
@@ -357,29 +362,29 @@ const Gastos = () => {
 
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      setAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
     try {
       actualizandoRef.current = true;
       setActualizando(true);
-      const { categorias: totalCategorias, conceptos } =
-        await integracionGastos.actualizarCatalogo();
+      await integracionGastos.actualizarCatalogo();
       await cargar();
-      Alert.alert(
-        "Listo",
-        `${totalCategorias} categoría(s) y ${conceptos} concepto(s) actualizados.`,
-      );
     } catch (e) {
       console.error("Error al actualizar el catálogo de gastos:", e);
-      Alert.alert(
-        "Error",
-        obtenerMensajeErrorRed(
+      setAviso({
+        type: "danger",
+        title: "Error",
+        message: obtenerMensajeErrorRed(
           e,
           "No se pudo actualizar el catálogo de gastos.",
         ),
-      );
+      });
     } finally {
       actualizandoRef.current = false;
       setActualizando(false);
@@ -406,10 +411,7 @@ const Gastos = () => {
       console.error("Error al sincronizar gastos:", e);
       Alert.alert(
         "Error",
-        obtenerMensajeErrorRed(
-          e,
-          "No se pudo sincronizar con el servidor.",
-        ),
+        obtenerMensajeErrorRed(e, "No se pudo sincronizar con el servidor."),
       );
     } finally {
       setSincronizando(false);
@@ -551,6 +553,17 @@ const Gastos = () => {
           setAccionPendiente(null);
         }}
         onSubmit={onNipCrudCorrecto}
+      />
+
+      <ModalWarning
+        visible={!!aviso}
+        type={aviso?.type ?? "warning"}
+        title={aviso?.title ?? ""}
+        message={aviso?.message ?? ""}
+        confirmText="Entendido"
+        cancelText="Cerrar"
+        onCancel={() => setAviso(null)}
+        onConfirm={() => setAviso(null)}
       />
     </SafeAreaView>
   );

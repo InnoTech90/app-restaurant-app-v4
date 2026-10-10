@@ -37,10 +37,16 @@ export default class Database {
 
       const articulos = await Promise.all(
         renglones.map(async (renglon) => {
-          const articulo = await db.getFirstAsync(
-            `SELECT * FROM ARTICULO WHERE UUID = ?`,
-            [renglon.ID_ARTICULO],
-          );
+          const idArticulo = String(renglon.ID_ARTICULO ?? "").trim();
+          const articulo = idArticulo
+            ? await db.getFirstAsync(
+                `SELECT * FROM ARTICULO
+                 WHERE UUID = ?
+                    OR CAST(ID AS TEXT) = ?
+                 LIMIT 1`,
+                [idArticulo, idArticulo],
+              )
+            : null;
           const compRows = await db.getAllAsync(
             `SELECT * FROM COMANDA_COMPLEMENTO WHERE ID_COMANDA_ARTICULO = ?`,
             [renglon.ID],

@@ -16,10 +16,17 @@ export default class Database {
       );
       return Promise.all(
         renglones.map(async (renglon) => {
-          const articulo = await db.getFirstAsync(
-            `SELECT * FROM ARTICULO WHERE UUID = ?`,
-            [renglon.ID_ARTICULO],
-          );
+          const idArticulo = String(renglon.ID_ARTICULO ?? "").trim();
+          let articulo = null;
+          if (idArticulo) {
+            articulo = await db.getFirstAsync(
+              `SELECT * FROM ARTICULO
+               WHERE UUID = ?
+                  OR CAST(ID AS TEXT) = ?
+               LIMIT 1`,
+              [idArticulo, idArticulo],
+            );
+          }
           const compRows = await db.getAllAsync(
             `SELECT cc.*,
                     COALESCE(c.NOMBRE, gc.NOMBRE, cc.NOTA) as COMP_NOMBRE,

@@ -232,17 +232,32 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
 
         const puntos = await Database.getPuntosImpresion();
         const puntosMap = Object.fromEntries(
-            puntos.map((p) => [String(p.UUID).trim(), p]),
+            puntos
+                .filter((p) => p?.UUID != null && String(p.UUID).trim() !== '')
+                .map((p) => [String(p.UUID).trim().toLowerCase(), p]),
         );
 
         const fallbackUuid = 'PRIMER_PUNTO';
+        const resolverPunto = (raw) => {
+            if (raw === null || raw === undefined || raw === 0 || raw === '') {
+                return puntosMap[fallbackUuid.toLowerCase()] ?? null;
+            }
+            const key = String(raw).trim().toLowerCase();
+            return (
+                puntosMap[key] ??
+                puntosMap[fallbackUuid.toLowerCase()] ??
+                null
+            );
+        };
 
         const gruposPorPunto = {};
         for (const renglon of articulosParaImprimir) {
-            const raw = renglon.articulo?.PUNTO_IMPRESION;
-            const uuid = (raw === null || raw === undefined || raw === 0 || raw === '')
-                ? fallbackUuid
-                : String(raw).trim();
+            const raw =
+                renglon.articulo?.PUNTO_IMPRESION ??
+                renglon.PUNTO_IMPRESION ??
+                null;
+            const punto = resolverPunto(raw);
+            const uuid = String(punto?.UUID ?? fallbackUuid).trim();
             if (!gruposPorPunto[uuid]) gruposPorPunto[uuid] = [];
             gruposPorPunto[uuid].push(renglon);
         }
@@ -251,7 +266,9 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
         const puntosSinImpresora = [];
 
         for (const [uuid, renglones] of Object.entries(gruposPorPunto)) {
-            const punto = puntosMap[uuid];
+            const punto =
+                puntosMap[String(uuid).trim().toLowerCase()] ??
+                puntosMap[fallbackUuid.toLowerCase()];
             if (!punto) {
                 console.warn(`Punto de impresión no encontrado en BD: ${uuid}`);
                 continue;
@@ -265,7 +282,9 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
             gruposPorMac[mac].push({
                 punto,
                 renglones,
-                esCaja: !sinPrecios && uuid === 'PRIMER_PUNTO',
+                esCaja:
+                    !sinPrecios &&
+                    String(punto.UUID).trim().toUpperCase() === fallbackUuid,
             });
         }
 
