@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -20,6 +19,7 @@ import {
   obtenerMensajeErrorRed,
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import {
   CONTENT_MAX_WIDTH,
   listColumns,
@@ -228,14 +228,22 @@ const Clientes = () => {
       await cargar();
     } catch (e) {
       console.error("Error al inactivar cliente:", e);
-      Alert.alert("Error", "No se pudo inactivar el cliente.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo inactivar el cliente.",
+      });
     }
   };
 
   const handleActualizar = async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
@@ -244,10 +252,14 @@ const Clientes = () => {
       await integracionClientes.actualizar();
       await cargar();
     } catch (e) {
-      Alert.alert(
-        "Error",
-        obtenerMensajeErrorRed(e, "No se pudieron actualizar los clientes."),
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: obtenerMensajeErrorRed(
+          e,
+          "No se pudieron actualizar los clientes.",
+        ),
+      });
     } finally {
       setActualizando(false);
     }
@@ -256,7 +268,11 @@ const Clientes = () => {
   const handleSincronizar = async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
@@ -265,15 +281,27 @@ const Clientes = () => {
       const { sincronizados } = await integracionClientes.sincronizar();
       await cargar();
       if (sincronizados === 0) {
-        Alert.alert("Sin pendientes", "No hay clientes por sincronizar.");
+        mostrarAviso({
+          type: "info",
+          title: "Sin pendientes",
+          message: "No hay clientes por sincronizar.",
+        });
       } else {
-        Alert.alert("Listo", `${sincronizados} cliente(s) sincronizado(s).`);
+        mostrarAviso({
+          type: "info",
+          title: "Listo",
+          message: `${sincronizados} cliente(s) sincronizado(s).`,
+        });
       }
     } catch (e) {
-      Alert.alert(
-        "Error",
-        obtenerMensajeErrorRed(e, "No se pudieron sincronizar los clientes."),
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: obtenerMensajeErrorRed(
+          e,
+          "No se pudieron sincronizar los clientes.",
+        ),
+      });
     } finally {
       setSincronizando(false);
     }

@@ -1,4 +1,5 @@
-import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
+import { mostrarAviso } from '../../../../utils/avisoModal';
 import {
     BluetoothEscposPrinter,
     BluetoothManager,
@@ -46,10 +47,11 @@ export const prepararBluetooth = async () => {
 
     const permisosOk = await solicitarPermisosBluetooth();
     if (!permisosOk) {
-        Alert.alert(
-            'Permisos requeridos',
-            'Activa los permisos de Bluetooth y ubicación para imprimir.',
-        );
+        mostrarAviso({
+            type: 'warning',
+            title: 'Permisos requeridos',
+            message: 'Activa los permisos de Bluetooth y ubicación para imprimir.',
+        });
         return false;
     }
 
@@ -57,10 +59,11 @@ export const prepararBluetooth = async () => {
         await BluetoothManager.enableBluetooth();
     } catch (e) {
         console.warn('[BT] enableBluetooth:', e?.message ?? e);
-        Alert.alert(
-            'Bluetooth',
-            'Activa Bluetooth en el dispositivo e intenta de nuevo.',
-        );
+        mostrarAviso({
+            type: 'warning',
+            title: 'Bluetooth',
+            message: 'Activa Bluetooth en el dispositivo e intenta de nuevo.',
+        });
         return false;
     }
 
@@ -123,16 +126,21 @@ export const desconectarImpresora = async (address) => {
 export const imprimirConImpresora = async (address, imprimirFn, opciones = {}) => {
     const avisar = opciones.avisar !== false;
     if (!isBluetoothEscposDisponible()) {
-        Alert.alert(
-            'Impresión no disponible',
-            'El módulo Bluetooth no está cargado. Reinstala el APK de producción.',
-        );
+        mostrarAviso({
+            type: 'warning',
+            title: 'Impresión no disponible',
+            message: 'El módulo Bluetooth no está cargado. Reinstala el APK de producción.',
+        });
         return false;
     }
 
     const mac = normalizarMac(address);
     if (!mac) {
-        Alert.alert('Impresora inválida', 'La MAC de la impresora no es válida.');
+        mostrarAviso({
+            type: 'warning',
+            title: 'Impresora inválida',
+            message: 'La MAC de la impresora no es válida.',
+        });
         return false;
     }
 
@@ -148,10 +156,11 @@ export const imprimirConImpresora = async (address, imprimirFn, opciones = {}) =
 
     const avisarFallo = () => {
         if (!avisar) return;
-        Alert.alert(
-            'Sin conexión',
-            `No se pudo conectar con ${mac}. Verifica que la impresora esté encendida, emparejada en Ajustes → Bluetooth y cerca del dispositivo.`,
-        );
+        mostrarAviso({
+            type: 'warning',
+            title: 'Sin conexión',
+            message: `No se pudo conectar con ${mac}. Verifica que la impresora esté encendida, emparejada en Ajustes → Bluetooth y cerca del dispositivo.`,
+        });
     };
 
     try {

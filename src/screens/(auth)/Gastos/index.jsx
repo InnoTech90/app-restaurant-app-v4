@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   DeviceEventEmitter,
   FlatList,
   Pressable,
@@ -14,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
-import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import {
@@ -22,6 +20,7 @@ import {
   obtenerMensajeErrorRed,
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
+import { confirmarAviso, mostrarAviso } from "../../../utils/avisoModal";
 import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
@@ -244,7 +243,6 @@ const Gastos = () => {
   const [conceptosExpandidos, setConceptosExpandidos] = useState({});
   const [modalNipCrud, setModalNipCrud] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
-  const [aviso, setAviso] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -333,27 +331,26 @@ const Gastos = () => {
     }
 
     if (accion.tipo === "eliminar") {
-      Alert.alert(
-        "Eliminar gasto",
-        `¿Eliminar el gasto de $${Number(accion.registro.MONTO ?? 0).toFixed(2)}?`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Eliminar",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await Database.deleteRegistro(accion.registro.ID);
-                DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
-                await cargar();
-              } catch (e) {
-                console.error("Error al eliminar gasto:", e);
-                Alert.alert("Error", "No se pudo eliminar el gasto.");
-              }
-            },
-          },
-        ],
-      );
+      const ok = await confirmarAviso({
+        type: "danger",
+        title: "Eliminar gasto",
+        message: `¿Eliminar el gasto de $${Number(accion.registro.MONTO ?? 0).toFixed(2)}?`,
+        confirmText: "Eliminar",
+        cancelText: "Cancelar",
+      });
+      if (!ok) return;
+      try {
+        await Database.deleteRegistro(accion.registro.ID);
+        DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
+        await cargar();
+      } catch (e) {
+        console.error("Error al eliminar gasto:", e);
+        mostrarAviso({
+          type: "danger",
+          title: "Error",
+          message: "No se pudo eliminar el gasto.",
+        });
+      }
     }
   };
 
@@ -362,7 +359,7 @@ const Gastos = () => {
 
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      setAviso({
+      mostrarAviso({
         type: "warning",
         title: "Sin conexión",
         message: MENSAJE_SIN_INTERNET,
@@ -377,7 +374,7 @@ const Gastos = () => {
       await cargar();
     } catch (e) {
       console.error("Error al actualizar el catálogo de gastos:", e);
-      setAviso({
+      mostrarAviso({
         type: "danger",
         title: "Error",
         message: obtenerMensajeErrorRed(
@@ -394,7 +391,11 @@ const Gastos = () => {
   const sincronizarGastos = async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
@@ -403,16 +404,28 @@ const Gastos = () => {
       const { sincronizados } = await integracionGastos.sincronizarGastos();
       await cargar();
       if (sincronizados === 0) {
-        Alert.alert("Sin pendientes", "No hay gastos por sincronizar.");
+        mostrarAviso({
+          type: "warning",
+          title: "Sin pendientes",
+          message: "No hay gastos por sincronizar.",
+        });
       } else {
-        Alert.alert("Listo", `${sincronizados} registro(s) sincronizado(s).`);
+        mostrarAviso({
+          type: "info",
+          title: "Listo",
+          message: `${sincronizados} registro(s) sincronizado(s).`,
+        });
       }
     } catch (e) {
       console.error("Error al sincronizar gastos:", e);
-      Alert.alert(
-        "Error",
-        obtenerMensajeErrorRed(e, "No se pudo sincronizar con el servidor."),
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: obtenerMensajeErrorRed(
+          e,
+          "No se pudo sincronizar con el servidor.",
+        ),
+      });
     } finally {
       setSincronizando(false);
     }
@@ -553,17 +566,6 @@ const Gastos = () => {
           setAccionPendiente(null);
         }}
         onSubmit={onNipCrudCorrecto}
-      />
-
-      <ModalWarning
-        visible={!!aviso}
-        type={aviso?.type ?? "warning"}
-        title={aviso?.title ?? ""}
-        message={aviso?.message ?? ""}
-        confirmText="Entendido"
-        cancelText="Cerrar"
-        onCancel={() => setAviso(null)}
-        onConfirm={() => setAviso(null)}
       />
     </SafeAreaView>
   );

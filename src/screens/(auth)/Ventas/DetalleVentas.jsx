@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useLocalSearchParams } from "expo-router/build/hooks";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import ModalSinImpresora from "../../../components/atoms/ModalSinImpresora/ModalSinImpresora";
@@ -11,6 +11,7 @@ import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton
 import CardProductoVenta from "../../../components/Molecules/CardProductoVenta/CardProductoVenta";
 import InformacionOrden from "../../../components/Molecules/InformacionOrden/InformacionOrden";
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { imprimirCuenta } from "../(mesas)/Pago/ticket";
@@ -159,10 +160,12 @@ const DetalleVentas = () => {
       }
     } catch (e) {
       console.error("Error reimprimiendo ticket de cobro:", e);
-      Alert.alert(
-        "Error",
-        "No se pudo reimprimir el ticket. Verifica la impresora e intenta de nuevo.",
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message:
+          "No se pudo reimprimir el ticket. Verifica la impresora e intenta de nuevo.",
+      });
     } finally {
       setImprimiendo(false);
     }

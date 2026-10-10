@@ -1,6 +1,7 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { BluetoothEscposPrinter, isBluetoothEscposDisponible } from '../../../../utils/bluetoothEscpos';
 import { withDb } from '../../../../utils/db';
+import { mostrarAviso } from '../../../../utils/avisoModal';
 import {
     conectarImpresora,
     liberarConexionBT,
@@ -198,24 +199,32 @@ const imprimirSeccion = async (punto, renglones, comanda, mesa, esCaja, perfil) 
 export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = false) => {
     try {
         if (Platform.OS !== 'android') {
-            Alert.alert('No disponible', 'La impresión Bluetooth solo está disponible en Android.');
+            mostrarAviso({
+                type: 'warning',
+                title: 'No disponible',
+                message: 'La impresión Bluetooth solo está disponible en Android.',
+            });
             return false;
         }
 
         if (!isBluetoothEscposDisponible()) {
-            Alert.alert(
-                'Impresión no disponible',
-                'El módulo Bluetooth no está cargado. Reinstala el APK de producción.',
-            );
+            mostrarAviso({
+                type: 'warning',
+                title: 'Impresión no disponible',
+                message:
+                    'El módulo Bluetooth no está cargado. Reinstala el APK de producción.',
+            });
             return false;
         }
 
         const btOk = await prepararBluetooth();
         if (!btOk) {
-            Alert.alert(
-                'Permisos requeridos',
-                'Se necesitan permisos de Bluetooth y ubicación para imprimir.',
-            );
+            mostrarAviso({
+                type: 'warning',
+                title: 'Permisos requeridos',
+                message:
+                    'Se necesitan permisos de Bluetooth y ubicación para imprimir.',
+            });
             return false;
         }
 
@@ -226,7 +235,11 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
             : articulos;
 
         if (!articulosParaImprimir.length) {
-            Alert.alert('Sin artículos', 'No hay artículos nuevos para imprimir.');
+            mostrarAviso({
+                type: 'warning',
+                title: 'Sin artículos',
+                message: 'No hay artículos nuevos para imprimir.',
+            });
             return false;
         }
 
@@ -289,10 +302,11 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
         }
 
         if (puntosSinImpresora.length > 0) {
-            Alert.alert(
-                'Sin impresora vinculada',
-                `Vincula una impresora en Ajustes → Impresoras para: ${puntosSinImpresora.join(', ')}.`,
-            );
+            mostrarAviso({
+                type: 'warning',
+                title: 'Sin impresora vinculada',
+                message: `Vincula una impresora en Ajustes → Impresoras para: ${puntosSinImpresora.join(', ')}.`,
+            });
         }
 
         if (Object.keys(gruposPorMac).length === 0) {
@@ -334,10 +348,11 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
         }
 
         if (errores.length > 0) {
-            Alert.alert(
-                'Error de impresión',
-                `No se pudo imprimir en: ${errores.join(', ')}.\n\nVerifica en Impresoras que cada punto tenga su impresora vinculada, encendida y emparejada en Bluetooth.`,
-            );
+            mostrarAviso({
+                type: 'danger',
+                title: 'Error de impresión',
+                message: `No se pudo imprimir en: ${errores.join(', ')}.\n\nVerifica en Impresoras que cada punto tenga su impresora vinculada, encendida y emparejada en Bluetooth.`,
+            });
         }
 
         if (impresos > 0) {
@@ -347,7 +362,11 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
         return impresos > 0;
     } catch (e) {
         console.error('Error en imprimirComanda:', e);
-        Alert.alert('Error', 'Ocurrió un error al intentar imprimir la comanda.');
+        mostrarAviso({
+            type: 'danger',
+            title: 'Error',
+            message: 'Ocurrió un error al intentar imprimir la comanda.',
+        });
         return false;
     }
 };

@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Input from "../../../components/atoms/Input/Input";
 import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./Database";
@@ -38,7 +38,11 @@ const Editar = () => {
 
   const guardar = async () => {
     if (!nombre.trim()) {
-      Alert.alert("Campo requerido", "El nombre del cliente es obligatorio.");
+      mostrarAviso({
+        type: "warning",
+        title: "Campo requerido",
+        message: "El nombre del cliente es obligatorio.",
+      });
       return;
     }
     try {
@@ -67,7 +71,11 @@ const Editar = () => {
     } catch (e) {
       console.error("Error al editar cliente:", e);
       setGuardando(false);
-      Alert.alert("Error", "No se pudo actualizar el cliente.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo actualizar el cliente.",
+      });
     }
   };
 
@@ -80,7 +88,11 @@ const Editar = () => {
       router.back();
     } catch (e) {
       console.error("Error al inactivar cliente:", e);
-      Alert.alert("Error", "No se pudo inactivar el cliente.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo inactivar el cliente.",
+      });
     } finally {
       setEliminando(false);
     }

@@ -4,7 +4,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -36,6 +35,7 @@ import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { sesionPuedeEntrar } from "../../../../utils/gerentePermisos";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { autorizarSeccion } from "../../../../utils/sectionAccess";
+import { mostrarAviso } from "../../../../utils/avisoModal";
 import { gb } from "../../../globalStyles";
 import { integracionVentas } from "../../Ventas/integracion";
 import ConfiguracionesDatabase from "../../Configuraciones/database";
@@ -120,10 +120,11 @@ const Pago = () => {
 
     const permitido = await sesionPuedeEntrar({ keywords: ["sales"] });
     if (!permitido) {
-      Alert.alert(
-        "Sin permiso",
-        "No tiene permisos para modificar el adicional de pago.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Sin permiso",
+        message: "No tiene permisos para modificar el adicional de pago.",
+      });
       return;
     }
     accion();
@@ -177,7 +178,11 @@ const Pago = () => {
       router.replace("/Inicio");
     } catch (e) {
       console.error("Error cancelando cuenta:", e);
-      Alert.alert("Error", "No se pudo cancelar la cuenta. Intenta de nuevo.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo cancelar la cuenta. Intenta de nuevo.",
+      });
       setCancelando(false);
     }
   };
@@ -345,10 +350,12 @@ const Pago = () => {
       setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
 
       if (!impresionOk) {
-        Alert.alert(
-          "No se pudo imprimir",
-          "No pudimos conectar con la impresora. Verifica que esté encendida y cerca del dispositivo. Puedes continuar y finalizar la venta.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "No se pudo imprimir",
+          message:
+            "No pudimos conectar con la impresora. Verifica que esté encendida y cerca del dispositivo. Puedes continuar y finalizar la venta.",
+        });
       }
     } catch (e) {
       console.warn("Error inesperado al imprimir cuenta:", e?.message ?? e);
@@ -357,16 +364,20 @@ const Pago = () => {
         await persistirCobro(comanda.ID, metodoPagoId, montoRecibido);
         setCuentaImpresa(true);
         setComanda((prev) => (prev ? { ...prev, ESTATUS: 4 } : prev));
-        Alert.alert(
-          "No se pudo imprimir",
-          "Ocurrió un problema al imprimir la cuenta, pero puedes continuar y finalizar la venta.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "No se pudo imprimir",
+          message:
+            "Ocurrió un problema al imprimir la cuenta, pero puedes continuar y finalizar la venta.",
+        });
       } catch (errorGuardado) {
         console.error("Error guardando estado de cuenta:", errorGuardado);
-        Alert.alert(
-          "Error",
-          "No se pudo guardar el estado de la cuenta. Intenta nuevamente.",
-        );
+        mostrarAviso({
+          type: "danger",
+          title: "Error",
+          message:
+            "No se pudo guardar el estado de la cuenta. Intenta nuevamente.",
+        });
       }
     } finally {
       setImprimiendo(false);
@@ -376,10 +387,11 @@ const Pago = () => {
   const finalizarVenta = async () => {
     if (!comanda?.ID || finalizando) return;
     if (!tieneMetodoPago) {
-      Alert.alert(
-        "Método de pago",
-        "Selecciona un método de pago para finalizar la venta.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Método de pago",
+        message: "Selecciona un método de pago para finalizar la venta.",
+      });
       return;
     }
     const comandaId = comanda.ID;
@@ -424,10 +436,12 @@ const Pago = () => {
       router.replace("/Inicio");
     } catch (e) {
       console.error("Error finalizando venta:", e);
-      Alert.alert(
-        "Error",
-        "No se pudo finalizar la venta. Verifica que la caja esté abierta e intenta de nuevo.",
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message:
+          "No se pudo finalizar la venta. Verifica que la caja esté abierta e intenta de nuevo.",
+      });
     } finally {
       setFinalizando(false);
     }
@@ -438,10 +452,11 @@ const Pago = () => {
 
   const solicitarFinalizarVenta = () => {
     if (!tieneMetodoPago) {
-      Alert.alert(
-        "Método de pago",
-        "Selecciona un método de pago para finalizar la venta.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Método de pago",
+        message: "Selecciona un método de pago para finalizar la venta.",
+      });
       return;
     }
     if (finalizando) return;
@@ -912,10 +927,11 @@ const Pago = () => {
                   keywords: ["sales"],
                 });
                 if (!permitido) {
-                  Alert.alert(
-                    "Sin permiso",
-                    "No tiene permisos para editar la cuenta.",
-                  );
+                  mostrarAviso({
+                    type: "warning",
+                    title: "Sin permiso",
+                    message: "No tiene permisos para editar la cuenta.",
+                  });
                   return;
                 }
                 await desbloquearComanda();

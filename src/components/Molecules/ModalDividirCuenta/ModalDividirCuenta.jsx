@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { gb } from "../../../screens/globalStyles";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import Select from "../../atoms/Select/Select";
@@ -197,24 +197,27 @@ const ModalDividirCuenta = ({
   const handleGuardar = async () => {
     if (disabled) return;
     if (!todasValidas) {
-      Alert.alert(
-        "Datos incompletos",
-        "Captura el monto y método de pago de cada cliente.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Datos incompletos",
+        message: "Captura el monto y método de pago de cada cliente.",
+      });
       return;
     }
     if (!montosCuadran) {
-      Alert.alert(
-        "Montos incorrectos",
-        `La suma de los pagos ($${totalCapturado.toFixed(2)}) debe ser igual al total de la comanda ($${total.toFixed(2)}).`,
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Montos incorrectos",
+        message: `La suma de los pagos ($${totalCapturado.toFixed(2)}) debe ser igual al total de la comanda ($${total.toFixed(2)}).`,
+      });
       return;
     }
     if (!todasPagadas) {
-      Alert.alert(
-        "Check pendiente",
-        "Todos los clientes deben estar marcados como pagados.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Check pendiente",
+        message: "Todos los clientes deben estar marcados como pagados.",
+      });
       return;
     }
     setGuardando(true);

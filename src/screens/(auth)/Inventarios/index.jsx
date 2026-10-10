@@ -4,7 +4,6 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   Text,
@@ -20,6 +19,7 @@ import {
   obtenerMensajeErrorRed,
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { useProteccionConfig } from "../../../utils/useProteccionConfig";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
@@ -89,17 +89,23 @@ const Inventarios = () => {
   const actualizar = async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
     try {
       const cantidadPendientes = await cargarPendientes();
       if (cantidadPendientes > 0) {
-        Alert.alert(
-          "Sincronizaciones pendientes",
-          "Sincroniza los movimientos locales antes de actualizar desde el servidor para no perder cambios.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "Sincronizaciones pendientes",
+          message:
+            "Sincroniza los movimientos locales antes de actualizar desde el servidor para no perder cambios.",
+        });
         return;
       }
 
@@ -120,7 +126,11 @@ const Inventarios = () => {
   const sincronizar = async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
@@ -134,15 +144,27 @@ const Inventarios = () => {
       setItems(data);
       await cargarPendientes();
       if (sincronizados === 0) {
-        Alert.alert("Sin pendientes", "No hay movimientos por sincronizar.");
+        mostrarAviso({
+          type: "info",
+          title: "Sin pendientes",
+          message: "No hay movimientos por sincronizar.",
+        });
       } else {
-        Alert.alert("Listo", `${sincronizados} movimiento(s) sincronizado(s).`);
+        mostrarAviso({
+          type: "info",
+          title: "Listo",
+          message: `${sincronizados} movimiento(s) sincronizado(s).`,
+        });
       }
     } catch (e) {
-      Alert.alert(
-        "Error",
-        obtenerMensajeErrorRed(e, "No se pudo sincronizar el inventario."),
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: obtenerMensajeErrorRed(
+          e,
+          "No se pudo sincronizar el inventario.",
+        ),
+      });
     } finally {
       setSincronizando(false);
     }

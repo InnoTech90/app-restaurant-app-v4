@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -16,6 +15,7 @@ import { BluetoothManager, isBluetoothEscposDisponible, MENSAJE_BT_NO_DISPONIBLE
 import { SafeAreaView } from "react-native-safe-area-context";
 import GeneralModal from "../../../components/atoms/GeneralModal/GeneralModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { confirmarAviso, mostrarAviso } from "../../../utils/avisoModal";
 import { verificarConexionInternet } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { initializeSchema } from "../../../utils/db";
 import {
@@ -183,10 +183,11 @@ const Impresoras = () => {
 
     if (ok) return;
 
-    Alert.alert(
-      "No se pudo imprimir",
-      `La impresora de "${punto.NOMBRE}" no respondió. Espera un momento y vuelve a pulsar Prueba.`,
-    );
+    mostrarAviso({
+      type: "danger",
+      title: "No se pudo imprimir",
+      message: `La impresora de "${punto.NOMBRE}" no respondió. Espera un momento y vuelve a pulsar Prueba.`,
+    });
   };
 
   const cargarPuntosDesdeApi = useCallback(async () => {
@@ -230,7 +231,11 @@ const Impresoras = () => {
         setPuntos(data);
       } catch (e) {
         console.error("[Impresoras] Error cargando puntos:", e);
-        Alert.alert("Error", "No se pudieron cargar los puntos de impresión.");
+        mostrarAviso({
+          type: "danger",
+          title: "Error",
+          message: "No se pudieron cargar los puntos de impresión.",
+        });
       } finally {
         if (mostrarLoader) setCargando(false);
       }
@@ -255,10 +260,11 @@ const Impresoras = () => {
   // ── Abrir modal: cargar dispositivos emparejados (rápido, sin scan) ──────
   const handleVincular = async (punto) => {
     if (Platform.OS !== "android") {
-      Alert.alert(
-        "No disponible",
-        "La vinculación Bluetooth solo está disponible en Android.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "No disponible",
+        message: "La vinculación Bluetooth solo está disponible en Android.",
+      });
       return;
     }
 
@@ -297,16 +303,22 @@ const Impresoras = () => {
       setEscaneando(true);
 
       if (!isBluetoothEscposDisponible()) {
-        Alert.alert("Bluetooth no disponible", MENSAJE_BT_NO_DISPONIBLE);
+        mostrarAviso({
+          type: "warning",
+          title: "Bluetooth no disponible",
+          message: MENSAJE_BT_NO_DISPONIBLE,
+        });
         return;
       }
 
       const permisosOk = await solicitarPermisosBluetooth();
       if (!permisosOk) {
-        Alert.alert(
-          "Permisos requeridos",
-          "Se necesitan permisos de Bluetooth y ubicación para buscar impresoras.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "Permisos requeridos",
+          message:
+            "Se necesitan permisos de Bluetooth y ubicación para buscar impresoras.",
+        });
         return;
       }
 
@@ -338,7 +350,11 @@ const Impresoras = () => {
       _pairedDevicesCache = null;
 
       if (!isBluetoothEscposDisponible()) {
-        Alert.alert("Bluetooth no disponible", MENSAJE_BT_NO_DISPONIBLE);
+        mostrarAviso({
+          type: "warning",
+          title: "Bluetooth no disponible",
+          message: MENSAJE_BT_NO_DISPONIBLE,
+        });
         return;
       }
 
@@ -347,10 +363,12 @@ const Impresoras = () => {
 
       const permisosOk = await solicitarPermisosBluetooth();
       if (!permisosOk) {
-        Alert.alert(
-          "Permisos requeridos",
-          "Se necesitan permisos de Bluetooth y ubicación para buscar impresoras.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "Permisos requeridos",
+          message:
+            "Se necesitan permisos de Bluetooth y ubicación para buscar impresoras.",
+        });
         return;
       }
 
@@ -375,10 +393,12 @@ const Impresoras = () => {
       );
     } catch (e) {
       console.error("[Impresoras] scanDevices falló:", e);
-      Alert.alert(
-        "Error",
-        "No se pudo escanear dispositivos Bluetooth. Verifica que el Bluetooth esté encendido.",
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message:
+          "No se pudo escanear dispositivos Bluetooth. Verifica que el Bluetooth esté encendido.",
+      });
     } finally {
       setEscaneando(false);
     }
@@ -395,7 +415,11 @@ const Impresoras = () => {
       );
     } catch (e) {
       console.error("[Impresoras] vincularImpresora falló:", e);
-      Alert.alert("Error", "No se pudo guardar la vinculación.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo guardar la vinculación.",
+      });
       setConectando(false);
       return;
     }
@@ -419,40 +443,41 @@ const Impresoras = () => {
     }
 
     if (ok) {
-      Alert.alert(
-        "Vinculada",
-        `Impresora "${nombreDispositivo}" vinculada a "${nombrePunto}". Se envió una prueba de impresión.`,
-      );
+      mostrarAviso({
+        type: "info",
+        title: "Vinculada",
+        message: `Impresora "${nombreDispositivo}" vinculada a "${nombrePunto}". Se envió una prueba de impresión.`,
+      });
       return;
     }
 
-    Alert.alert(
-      "Vinculada",
-      `Se guardó "${nombreDispositivo}" en "${nombrePunto}", pero no salió la prueba. Enciende la impresora y pulsa Prueba.`,
-    );
+    mostrarAviso({
+      type: "warning",
+      title: "Vinculada",
+      message: `Se guardó "${nombreDispositivo}" en "${nombrePunto}", pero no salió la prueba. Enciende la impresora y pulsa Prueba.`,
+    });
   };
 
   // ── Desvincular ──────────────────────────────────────────────────────────
-  const handleDesvincular = (punto) => {
-    Alert.alert(
-      "Desvincular impresora",
-      `¿Desvincular la impresora de "${punto.NOMBRE}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Desvincular",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await Database.desvincularImpresora(punto.ID);
-              await cargarPuntos();
-            } catch {
-              Alert.alert("Error", "No se pudo desvincular la impresora.");
-            }
-          },
-        },
-      ],
-    );
+  const handleDesvincular = async (punto) => {
+    const ok = await confirmarAviso({
+      type: "danger",
+      title: "Desvincular impresora",
+      message: `¿Desvincular la impresora de "${punto.NOMBRE}"?`,
+      confirmText: "Desvincular",
+      cancelText: "Cancelar",
+    });
+    if (!ok) return;
+    try {
+      await Database.desvincularImpresora(punto.ID);
+      await cargarPuntos();
+    } catch {
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo desvincular la impresora.",
+      });
+    }
   };
 
   // ── Renderizado ──────────────────────────────────────────────────────────

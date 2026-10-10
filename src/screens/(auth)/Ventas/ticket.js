@@ -1,4 +1,5 @@
-import { Alert, PermissionsAndroid, Platform } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import {
   BluetoothEscposPrinter,
   BluetoothManager,
@@ -66,7 +67,11 @@ export const imprimirCorteGeneral = (datos) => _imprimir(datos, "GENERAL");
 const _imprimir = async (datos, tipo) => {
   try {
     if (!isBluetoothEscposDisponible()) {
-      Alert.alert("Impresión no disponible", MENSAJE_BT_NO_DISPONIBLE);
+      mostrarAviso({
+        type: "warning",
+        title: "Impresión no disponible",
+        message: MENSAJE_BT_NO_DISPONIBLE,
+      });
       return false;
     }
 
@@ -81,27 +86,30 @@ const _imprimir = async (datos, tipo) => {
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert(
-          "Permiso requerido",
-          "Se necesita acceso a Bluetooth para imprimir.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "Permiso requerido",
+          message: "Se necesita acceso a Bluetooth para imprimir.",
+        });
         return false;
       }
     }
 
     const printer = await getPrinterCaja();
     if (!printer) {
-      Alert.alert(
-        "Sin punto de caja",
-        "No se encontró un punto de impresión de caja configurado.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Sin punto de caja",
+        message: "No se encontró un punto de impresión de caja configurado.",
+      });
       return false;
     }
     if (!printer.ID_IMPRESORA) {
-      Alert.alert(
-        "Sin impresora",
-        "El punto de caja no tiene impresora vinculada.",
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "Sin impresora",
+        message: "El punto de caja no tiene impresora vinculada.",
+      });
       return false;
     }
 
@@ -280,7 +288,11 @@ const _imprimir = async (datos, tipo) => {
     }
   } catch (e) {
     console.error("Error en imprimirCorte:", e);
-    Alert.alert("Error", "Ocurrió un error al intentar imprimir el corte.");
+    mostrarAviso({
+      type: "danger",
+      title: "Error",
+      message: "Ocurrió un error al intentar imprimir el corte.",
+    });
     return false;
   }
 };

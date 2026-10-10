@@ -1,39 +1,36 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import AvisoModalHost from "../components/Molecules/AvisoModalHost/AvisoModalHost";
 import { AuthProvider } from "../utils/AuthContext/AuthContext";
 
 export default function AppLayout() {
-
-    return <>
-        <AuthProvider >
-            <StatusBar style="auto" />
-            <Stack >
-                <Stack.Screen
-                    name="(auth)"
-                    options={{
-                        headerShown: false,
-                        animation: "none"
-                    }}
-                />
-
-                <Stack.Screen
-                    name="(guest)"
-                    options={{
-                        headerShown: false,
-                        animation: "none"
-                    }}
-                />
-                <Stack.Screen
-                    name="index"
-                    options={{
-                        headerShown: false,
-                        animation: "none"
-                    }}
-                />
-                
-
-             
-            </Stack>
-        </AuthProvider>
-    </>
+  return (
+    <AuthProvider>
+      <StatusBar style="auto" />
+      <Stack>
+        <Stack.Screen
+          name="(auth)"
+          options={{
+            headerShown: false,
+            animation: "none",
+          }}
+        />
+        <Stack.Screen
+          name="(guest)"
+          options={{
+            headerShown: false,
+            animation: "none",
+          }}
+        />
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
+            animation: "none",
+          }}
+        />
+      </Stack>
+      <AvisoModalHost />
+    </AuthProvider>
+  );
 }

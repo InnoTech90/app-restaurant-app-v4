@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
@@ -55,12 +56,14 @@ const Mesa = ({
       setCambiarMesa(false);
     } catch (e) {
       console.error("Error al cambiar mesa:", e);
-      Alert.alert(
-        "No se pudo cambiar",
-        e?.code === "MESA_OCUPADA"
-          ? "La mesa seleccionada ya está ocupada."
-          : e?.message || "Intenta de nuevo.",
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "No se pudo cambiar",
+        message:
+          e?.code === "MESA_OCUPADA"
+            ? "La mesa seleccionada ya está ocupada."
+            : e?.message || "Intenta de nuevo.",
+      });
     } finally {
       setCambiando(false);
     }

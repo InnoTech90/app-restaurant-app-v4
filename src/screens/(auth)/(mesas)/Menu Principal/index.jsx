@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -27,6 +26,7 @@ import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import {
   setAuthHeaderTitulo,
 } from "../../../../utils/authHeaderTitle";
+import { mostrarAviso } from "../../../../utils/avisoModal";
 import { gb } from "../../../globalStyles";
 import Database from "./database";
 import { s } from "./styles";
@@ -249,7 +249,11 @@ const MenuPrincipal = () => {
 
   const guardarFormCliente = async () => {
     if (!formNombre.trim()) {
-      Alert.alert("Campo requerido", "El nombre del cliente es obligatorio.");
+      mostrarAviso({
+        type: "warning",
+        title: "Campo requerido",
+        message: "El nombre del cliente es obligatorio.",
+      });
       return;
     }
     if (guardandoCliente) return;
@@ -301,7 +305,11 @@ const MenuPrincipal = () => {
       }
     } catch (e) {
       console.error("Error guardando cliente:", e);
-      Alert.alert("Error", "No se pudo guardar el cliente.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo guardar el cliente.",
+      });
     } finally {
       setGuardandoCliente(false);
     }

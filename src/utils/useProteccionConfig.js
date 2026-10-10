@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert } from "react-native";
 import { dataBase } from "../components/Molecules/NipModal/database";
+import { mostrarAviso } from "./avisoModal";
 import { sesionPuedeEntrar } from "./gerentePermisos";
 import { autorizarSeccion, tieneAccesoSeccion } from "./sectionAccess";
 
@@ -32,19 +32,16 @@ export function useProteccionConfig({
           if (!permitido) {
             setAccesoPermitido(false);
             setModalAcceso(false);
-            Alert.alert(
-              "Sin permiso",
-              "No tiene permisos para acceder a esta opción.",
-              [
-                {
-                  text: "Aceptar",
-                  onPress: () => {
-                    if (router.canGoBack()) router.back();
-                    else router.replace("/Inicio");
-                  },
-                },
-              ],
-            );
+            mostrarAviso({
+              type: "warning",
+              title: "Sin permiso",
+              message: "No tiene permisos para acceder a esta opción.",
+              confirmText: "Aceptar",
+              onConfirm: () => {
+                if (router.canGoBack()) router.back();
+                else router.replace("/Inicio");
+              },
+            });
             return;
           }
           setAccesoPermitido(true);

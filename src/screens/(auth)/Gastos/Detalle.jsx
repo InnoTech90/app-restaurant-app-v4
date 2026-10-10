@@ -4,7 +4,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   DeviceEventEmitter,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/EstatusSincronizado";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { confirmarAviso, mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./database";
@@ -92,67 +92,68 @@ const Detalle = () => {
       },
     });
 
-  const eliminarConcepto = (concepto) => {
-    Alert.alert(
-      "Eliminar concepto",
-      `¿Eliminar "${concepto.NOMBRE}"? También se borrarán sus registros de gasto.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await Database.deleteConcepto(concepto.UUID);
-              DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
-              await cargar();
-            } catch (e) {
-              console.error("Error al eliminar concepto:", e);
-              Alert.alert("Error", "No se pudo eliminar el concepto.");
-            }
-          },
-        },
-      ],
-    );
+  const eliminarConcepto = async (concepto) => {
+    const ok = await confirmarAviso({
+      type: "danger",
+      title: "Eliminar concepto",
+      message: `¿Eliminar "${concepto.NOMBRE}"? También se borrarán sus registros de gasto.`,
+      confirmText: "Eliminar",
+      cancelText: "Cancelar",
+    });
+    if (!ok) return;
+    try {
+      await Database.deleteConcepto(concepto.UUID);
+      DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
+      await cargar();
+    } catch (e) {
+      console.error("Error al eliminar concepto:", e);
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo eliminar el concepto.",
+      });
+    }
   };
 
-  const eliminarCategoria = () => {
+  const eliminarCategoria = async () => {
     if (conceptos.length > 0) {
-      Alert.alert(
-        "No se puede eliminar",
-        `La categoría "${gasto.NOMBRE}" tiene ${conceptos.length} concepto(s). Elimina primero los conceptos.`,
-      );
+      mostrarAviso({
+        type: "warning",
+        title: "No se puede eliminar",
+        message: `La categoría "${gasto.NOMBRE}" tiene ${conceptos.length} concepto(s). Elimina primero los conceptos.`,
+      });
       return;
     }
-    Alert.alert(
-      "Eliminar categoría",
-      `¿Eliminar la categoría "${gasto.NOMBRE}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await Database.deleteCategoria(gasto.UUID);
-              DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
-              router.back();
-            } catch (e) {
-              if (e?.code === "CATEGORIA_CON_CONCEPTOS") {
-                Alert.alert(
-                  "No se puede eliminar",
-                  e.message ||
-                    "La categoría tiene conceptos. Elimínalos primero.",
-                );
-                return;
-              }
-              console.error("Error al eliminar categoría:", e);
-              Alert.alert("Error", "No se pudo eliminar la categoría.");
-            }
-          },
-        },
-      ],
-    );
+    const ok = await confirmarAviso({
+      type: "danger",
+      title: "Eliminar categoría",
+      message: `¿Eliminar la categoría "${gasto.NOMBRE}"?`,
+      confirmText: "Eliminar",
+      cancelText: "Cancelar",
+    });
+    if (!ok) return;
+    try {
+      await Database.deleteCategoria(gasto.UUID);
+      DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
+      router.back();
+    } catch (e) {
+      if (e?.code === "CATEGORIA_CON_CONCEPTOS") {
+        mostrarAviso({
+          type: "warning",
+          title: "No se puede eliminar",
+          message:
+            e.message ||
+            "La categoría tiene conceptos. Elimínalos primero.",
+        });
+        return;
+      }
+      console.error("Error al eliminar categoría:", e);
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo eliminar la categoría.",
+      });
+    }
   };
 
   return (

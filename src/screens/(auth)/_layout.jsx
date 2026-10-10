@@ -6,11 +6,11 @@ import {
 import { Redirect, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useContext, useState } from "react";
-import { Alert } from "react-native";
 import AuthHeader from "../../components/Molecules/AuthHeader/AuthHeader";
 import NipModal from "../../components/Molecules/NipModal/NipModal";
 import { dataBase } from "../../components/Molecules/NipModal/database";
 import { AuthContext } from "../../utils/AuthContext/AuthContext";
+import { mostrarAviso } from "../../utils/avisoModal";
 import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
@@ -87,10 +87,11 @@ export default function AuthLayout() {
       await exportarDatabaseSQLite();
     } catch (error) {
       console.error("Error exportando base de datos:", error);
-      Alert.alert(
-        "Error",
-        error?.message ?? "No se pudo exportar la base de datos.",
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: error?.message ?? "No se pudo exportar la base de datos.",
+      });
     } finally {
       setExportandoDb(false);
     }
@@ -114,7 +115,11 @@ export default function AuthLayout() {
       }
 
       if (mensajes.length > 0) {
-        Alert.alert("No se puede cerrar sesión", mensajes.join("\n\n"));
+        mostrarAviso({
+          type: "warning",
+          title: "No se puede cerrar sesión",
+          message: mensajes.join("\n\n"),
+        });
         return;
       }
 
@@ -128,10 +133,12 @@ export default function AuthLayout() {
       );
     } catch (error) {
       console.error("Error verificando ventas antes de cerrar sesión:", error);
-      Alert.alert(
-        "Error",
-        "No se pudo verificar el estado de las ventas. Intenta nuevamente.",
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message:
+          "No se pudo verificar el estado de las ventas. Intenta nuevamente.",
+      });
     }
   };
 
@@ -302,10 +309,11 @@ export default function AuthLayout() {
 
       const permitido = await sesionPuedeEntrar(screen);
       if (!permitido) {
-        Alert.alert(
-          "Sin permiso",
-          "No tiene permisos para acceder a esta opción.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "Sin permiso",
+          message: "No tiene permisos para acceder a esta opción.",
+        });
         return;
       }
       navegar();

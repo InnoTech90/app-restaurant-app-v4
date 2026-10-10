@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { gb } from "../../../screens/globalStyles";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
@@ -55,15 +55,20 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
   const guardar = async () => {
     try {
       if (!Number.isFinite(cantidadMovimiento) || cantidadMovimiento <= 0) {
-        Alert.alert("Cantidad inválida", "Ingresa una cantidad mayor a cero.");
+        mostrarAviso({
+          type: "warning",
+          title: "Cantidad inválida",
+          message: "Ingresa una cantidad mayor a cero.",
+        });
         return;
       }
 
       if (tipoMovimiento === "salida" && cantidadMovimiento > stockActual) {
-        Alert.alert(
-          "Stock insuficiente",
-          "La salida no puede superar el stock disponible.",
-        );
+        mostrarAviso({
+          type: "warning",
+          title: "Stock insuficiente",
+          message: "La salida no puede superar el stock disponible.",
+        });
         return;
       }
 
@@ -72,7 +77,11 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
       onClose();
     } catch (e) {
       console.error("Error guardando stock:", e);
-      Alert.alert("No se pudo guardar", String(e?.message ?? e));
+      mostrarAviso({
+        type: "danger",
+        title: "No se pudo guardar",
+        message: String(e?.message ?? e),
+      });
     } finally {
       setGuardando(false);
     }

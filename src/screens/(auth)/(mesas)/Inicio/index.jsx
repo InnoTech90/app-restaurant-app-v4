@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, RefreshControl, ScrollView, View } from "react-native";
+import { RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Mesa from "../../../../components/Molecules/Mesa/Mesa";
 import ModalWarning from "../../../../components/Molecules/ModalWarning/ModalWarning";
@@ -14,6 +14,7 @@ import {
   clearAuthHeaderTitulo,
   setAuthHeaderTitulo,
 } from "../../../../utils/authHeaderTitle";
+import { mostrarAviso } from "../../../../utils/avisoModal";
 import {
   marcarBienvenidaMostrada,
   prepararBienvenidaDelDia,
@@ -90,7 +91,11 @@ const Inicio = () => {
   const onRefresh = useCallback(async () => {
     const hayInternet = await verificarConexionInternet();
     if (!hayInternet) {
-      Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+      mostrarAviso({
+        type: "warning",
+        title: "Sin conexión",
+        message: MENSAJE_SIN_INTERNET,
+      });
       return;
     }
 
@@ -102,10 +107,14 @@ const Inicio = () => {
       console.log(`✅ Mesas actualizadas: ${mesasActualizadas.length} mesas`);
     } catch (error) {
       console.error("❌ Error durante refresh:", error);
-      Alert.alert(
-        "Error",
-        obtenerMensajeErrorRed(error, "No se pudieron actualizar las mesas."),
-      );
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: obtenerMensajeErrorRed(
+          error,
+          "No se pudieron actualizar las mesas.",
+        ),
+      });
     } finally {
       setIsRefreshing(false);
     }

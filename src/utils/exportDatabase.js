@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
-import { Alert, Platform, Share } from "react-native";
+import { Platform, Share } from "react-native";
+import { mostrarAviso } from "./avisoModal";
 import { getDb } from "./db";
 
 const DB_NAME = "APP_RESTAURANT_DB.db";
@@ -91,10 +92,11 @@ const exportarEnAndroid = async (destUri, base64) => {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    Alert.alert(
-      "Exportación lista",
-      "La base de datos se guardó en la carpeta seleccionada.",
-    );
+    mostrarAviso({
+      type: "info",
+      title: "Exportación lista",
+      message: "La base de datos se guardó en la carpeta seleccionada.",
+    });
     return destinoSaf;
   } catch (error) {
     console.warn("[exportDatabase] SAF falló, usando compartir:", error?.message);
@@ -115,10 +117,12 @@ const exportarEnIos = async (destUri) => {
   });
 
   if (result.action === Share.dismissedAction) {
-    Alert.alert(
-      "Exportación",
-      "Archivo listo en caché de la app. Puedes intentar compartir de nuevo.",
-    );
+    mostrarAviso({
+      type: "info",
+      title: "Exportación",
+      message:
+        "Archivo listo en caché de la app. Puedes intentar compartir de nuevo.",
+    });
   }
 
   return destUri;

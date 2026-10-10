@@ -5,7 +5,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   DeviceEventEmitter,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Input from "../../../components/atoms/Input/Input";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./database";
@@ -70,7 +70,11 @@ const AsignarGasto = () => {
         const reg = await Database.getRegistroById(Number(idRegistro));
         if (!activo || !reg) {
           if (activo) {
-            Alert.alert("Error", "No se encontró el gasto.");
+            mostrarAviso({
+              type: "danger",
+              title: "Error",
+              message: "No se encontró el gasto.",
+            });
             router.back();
           }
           return;
@@ -89,7 +93,11 @@ const AsignarGasto = () => {
         }
       } catch (e) {
         console.error("Error al cargar gasto:", e);
-        Alert.alert("Error", "No se pudo cargar el gasto.");
+        mostrarAviso({
+          type: "danger",
+          title: "Error",
+          message: "No se pudo cargar el gasto.",
+        });
         router.back();
       } finally {
         if (activo) setCargando(false);
@@ -113,12 +121,20 @@ const AsignarGasto = () => {
 
   const guardar = async () => {
     if (!idConcepto && !esEdicion) {
-      Alert.alert("Error", "No se encontró el concepto.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se encontró el concepto.",
+      });
       return;
     }
     const montoNum = parseFloat(String(monto).replace(",", "."));
     if (!monto.trim() || !Number.isFinite(montoNum) || montoNum <= 0) {
-      Alert.alert("Monto requerido", "Ingresa un monto válido mayor a cero.");
+      mostrarAviso({
+        type: "warning",
+        title: "Monto requerido",
+        message: "Ingresa un monto válido mayor a cero.",
+      });
       return;
     }
     try {
@@ -142,7 +158,11 @@ const AsignarGasto = () => {
       router.back();
     } catch (e) {
       console.error("Error al guardar gasto:", e);
-      Alert.alert("Error", "No se pudo guardar el gasto.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo guardar el gasto.",
+      });
     } finally {
       setGuardando(false);
     }

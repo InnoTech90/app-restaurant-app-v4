@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import GeneralModal from "../../../components/atoms/GeneralModal/GeneralModal";
@@ -21,6 +21,7 @@ import {
   MENSAJE_SIN_INTERNET,
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
+import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import VentasDatabase from "./database";
@@ -231,7 +232,11 @@ const Ventas = () => {
       }
     } catch (e) {
       console.error("Error al imprimir corte:", e);
-      Alert.alert("Error", "No se pudo imprimir el corte.");
+      mostrarAviso({
+        type: "danger",
+        title: "Error",
+        message: "No se pudo imprimir el corte.",
+      });
     } finally {
       setImprimiendoCorte(false);
     }
@@ -621,16 +626,21 @@ const Ventas = () => {
             .map((v) => v.ID);
 
           if (idsSeleccionados.length === 0) {
-            Alert.alert(
-              "Sincronización",
-              "Selecciona al menos una venta para sincronizar.",
-            );
+            mostrarAviso({
+              type: "warning",
+              title: "Sincronización",
+              message: "Selecciona al menos una venta para sincronizar.",
+            });
             return;
           }
 
           const hayInternet = await verificarConexionInternet();
           if (!hayInternet) {
-            Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+            mostrarAviso({
+              type: "warning",
+              title: "Sin conexión",
+              message: MENSAJE_SIN_INTERNET,
+            });
             return;
           }
 
@@ -642,28 +652,38 @@ const Ventas = () => {
               ventasActualizadas.map((v) => ({ ...v, seleccionado: false })),
             );
             if (sincronizadas === 0) {
-              Alert.alert(
-                "Sincronización",
-                "Las ventas seleccionadas no están pendientes de sincronizar.",
-              );
+              mostrarAviso({
+                type: "warning",
+                title: "Sincronización",
+                message:
+                  "Las ventas seleccionadas no están pendientes de sincronizar.",
+              });
             } else {
-              Alert.alert(
-                "Sincronización exitosa",
-                sincronizadas === 1
-                  ? "La venta se sincronizó correctamente."
-                  : `${sincronizadas} ventas se sincronizaron correctamente.`,
-              );
+              mostrarAviso({
+                type: "info",
+                title: "Sincronización exitosa",
+                message:
+                  sincronizadas === 1
+                    ? "La venta se sincronizó correctamente."
+                    : `${sincronizadas} ventas se sincronizaron correctamente.`,
+              });
             }
           } catch (e) {
             if (esErrorDeConexion(e)) {
-              Alert.alert("Sin conexión", MENSAJE_SIN_INTERNET);
+              mostrarAviso({
+                type: "warning",
+                title: "Sin conexión",
+                message: MENSAJE_SIN_INTERNET,
+              });
             } else {
               console.error("Error sincronizando ventas:", e);
-              Alert.alert(
-                "Error",
-                e?.message ||
+              mostrarAviso({
+                type: "danger",
+                title: "Error",
+                message:
+                  e?.message ||
                   "No se pudieron sincronizar las ventas. Intenta de nuevo.",
-              );
+              });
             }
           } finally {
             setSincronizando(false);
