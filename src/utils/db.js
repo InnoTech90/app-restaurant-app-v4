@@ -62,19 +62,6 @@ export async function initializeSchema() {
   return schemaInitPromise;
 }
 
-/**
- * Obtiene el estado actual del esquema de base de datos
- */
-export async function getSchemaStatus() {
-  try {
-    const database = await getDb();
-    return await DatabaseInitializer.getSchemaStatus(database);
-  } catch (error) {
-    console.error("Error al obtener estado del esquema:", error);
-    throw error;
-  }
-}
-
 async function clearAllTables(database) {
   const tables = DatabaseSchema.getTableCreationOrder()
     .map((table) => table.name)

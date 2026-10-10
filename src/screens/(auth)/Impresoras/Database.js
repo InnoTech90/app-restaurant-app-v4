@@ -67,38 +67,6 @@ export class Database {
     }
 
 
-    static async getDispositivosBluetooth() {
-
-        return withDb("Bluetooth.getDispositivosBluetooth", async (db) => {
-
-            const rows = await db.getAllAsync(
-                `
-                SELECT *
-                FROM BLUETOOTH_ENCONTRADOS
-                ORDER BY TIPO, NAME
-                `
-            );
-
-            return {
-                paired: rows
-                    .filter(r => r.TIPO === 'paired')
-                    .map(r => ({
-                        address: r.ADDRESS,
-                        name: r.NAME
-                    })),
-
-                found: rows
-                    .filter(r => r.TIPO === 'found')
-                    .map(r => ({
-                        address: r.ADDRESS,
-                        name: r.NAME
-                    }))
-            };
-
-        });
-    }
-
-
     static async guardarDispositivosBluetooth(paired = [], found = []) {
 
         return withDb("Bluetooth.guardarDispositivosBluetooth", async (db) => {

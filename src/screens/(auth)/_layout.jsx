@@ -244,11 +244,6 @@ export default function AuthLayout() {
     },
     { name: "Configuraciones/database" },
     { name: "Configuraciones/styles" },
-    {
-      name: "Gastos/Agregar",
-      title: "Agregar gasto",
-      headerShown: false,
-    },
     { name: "Gastos/database" },
     { name: "Gastos/styles" },
     { name: "Caja/styles" },

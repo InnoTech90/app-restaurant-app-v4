@@ -194,11 +194,9 @@ const Inventarios = () => {
       </LinearGradient>
 
       {cargando ? (
-        <ActivityIndicator
-          size="large"
-          color={gb.purple550}
-          style={{ marginTop: normalize(40) }}
-        />
+        <View style={s.loadingContainer}>
+          <ActivityIndicator size="large" color={gb.purple550} />
+        </View>
       ) : error ? (
         <View style={s.emptyContainer}>
           <Ionicons
@@ -212,9 +210,9 @@ const Inventarios = () => {
         <FlatList
           data={items}
           keyExtractor={(item) => item.UUID}
-          style={{ backgroundColor: gb.gray50 }}
+          style={{ flex: 1, backgroundColor: gb.gray50 }}
           contentContainerStyle={
-            items.length === 0 ? { flex: 1 } : s.listContent
+            items.length === 0 ? { flexGrow: 1 } : s.listContent
           }
           ListHeaderComponent={
             <View style={s.bannerContainer}>

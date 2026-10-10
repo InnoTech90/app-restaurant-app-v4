@@ -1,4 +1,4 @@
-package com.jorgeafd1.apprestaurant
+package com.apprestaurant
 
 import android.app.Application
 import android.content.res.Configuration

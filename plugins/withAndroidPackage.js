@@ -24,7 +24,7 @@ module.exports = function withAndroidPackage(config) {
 
     // 1. package attribute
     manifest.$ = manifest.$ || {};
-    manifest.$['package'] = config.android?.package || 'com.jorgeafd1.agendaapp';
+    manifest.$['package'] = config.android?.package || 'com.apprestaurant';
 
     // 2. Bluetooth permissions
     const existing = (manifest['uses-permission'] || []).map((p) => p.$?.['android:name']);

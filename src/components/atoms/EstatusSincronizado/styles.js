@@ -12,11 +12,6 @@ export const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FF9800',
     },
-    syncBadgeText: {
-        fontSize: 9,
-        fontWeight: '600',
-        color: '#FF9800',
-    },
     syncBadgeSync: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -27,10 +22,5 @@ export const s = StyleSheet.create({
         gap: 4,
         borderWidth: 1,
         borderColor: gb.blue550,
-    },
-    syncBadgeTextSync: {
-        fontSize: 9,
-        fontWeight: '600',
-        color: gb.blue550,
     },
 })

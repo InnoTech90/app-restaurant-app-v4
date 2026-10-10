@@ -2,18 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { withDb } from "../../../utils/db";
 
 export class Database {
-  /**
-   * DEPRECATED: Migraciones ahora son manejadas por DatabaseInitializer.
-   * Este método se mantiene solo por compatibilidad.
-   */
-  static async _migrate() {
-    console.log("ℹ️  Migraciones ahora manejadas por DatabaseInitializer");
-    // Las columnas CIUDAD, ESTADO, WHATSAPP son agregadas por DatabaseInitializer en v1
-    return Promise.resolve();
-  }
-
   static async getClientes() {
-    // Ya no necesita migración - DatabaseInitializer se encarga
     const qrData = await AsyncStorage.getItem("qrCode");
     return withDb("Clientes.getClientes", (db) =>
       db.getAllAsync(

@@ -4,10 +4,6 @@ export const autorizarSeccion = (seccion) => {
   seccionesAutorizadas.add(seccion);
 };
 
-export const revocarSeccion = (seccion) => {
-  seccionesAutorizadas.delete(seccion);
-};
-
 export const revocarTodasLasSecciones = () => {
   seccionesAutorizadas.clear();
 };
@@ -24,5 +20,4 @@ export const tieneAccesoSeccion = (seccion) =>
   seccionesAutorizadas.has(seccion);
 
 export const autorizarVentas = () => autorizarSeccion("ventas");
-export const revocarAccesoVentas = () => revocarSeccion("ventas");
 export const tieneAccesoVentas = () => tieneAccesoSeccion("ventas");

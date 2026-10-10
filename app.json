@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "app-restaurant",
+    "name": "App Restaurant",
     "slug": "app-restaurant",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.jorgeafd1.apprestaurant",
+      "package": "com.apprestaurant",
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/img/avatar_app_rest.png",
         "backgroundColor": "#ffffff"

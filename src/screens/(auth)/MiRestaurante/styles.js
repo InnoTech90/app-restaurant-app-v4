@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { CONTENT_MAX_WIDTH, contentPaddingH, isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
+import { CONTENT_MAX_WIDTH, isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 export const s = StyleSheet.create({
 

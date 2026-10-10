@@ -82,6 +82,9 @@ web_modules/
 
 # Android release signing (never commit real credentials)
 android/keystore.properties
+android/**/*.jks
+android/**/*.keystore
+!android/app/debug.keystore
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

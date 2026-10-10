@@ -32,9 +32,3 @@ export const BluetoothEscposPrinter = attachEscposConstants(
 
 export const isBluetoothEscposDisponible = () =>
   Boolean(BluetoothManager && BluetoothEscposPrinter);
-
-export const assertBluetoothEscposDisponible = () => {
-  if (!isBluetoothEscposDisponible()) {
-    throw new Error(MENSAJE_BT_NO_DISPONIBLE);
-  }
-};

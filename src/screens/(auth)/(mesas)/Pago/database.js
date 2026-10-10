@@ -203,62 +203,12 @@ export default class Database {
     });
   }
 
-  static async quitarClienteDeComanda(idComanda) {
-    return withDb("Pago.quitarClienteDeComanda", async (db) => {
-      return await db.runAsync(
-        `UPDATE COMANDA SET ID_CLIENTE = NULL WHERE ID = ?`,
-        [idComanda],
-      );
-    });
-  }
-
   static async actualizarNota(idComanda, nota) {
     return withDb("Pago.actualizarNota", async (db) => {
       return await db.runAsync(`UPDATE COMANDA SET NOTA = ? WHERE ID = ?`, [
         nota,
         idComanda,
       ]);
-    });
-  }
-
-  static async pagarComanda(idComanda, pagos) {
-    return withDb("Pago.pagarComanda", async (db) => {
-      if (!(await Database.validarCajaAbierta(db))) {
-        return { ok: false, code: "CAJA_CERRADA" };
-      }
-      await db.runAsync(
-        `UPDATE COMANDA SET
-                    ESTATUS         = 1,
-                    ACTIVO          = 0,
-                    FORMATO_PAGO    = ?,
-                    SUBTOTAL        = ?,
-                    DESCUENTO       = ?,
-                    PROPINA         = ?,
-                    COSTO_ENVIO     = ?,
-                    TOTAL           = ?
-                 WHERE ID = ?`,
-        [
-          pagos.formatoPago,
-          pagos.subtotal,
-          pagos.descuento,
-          pagos.propina,
-          pagos.costoEnvio,
-          pagos.total,
-          idComanda,
-        ],
-      );
-      await db.runAsync(
-        `INSERT INTO COMANDA_PAGOS (ID_COMANDA, ID_METODO_PAGO, CANTIDAD) VALUES (?, ?, ?)`,
-        [idComanda, pagos.idMetodoPago, pagos.montoRecibido],
-      );
-      await db.runAsync(
-        `UPDATE MESA
-         SET ESTATUS = 0, ID_COMANDA = NULL
-         WHERE ID_COMANDA = ?
-            OR UUID = (SELECT ID_MESA FROM COMANDA WHERE ID = ?)`,
-        [idComanda, idComanda],
-      );
-      return { ok: true };
     });
   }
 
@@ -276,18 +226,6 @@ export default class Database {
     });
   }
 
-  static getMovimientosComanda(idComanda) {
-    return withDb("Pago.getMovimientosComanda", async (db) => {
-      return await db.getAllAsync(
-        `SELECT cm.*, c.TIPO AS TIPO_NOMBRE, a.NOMBRE AS ARTICULO_NOMBRE
-                 FROM COMANDA_MOVIMIENTOS cm
-                    LEFT JOIN COMANDA_MOVIMIENTO_TIPO c ON cm.ID_TIPO = c.ID
-                    LEFT JOIN ARTICULO a ON cm.ID_ARTICULO = a.UUID
-                    WHERE cm.ID_COMANDA = ? ORDER BY cm.ID ASC`,
-        [idComanda],
-      );
-    });
-  }
   static async getPuntosImpresion() {
     return withDb("Pago.getPuntosImpresion", async (db) => {
       return await db.getAllAsync(`SELECT * FROM PUNTOS_IMPRESION`);

@@ -13,7 +13,7 @@ const normalizarKeyword = (value) =>
     .trim()
     .toLowerCase();
 
-export function obtenerKeywordsGerente(gerenteSesion) {
+function obtenerKeywordsGerente(gerenteSesion) {
   if (!gerenteSesion) return new Set();
   const permisos = Array.isArray(gerenteSesion.permisos)
     ? gerenteSesion.permisos
@@ -32,7 +32,7 @@ export function obtenerKeywordsGerente(gerenteSesion) {
  * - Sin keywords en pantalla → true
  * - Gerente → true si coincide al menos un keyword
  */
-export function tienePermisoKeyword(gerenteSesion, screen) {
+function tienePermisoKeyword(gerenteSesion, screen) {
   if (!screen) return true;
   if (screen.siempreVisible) return true;
   if (gerenteSesion?.tipo === "owner" || gerenteSesion?.id === "owner") {
@@ -62,11 +62,6 @@ export function requiereNipAcceso(screen) {
     ? screen.keywords.map(normalizarKeyword).filter(Boolean)
     : [];
   return requeridos.length > 0 || !!screen.requiereNip;
-}
-
-/** @deprecated Usar requiereNipAcceso */
-export function requiereNipDueño(gerenteSesion, screen) {
-  return requiereNipAcceso(screen);
 }
 
 const SESION_GERENTE = "gerenteSesion";

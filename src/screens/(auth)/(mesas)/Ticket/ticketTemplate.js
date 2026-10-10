@@ -228,17 +228,19 @@ export const imprimirComanda = async (comanda, articulos, mesa, sinPrecios = fal
             return false;
         }
 
-        // Respetar configuración SOLO_PRODUCTOS_NUEVOS
         const config = await Database.getConfiguraciones();
-        const articulosParaImprimir = config?.SOLO_PRODUCTOS_NUEVOS
-            ? articulos.filter(r => !r.IMPRESO)
+        const soloProductosNuevos = Number(config?.SOLO_PRODUCTOS_NUEVOS) === 1;
+        const articulosParaImprimir = soloProductosNuevos
+            ? articulos.filter((r) => Number(r.IMPRESO) !== 1)
             : articulos;
 
         if (!articulosParaImprimir.length) {
             mostrarAviso({
                 type: 'warning',
-                title: 'Sin artículos',
-                message: 'No hay artículos nuevos para imprimir.',
+                title: soloProductosNuevos ? 'Sin productos nuevos' : 'Sin artículos',
+                message: soloProductosNuevos
+                    ? 'Todos los artículos de esta comanda ya fueron impresos. Agrega productos nuevos para volver a imprimir.'
+                    : 'No hay artículos para imprimir.',
             });
             return false;
         }

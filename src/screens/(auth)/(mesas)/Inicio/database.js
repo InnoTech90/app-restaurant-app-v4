@@ -33,16 +33,6 @@ export class Database {
     });
   }
 
-  static async getComandaAbierta(idMesa) {
-    return withDb("Inicio.getComandaAbierta", async (db) => {
-      const comanda = await db.getFirstAsync(
-        `SELECT * FROM COMANDA WHERE ID_MESA = ? AND ESTATUS IN (0, 4) AND ACTIVO = 1 LIMIT 1`,
-        [idMesa],
-      );
-      return comanda;
-    });
-  }
-
   /**
    * Obtiene mesas desde la API y las guarda en la BD.
    * Luego retorna todas las mesas actualizadas desde la BD local.

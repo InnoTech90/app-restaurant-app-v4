@@ -359,7 +359,7 @@ export default function Configuraciones() {
             icon="refresh-outline"
             iconColor={gb.purple550}
             titulo="Solo productos nuevos"
-            subtitulo="Al reimprimir, solo incluye artículos no impresos aún"
+            subtitulo="En la comanda, al imprimir de nuevo solo salen los artículos que aún no se han impreso"
           >
             <Switch
               value={!!config.SOLO_PRODUCTOS_NUEVOS}

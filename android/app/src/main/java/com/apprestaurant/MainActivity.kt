@@ -1,4 +1,4 @@
-package com.jorgeafd1.apprestaurant
+package com.apprestaurant
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

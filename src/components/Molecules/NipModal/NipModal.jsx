@@ -155,10 +155,18 @@ const NipModal = ({
             styleInput={s.inputField}
           />
           <View style={s.buttonsContainer}>
-            <Button onPress={onClose} style={s.btnCancelar}>
+            <Button
+              onPress={onClose}
+              style={s.btnCancelar}
+              styleContainer={s.btnWrap}
+            >
               <Text style={s.btnCancelarText}>Cancelar</Text>
             </Button>
-            <Button onPress={verificarNip} style={s.btnConfirmar}>
+            <Button
+              onPress={verificarNip}
+              style={s.btnConfirmar}
+              styleContainer={s.btnWrap}
+            >
               <Text style={s.btnConfirmarText}>Confirmar</Text>
             </Button>
           </View>

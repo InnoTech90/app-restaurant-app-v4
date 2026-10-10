@@ -50,11 +50,21 @@ const Ticket = () => {
 
   const comanda = comandaDb ?? comandaData?.comanda;
   const bloqueada = Number(comanda?.ESTATUS) === 4;
+  const soloProductosNuevos = Number(config?.SOLO_PRODUCTOS_NUEVOS) === 1;
+  const articulosNuevos = useMemo(
+    () => articulos.filter((a) => Number(a.IMPRESO) !== 1),
+    [articulos],
+  );
+  const hayArticulosNuevos = articulosNuevos.length > 0;
   const preparacionImpresa =
     Number(comanda?.CONT_IMPRESO) > 0 ||
     (articulos.length > 0 && articulos.every((a) => Number(a.IMPRESO) === 1));
   const soloLectura =
     bloqueada || (preparacionImpresa && !edicionTrasImpresion);
+  const puedeImprimir =
+    !bloqueada &&
+    articulos.length > 0 &&
+    (!soloLectura || (soloProductosNuevos && hayArticulosNuevos));
   const pedirNipEliminacion =
     Number(config?.MODO_RESTRICTIVO) === 1 ||
     Number(config?.HABILITAR_EDICION_TICKET) === 0;
@@ -95,6 +105,7 @@ const Ticket = () => {
   useFocusEffect(
     useCallback(() => {
       setAuthHeaderTitulo("Comanda");
+      Database.getConfiguraciones().then(setConfig).catch(console.error);
       if (!comanda?.ID) return;
       let activa = true;
       Promise.all([
@@ -328,7 +339,7 @@ const Ticket = () => {
   };
 
   const handleImprimir = async () => {
-    if (imprimiendo || !comanda || soloLectura) return;
+    if (imprimiendo || !comanda || !puedeImprimir) return;
     setImprimiendo(true);
     try {
       const articulosActuales =
@@ -589,18 +600,27 @@ const Ticket = () => {
           }}
         >
           <Ionicons
-            name="eye-outline"
+            name={
+              soloProductosNuevos && hayArticulosNuevos
+                ? "print-outline"
+                : "eye-outline"
+            }
             size={normalize(16)}
             color={gb.orange600}
           />
           <Text
             style={{
+              flex: 1,
               fontSize: normalize(12),
               color: gb.orange600,
               fontWeight: "600",
             }}
           >
-            Preparación impresa — solo visualización
+            {soloProductosNuevos && hayArticulosNuevos
+              ? `Hay ${articulosNuevos.length} producto(s) nuevo(s) listo(s) para imprimir`
+              : soloProductosNuevos
+                ? "Preparación impresa — agrega productos nuevos para imprimirlos"
+                : "Preparación impresa — solo visualización"}
           </Text>
         </View>
       )}
@@ -703,27 +723,31 @@ const Ticket = () => {
               styleContainer={s.btnImprimirContainer}
               style={s.btnImprimir}
               gradient={
-                soloLectura ? [gb.gray300, gb.gray200] : gb.gradient_blue
+                puedeImprimir ? gb.gradient_blue : [gb.gray300, gb.gray200]
               }
               onPress={handleImprimir}
-              disabled={imprimiendo || soloLectura}
+              disabled={imprimiendo || !puedeImprimir}
             >
               <Ionicons
                 name="print-outline"
                 size={normalize(20)}
-                color={soloLectura ? gb.gray500 : gb.gray50}
+                color={puedeImprimir ? gb.gray50 : gb.gray500}
               />
               <Text
                 style={[
                   s.btnImprimirTexto,
-                  soloLectura && { color: gb.gray500 },
+                  !puedeImprimir && { color: gb.gray500 },
                 ]}
               >
                 {imprimiendo
                   ? "Imprimiendo..."
-                  : preparacionImpresa
-                    ? "Comanda ya impresa"
-                    : "Imprimir comanda"}
+                  : soloProductosNuevos &&
+                      preparacionImpresa &&
+                      hayArticulosNuevos
+                    ? `Imprimir nuevos (${articulosNuevos.length})`
+                    : preparacionImpresa && !puedeImprimir
+                      ? "Comanda ya impresa"
+                      : "Imprimir comanda"}
               </Text>
             </Button>
           )}

@@ -110,15 +110,6 @@ export const conectarImpresora = async (address) => {
     return false;
 };
 
-export const desconectarImpresora = async (address) => {
-    await liberarConexionBT();
-    const mac = normalizarMac(address);
-    if (!mac || !BluetoothManager?.unpair) return;
-    try {
-        await BluetoothManager.unpair(mac);
-    } catch (_) {}
-};
-
 /**
  * Conecta, imprime y libera la conexión al terminar.
  * @returns {Promise<boolean>}

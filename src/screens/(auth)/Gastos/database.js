@@ -63,17 +63,6 @@ export class Database {
     return categorias;
   }
 
-  static async getRegistrosByConcepto(idConcepto) {
-    const db = await getDb();
-    return await db.getAllAsync(
-      `SELECT ID, ID_CONCEPTO, MONTO, FECHA, NOTA, SINCRONIZADO
-             FROM REGISTRO_GASTO
-             WHERE ID_CONCEPTO = ?
-             ORDER BY FECHA DESC, ID DESC`,
-      [idConcepto],
-    );
-  }
-
   static async getRegistroById(id) {
     const db = await getDb();
     return await db.getFirstAsync(

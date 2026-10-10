@@ -324,30 +324,6 @@ export class DatabaseInitializer {
   }
 
   /**
-   * Verifica el estado actual de la base de datos
-   */
-  static async getSchemaStatus(db) {
-    try {
-      const tableList = await db.getAllAsync(
-        `SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`,
-      );
-
-      const currentVersion = await this._getCurrentSchemaVersion(db);
-
-      return {
-        isInitialized,
-        schemaVersion: currentVersion,
-        targetVersion: DatabaseSchema.version,
-        tables: tableList.map((t) => t.name),
-        totalTables: tableList.length,
-      };
-    } catch (error) {
-      console.error("Error al obtener estado del esquema:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Reset para testing (borra todas las tablas) - ¡USAR SOLO EN DESARROLLO!
    */
   static async reset(db) {

@@ -1,4 +1,4 @@
-import {View,Text} from "react-native";
+import { Text } from "react-native";
 import { s } from "./styles";
 import Button from "../../atoms/Button/Button";
 import { Ionicons } from "@expo/vector-icons";

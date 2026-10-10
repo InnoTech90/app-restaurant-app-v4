@@ -5,12 +5,6 @@ import { runDatabaseMigrations } from "../../../utils/databaseMigrations";
 const esEfectivo = (nombre) => /efectivo/i.test(String(nombre ?? ""));
 
 export class Database {
-  static async asegurarMigraciones() {
-    return withDb("Caja.asegurarMigraciones", async (db) => {
-      await runDatabaseMigrations(db);
-    });
-  }
-
   static async getHistorial() {
     const qrData = await AsyncStorage.getItem("qrCode");
 

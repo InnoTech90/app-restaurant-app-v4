@@ -11,7 +11,7 @@ export function isExportDbDisponible() {
   return __DEV__ && Constants.appOwnership === "expo";
 }
 
-export function assertExportDbDisponible() {
+function assertExportDbDisponible() {
   if (!isExportDbDisponible()) {
     throw new Error("Exportar BD solo está disponible en desarrollo con Expo.");
   }

@@ -33,28 +33,28 @@ const DIAS = [
   "sábado",
 ];
 
-export const obtenerClaveDiaLocal = (fecha = new Date()) => {
+const obtenerClaveDiaLocal = (fecha = new Date()) => {
   const yyyy = fecha.getFullYear();
   const mm = String(fecha.getMonth() + 1).padStart(2, "0");
   const dd = String(fecha.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 };
 
-export const formatearFechaLarga = (fecha = new Date()) => {
+const formatearFechaLarga = (fecha = new Date()) => {
   const diaSemana = DIAS[fecha.getDay()];
   const dia = fecha.getDate();
   const mes = MESES[fecha.getMonth()];
   return `${diaSemana} ${dia} de ${mes}`;
 };
 
-export const obtenerSaludo = (fecha = new Date()) => {
+const obtenerSaludo = (fecha = new Date()) => {
   const hora = fecha.getHours();
   if (hora < 12) return "¡Buenos días!";
   if (hora < 19) return "¡Buenas tardes!";
   return "¡Buenas noches!";
 };
 
-export const debeMostrarBienvenidaHoy = async () => {
+const debeMostrarBienvenidaHoy = async () => {
   const hoy = obtenerClaveDiaLocal();
   const ultimo = await AsyncStorage.getItem(KEY_ULTIMO_DIA_BIENVENIDA);
   return ultimo !== hoy;
@@ -67,7 +67,7 @@ export const marcarBienvenidaMostrada = async () => {
   );
 };
 
-export const construirContenidoBienvenida = (pendientes, fecha = new Date()) => {
+const construirContenidoBienvenida = (pendientes, fecha = new Date()) => {
   const fechaTexto = formatearFechaLarga(fecha);
   const titulo = obtenerSaludo(fecha);
   const tienePendientes = hayPendientesInicioDeDia(pendientes);

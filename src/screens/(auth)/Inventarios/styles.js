@@ -10,7 +10,13 @@ export const s = StyleSheet.create({
   /* ── Contenedor raíz ─────────────────────── */
   root: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: gb.gray50,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: gb.gray50,
   },
 
   /* ── Header ─────────────────────────────── */
