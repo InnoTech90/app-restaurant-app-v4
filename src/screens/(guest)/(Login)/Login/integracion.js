@@ -66,7 +66,20 @@ export class ApiLogin {
         } catch (error) {
           if (error?.response) {
             const status = error.response?.status;
-            const message = String(error.response.data?.message ?? "");
+            const data = error.response?.data;
+            const message = String(
+              data?.message ?? data?.error ?? data?.msg ?? "",
+            ).trim();
+
+            if (__DEV__) {
+              console.warn("[Login/associate]", {
+                baseUrl,
+                status,
+                message,
+                data,
+                deviceKey: params.deviceKey,
+              });
+            }
 
             if (status === 403) {
               if (
@@ -77,19 +90,25 @@ export class ApiLogin {
                 );
               }
 
+              if (message) {
+                return fallo(message);
+              }
+
               return fallo(
-                "No tienes permisos para asociar este dispositivo.",
+                "No tienes permisos para asociar este dispositivo. Verifica el código de sucursal, el plan y que el dispositivo no esté bloqueado en el servidor.",
               );
             }
 
             if (status === 401 || status === 404) {
               return fallo(
-                "El código de sucursal no es válido o no está disponible.",
+                message ||
+                  "El código de sucursal no es válido o no está disponible.",
               );
             }
 
             return fallo(
-              "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+              message ||
+                "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
             );
           }
 

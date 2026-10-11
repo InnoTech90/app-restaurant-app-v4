@@ -38,6 +38,25 @@ const CONFIGURACIONES_DEFAULTS = {
   bienvenidaInicioDia: 1,
 };
 
+const toFlag01 = (value) => {
+  if (value === true || value === 1 || value === "1") return 1;
+  if (value === false || value === 0 || value === "0") return 0;
+  return null;
+};
+
+const resolverFlagReceivesOrders = (device) => {
+  if (!device || typeof device !== "object") return null;
+  if ("flagReceivesOrders" in device) {
+    return toFlag01(device.flagReceivesOrders);
+  }
+  if ("receivesOrders" in device) return toFlag01(device.receivesOrders);
+  if ("flag_receives_orders" in device) {
+    return toFlag01(device.flag_receives_orders);
+  }
+  if ("RECIBE_PEDIDOS" in device) return toFlag01(device.RECIBE_PEDIDOS);
+  return null;
+};
+
 /**
  * Database
  * IMPORTANTE: No crea tablas aquí. Las tablas son creadas por DatabaseInitializer.
@@ -59,7 +78,7 @@ export class Database {
    */
   static async persistNipConfiguracion(
     db,
-    { idSucursal, nip, nombreDispositivo } = {},
+    { idSucursal, nip, nombreDispositivo, abiertoPedidos } = {},
   ) {
     if (!idSucursal) return;
 
@@ -67,54 +86,24 @@ export class Database {
     const nombre =
       String(nombreDispositivo ?? "").trim() ||
       obtenerNombreDispositivoLocal();
-
-    const existing = await db.getFirstAsync(
-      `SELECT ID_SUCURSAL, NOMBRE_DISPOCITIVO FROM CONFIGURACIONES WHERE ID_SUCURSAL = ?`,
-      [idSucursal],
-    );
-
-    if (existing) {
-      const updates = [];
-      const params = [];
-
-      if (nipValor != null) {
-        updates.push("NIP = ?");
-        params.push(nipValor);
-      }
-
-      const nombreActual = String(existing.NOMBRE_DISPOCITIVO ?? "").trim();
-      if (
-        nombre &&
-        (!nombreActual ||
-          nombreActual === "Dispositivo" ||
-          (nombreDispositivo && nombreActual !== nombre))
-      ) {
-        updates.push("NOMBRE_DISPOCITIVO = ?");
-        params.push(nombre);
-      }
-
-      if (updates.length > 0) {
-        params.push(idSucursal);
-        await db.runAsync(
-          `UPDATE CONFIGURACIONES SET ${updates.join(", ")} WHERE ID_SUCURSAL = ?`,
-          params,
-        );
-      }
-      return;
-    }
-
+    const abiertoPedidosValor = toFlag01(abiertoPedidos);
     const d = CONFIGURACIONES_DEFAULTS;
+
     await db.runAsync(
-      `INSERT OR IGNORE INTO CONFIGURACIONES (
+      `INSERT INTO CONFIGURACIONES (
         ID_SUCURSAL, NOMBRE_DISPOCITIVO, ABIERTO_PEDIDOS, IMPRIMIR_FICHA,
         SOLO_PRODUCTOS_NUEVOS, ID_TAMAÑO_FUENTE, COSTO_ENVIO, IMPUESTOS,
         DESCUENTOS, ID_FORMATO_PAGO, PROTEGER_VENTAS, NIP_FINALIZAR_TICKET,
         MODO_RESTRICTIVO, HABILITAR_EDICION_TICKET, BIENVENIDA_INICIO_DIA, NIP
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(ID_SUCURSAL) DO UPDATE SET
+        NOMBRE_DISPOCITIVO = COALESCE(excluded.NOMBRE_DISPOCITIVO, CONFIGURACIONES.NOMBRE_DISPOCITIVO),
+        ABIERTO_PEDIDOS = COALESCE(excluded.ABIERTO_PEDIDOS, CONFIGURACIONES.ABIERTO_PEDIDOS),
+        NIP = COALESCE(excluded.NIP, CONFIGURACIONES.NIP)`,
       [
         idSucursal,
         nombre,
-        d.abiertoPedidos,
+        abiertoPedidosValor ?? d.abiertoPedidos,
         d.imprimirFicha,
         d.soloProductosNuevos,
         d.idTamanoFuente,
@@ -130,6 +119,13 @@ export class Database {
         nipValor,
       ],
     );
+
+    if (abiertoPedidosValor != null) {
+      await db.runAsync(
+        `UPDATE CONFIGURACIONES SET ABIERTO_PEDIDOS = ? WHERE ID_SUCURSAL = ?`,
+        [abiertoPedidosValor, idSucursal],
+      );
+    }
   }
 
   /**
@@ -139,9 +135,12 @@ export class Database {
   static async generalModel(data) {
     const db = await getDb();
 
-    const { device, branch, business, plan, printPoints } = data;
+    const payload =
+      data?.device || data?.branch ? data : (data?.data ?? data ?? {});
+    const { device, branch, business, plan, printPoints } = payload;
     const idSucursal = branch?.qrCode ?? (await AsyncStorage.getItem("qrCode"));
     const nipNegocio = normalizeNip(business?.nip ?? business?.NIP);
+    const flagReceivesOrders = resolverFlagReceivesOrders(device);
 
     // Mantener AsyncStorage alineado con el QR de la API (NipModal filtra por este valor).
     if (branch?.qrCode) {
@@ -189,7 +188,7 @@ export class Database {
         device.id,
         nombreDevice,
         device.deviceKey,
-        device.flagReceivesOrders ? 1 : 0,
+        flagReceivesOrders ?? 0,
         device.status,
         1,
       ],
@@ -241,13 +240,13 @@ export class Database {
 
     // Insertar métodos de pago
     // Soporta payload general ({ paymentMethods: [...] }) y formatos legacy
-    const metodos = Array.isArray(data?.paymentMethods)
-      ? data.paymentMethods
-      : Array.isArray(data?.data?.paymentMethods)
-        ? data.data.paymentMethods
-        : Array.isArray(data)
-          ? data
-          : (data?.data ?? []);
+    const metodos = Array.isArray(payload?.paymentMethods)
+      ? payload.paymentMethods
+      : Array.isArray(payload?.data?.paymentMethods)
+        ? payload.data.paymentMethods
+        : Array.isArray(data?.paymentMethods)
+          ? data.paymentMethods
+          : [];
 
     for (const metodo of metodos) {
       if (!metodo?.id || !metodo?.name) continue;
@@ -262,12 +261,13 @@ export class Database {
       );
     }
 
-    // Insertar tipos de movimiento de inventario
+    const inventoryMovementTypes =
+      payload?.inventoryMovementTypes ?? data?.inventoryMovementTypes;
     if (
-      Array.isArray(data?.inventoryMovementTypes) &&
-      data.inventoryMovementTypes.length > 0
+      Array.isArray(inventoryMovementTypes) &&
+      inventoryMovementTypes.length > 0
     ) {
-      for (const tipo of data.inventoryMovementTypes) {
+      for (const tipo of inventoryMovementTypes) {
         if (!tipo?.id || !tipo?.code) continue;
         await db.runAsync(
           `INSERT OR REPLACE INTO TIPO_MOVIMIENTO_INVENTARIO (UUID, NOMBRE, CODE, FACTOR) VALUES (?, ?, ?, ?)`,
@@ -276,16 +276,34 @@ export class Database {
       }
     }
 
-    await Database.managersModel(db, data?.managers);
+    await Database.managersModel(db, payload?.managers ?? data?.managers);
 
     await Database.persistNipConfiguracion(db, {
       idSucursal,
       nip: nipNegocio,
       nombreDispositivo: nombreDevice,
+      abiertoPedidos: flagReceivesOrders,
     });
 
+    if (flagReceivesOrders != null) {
+      await db.runAsync(
+        `UPDATE CONFIGURACIONES SET ABIERTO_PEDIDOS = ? WHERE ID_SUCURSAL = ?`,
+        [flagReceivesOrders, idSucursal],
+      );
+    } else {
+      await db.runAsync(
+        `UPDATE CONFIGURACIONES
+         SET ABIERTO_PEDIDOS = COALESCE(
+           (SELECT RECIBE_PEDIDOS FROM DEVICE WHERE ACTIVO = 1 LIMIT 1),
+           ABIERTO_PEDIDOS
+         )
+         WHERE ID_SUCURSAL = ?`,
+        [idSucursal],
+      );
+    }
+
     // Categorías y conceptos de gasto vienen en general.expenseGroups
-    await Database.gastosModel(data?.expenseGroups);
+    await Database.gastosModel(payload?.expenseGroups ?? data?.expenseGroups);
 
     console.log("✅ Datos generales insertados correctamente");
   }

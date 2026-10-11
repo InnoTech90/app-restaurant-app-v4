@@ -1,5 +1,6 @@
 import * as Device from "expo-device";
 import { withDb } from "../../../utils/db";
+import { DatabaseInitializer } from "../../../utils/DatabaseInitializer";
 import { runDatabaseMigrations } from "../../../utils/databaseMigrations";
 
 function obtenerNombreDispositivoLocal() {
@@ -33,16 +34,32 @@ export default class Database {
       );
       if (!config) return null;
 
+      const device = await db.getFirstAsync(
+        `SELECT NOMBRE, RECIBE_PEDIDOS FROM DEVICE
+         WHERE ACTIVO = 1
+         LIMIT 1`,
+      );
+
+      if (device && device.RECIBE_PEDIDOS != null) {
+        const abierto = Number(device.RECIBE_PEDIDOS) === 1 ? 1 : 0;
+        if (Number(config.ABIERTO_PEDIDOS) !== abierto) {
+          config.ABIERTO_PEDIDOS = abierto;
+          await db.runAsync(
+            `UPDATE CONFIGURACIONES SET ABIERTO_PEDIDOS = ? WHERE ROWID = (
+               SELECT ROWID FROM CONFIGURACIONES LIMIT 1
+             )`,
+            [abierto],
+          );
+        } else {
+          config.ABIERTO_PEDIDOS = abierto;
+        }
+      }
+
       const nombreActual = String(config.NOMBRE_DISPOCITIVO ?? "").trim();
       if (nombreActual && nombreActual !== "Dispositivo") {
         return config;
       }
 
-      const device = await db.getFirstAsync(
-        `SELECT NOMBRE FROM DEVICE
-         WHERE ACTIVO = 1 AND NOMBRE IS NOT NULL AND TRIM(NOMBRE) != ''
-         LIMIT 1`,
-      );
       let nombreReal = String(device?.NOMBRE ?? "").trim();
       if (!nombreReal || nombreReal === "Dispositivo") {
         nombreReal = obtenerNombreDispositivoLocal();
@@ -72,6 +89,7 @@ export default class Database {
 
   static async getTamañoFuentes() {
     return withDb("Configuraciones.getTamañoFuentes", async (db) => {
+      await DatabaseInitializer.ensureDefaultData(db);
       return await db.getAllAsync(
         `SELECT * FROM TAMAÑO_FUENTES WHERE ACTIVO = 1 ORDER BY ID ASC`,
       );

@@ -2,7 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { ScrollView, Switch, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import ConfigItem from "../../../components/atoms/ConfigItem/ConfigItem";
@@ -264,7 +272,11 @@ export default function Configuraciones() {
       contextoAutenticacion.desautenticar();
     } catch (error) {
       console.error("Error eliminando datos locales:", error);
-      mostrarAviso("danger", "Error", "No se pudieron eliminar los datos locales.");
+      mostrarAviso(
+        "danger",
+        "Error",
+        "No se pudieron eliminar los datos locales.",
+      );
     } finally {
       setReiniciandoDatos(false);
     }
@@ -321,12 +333,12 @@ export default function Configuraciones() {
           <ConfigItem
             icon="storefront-outline"
             titulo="Abierto a pedidos"
-            subtitulo="Permite recibir órdenes desde otros dispositivos"
+            subtitulo="Se actualiza al sincronizar desde el servidor"
             border={false}
           >
             <Switch
-              value={!!config.ABIERTO_PEDIDOS}
-              onValueChange={(v) => guardar("ABIERTO_PEDIDOS", v ? 1 : 0)}
+              value={Number(config.ABIERTO_PEDIDOS) === 1}
+              disabled
               trackColor={{ false: gb.gray200, true: gb.blue550 }}
               thumbColor={gb.gray50}
             />
@@ -566,9 +578,7 @@ export default function Configuraciones() {
           >
             <Switch
               value={Number(config.BIENVENIDA_INICIO_DIA ?? 1) === 1}
-              onValueChange={(v) =>
-                guardar("BIENVENIDA_INICIO_DIA", v ? 1 : 0)
-              }
+              onValueChange={(v) => guardar("BIENVENIDA_INICIO_DIA", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.yellow500 }}
               thumbColor={gb.gray50}
             />
@@ -676,6 +686,26 @@ export default function Configuraciones() {
         onCancel={cerrarAviso}
         onConfirm={cerrarAviso}
       />
+
+      <Modal
+        visible={sincronizandoGeneral || reiniciandoDatos}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {}}
+      >
+        <View style={s.blockingOverlay}>
+          <View style={s.blockingCard}>
+            <ActivityIndicator size="large" color={gb.blue550} />
+            <Text style={s.blockingTitle}>
+              {reiniciandoDatos ? "Borrando datos..." : "Sincronizando..."}
+            </Text>
+            <Text style={s.blockingSubtitle}>
+              Espera un momento. No cierres ni uses la app.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

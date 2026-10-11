@@ -22,6 +22,7 @@ export class DatabaseInitializer {
    */
   static async initialize(db) {
     if (isInitialized) {
+      await this.ensureDefaultData(db);
       return {
         success: true,
         message: "Database already initialized",
@@ -30,11 +31,17 @@ export class DatabaseInitializer {
     }
 
     if (initializationPromise) {
-      return initializationPromise;
+      const result = await initializationPromise;
+      await this.ensureDefaultData(db);
+      return result;
     }
 
     initializationPromise = this._performInitialization(db);
     return initializationPromise;
+  }
+
+  static async ensureDefaultData(db) {
+    await this._initializeDefaultData(db);
   }
 
   static async _performInitialization(db) {

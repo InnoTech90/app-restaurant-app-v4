@@ -42,24 +42,26 @@ export async function getDb() {
  * Es seguro llamarla múltiples veces - la inicialización ocurre una sola vez.
  */
 export async function initializeSchema() {
-  if (schemaInitPromise) {
-    return schemaInitPromise;
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      try {
+        console.log("🔧 Inicializando esquema de base de datos...");
+        const database = await getDb();
+        const result = await DatabaseInitializer.initialize(database);
+        console.log("✅ Esquema inicializado correctamente", result);
+        return result;
+      } catch (error) {
+        console.error("❌ Error al inicializar esquema:", error);
+        schemaInitPromise = null;
+        throw error;
+      }
+    })();
   }
 
-  schemaInitPromise = (async () => {
-    try {
-      console.log("🔧 Inicializando esquema de base de datos...");
-      const database = await getDb();
-      const result = await DatabaseInitializer.initialize(database);
-      console.log("✅ Esquema inicializado correctamente", result);
-      return result;
-    } catch (error) {
-      console.error("❌ Error al inicializar esquema:", error);
-      throw error;
-    }
-  })();
-
-  return schemaInitPromise;
+  const result = await schemaInitPromise;
+  const database = await getDb();
+  await DatabaseInitializer.ensureDefaultData(database);
+  return result;
 }
 
 async function clearAllTables(database) {
@@ -83,6 +85,7 @@ async function clearAllTables(database) {
 export async function clearLocalTables() {
   return withDb("clearLocalTables", async (database) => {
     await clearAllTables(database);
+    await DatabaseInitializer.ensureDefaultData(database);
     await AsyncStorage.multiRemove(["MesaSeleccionada", "montoRecibido"]);
     console.log("✅ Tablas locales limpiadas correctamente");
   });

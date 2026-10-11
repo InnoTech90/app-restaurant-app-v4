@@ -41,6 +41,9 @@ export const s = StyleSheet.create({
         justifyContent: "center",
         paddingHorizontal: normalize(24),
     },
+    overlayDismiss: {
+        ...StyleSheet.absoluteFillObject,
+    },
     dropdown: {
         backgroundColor: gb.gray50,
         borderRadius: normalize(10),
@@ -51,6 +54,14 @@ export const s = StyleSheet.create({
         shadowRadius: normalize(8),
         shadowOffset: { width: 0, height: normalize(4) },
         elevation: 6,
+        zIndex: 2,
+    },
+    vacioTexto: {
+        paddingHorizontal: normalize(16),
+        paddingVertical: normalize(18),
+        fontSize: normalize(14),
+        color: gb.gray400,
+        textAlign: "center",
     },
     opcion: {
         flexDirection: "row",
