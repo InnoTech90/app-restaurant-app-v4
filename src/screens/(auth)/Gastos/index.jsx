@@ -16,6 +16,7 @@ import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/E
 import NipModal from "../../../components/Molecules/NipModal/NipModal";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import {
+  MENSAJE_NO_SE_PUDO_CONECTAR,
   MENSAJE_SIN_INTERNET,
   obtenerMensajeErrorRed,
   verificarConexionInternet,
@@ -417,14 +418,10 @@ const Gastos = () => {
         });
       }
     } catch (e) {
-      console.error("Error al sincronizar gastos:", e);
       mostrarAviso({
-        type: "danger",
-        title: "Error",
-        message: obtenerMensajeErrorRed(
-          e,
-          "No se pudo sincronizar con el servidor.",
-        ),
+        type: "warning",
+        title: "Sincronización",
+        message: obtenerMensajeErrorRed(e, MENSAJE_NO_SE_PUDO_CONECTAR),
       });
     } finally {
       setSincronizando(false);

@@ -115,10 +115,6 @@ const MenuPrincipal = () => {
     try {
       const { grupos, articulos } = await Database.getMenu();
 
-      console.log(
-        `✅ Menú cargado: ${grupos.length} grupos, ${articulos.length} artículos`,
-      );
-
       setGrupos(grupos);
       setArticulos(articulos);
     } catch (e) {

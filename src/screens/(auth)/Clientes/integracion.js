@@ -1,3 +1,8 @@
+import {
+  esErrorDeConexion,
+  MENSAJE_NO_SE_PUDO_CONECTAR,
+  obtenerMensajeErrorRed,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
 import { Database } from "./Database";
@@ -63,8 +68,6 @@ export class integracionClientes {
       records,
     };
 
-    console.log("Sincronizando clientes con payload:", params);
-
     try {
       await deviceApi.post(
         "/devices/synchronize-diners",
@@ -86,8 +89,10 @@ export class integracionClientes {
 
       return { sincronizados: pendientes.length };
     } catch (error) {
-      console.error("Error sincronizando clientes:", error);
-      throw error;
+      if (esErrorDeConexion(error)) {
+        throw new Error(obtenerMensajeErrorRed(error, MENSAJE_NO_SE_PUDO_CONECTAR));
+      }
+      throw new Error(error?.message || MENSAJE_NO_SE_PUDO_CONECTAR);
     }
   };
 }

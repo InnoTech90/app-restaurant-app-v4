@@ -138,7 +138,7 @@ const PantallaDeCarga = () => {
           return;
         }
 
-        console.log("📱 Iniciando inicialización...");
+        console.log("Iniciando inicialización...");
         await integracionPantallaDeCarga.initializeDatabase();
         const generalData = await getGeneral();
         if (!generalData) return;

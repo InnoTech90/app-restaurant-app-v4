@@ -101,12 +101,9 @@ const Inicio = () => {
 
     setIsRefreshing(true);
     try {
-      console.log("🔄 Actualizando mesas...");
       const mesasActualizadas = await Database.actualizarMesasDesdeAPI();
       setMesas(mesasActualizadas);
-      console.log(`✅ Mesas actualizadas: ${mesasActualizadas.length} mesas`);
     } catch (error) {
-      console.error("❌ Error durante refresh:", error);
       mostrarAviso({
         type: "danger",
         title: "Error",

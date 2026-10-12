@@ -9,7 +9,7 @@ export class integracionPantallaDeCarga {
    */
   static initializeDatabase = async () => {
     try {
-      console.log("📱 Inicializando esquema de base de datos...");
+      console.log("Inicializando esquema de base de datos...");
       const result = await initializeSchema();
       console.log("✅ Esquema de base de datos inicializado", result);
       return result;

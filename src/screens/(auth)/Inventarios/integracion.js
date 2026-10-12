@@ -1,3 +1,8 @@
+import {
+  esErrorDeConexion,
+  MENSAJE_NO_SE_PUDO_CONECTAR,
+  obtenerMensajeErrorRed,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
 import InventariosDatabase from "./database";
@@ -39,8 +44,6 @@ export class integracionInventarios {
     //   },
     // ];
 
-    console.log("Pendientes de sincronización:", pendientes);
-
     if (!pendientes?.length) return { sincronizados: 0 };
 
     // Obtener UUIDs de los tipos de movimiento de app
@@ -70,11 +73,18 @@ export class integracionInventarios {
       };
     });
 
-    await deviceApi.post(
-      "/devices/synchronize-inventory",
-      { records },
-      { headers },
-    );
+    try {
+      await deviceApi.post(
+        "/devices/synchronize-inventory",
+        { records },
+        { headers },
+      );
+    } catch (error) {
+      if (esErrorDeConexion(error)) {
+        throw new Error(obtenerMensajeErrorRed(error, MENSAJE_NO_SE_PUDO_CONECTAR));
+      }
+      throw new Error(error?.message || MENSAJE_NO_SE_PUDO_CONECTAR);
+    }
 
     const uuids = pendientes.map((p) => p.rawMaterialBranchId);
     await InventariosDatabase.marcarSincronizados(uuids);

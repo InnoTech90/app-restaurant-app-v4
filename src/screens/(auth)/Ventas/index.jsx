@@ -17,8 +17,9 @@ import {
   tieneAccesoVentas,
 } from "../../../utils/sectionAccess";
 import {
-  esErrorDeConexion,
+  MENSAJE_NO_SE_PUDO_CONECTAR,
   MENSAJE_SIN_INTERNET,
+  obtenerMensajeErrorRed,
   verificarConexionInternet,
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { mostrarAviso } from "../../../utils/avisoModal";
@@ -676,22 +677,11 @@ const Ventas = () => {
               });
             }
           } catch (e) {
-            if (esErrorDeConexion(e)) {
-              mostrarAviso({
-                type: "warning",
-                title: "Sin conexión",
-                message: MENSAJE_SIN_INTERNET,
-              });
-            } else {
-              console.error("Error sincronizando ventas:", e);
-              mostrarAviso({
-                type: "danger",
-                title: "Error",
-                message:
-                  e?.message ||
-                  "No se pudieron sincronizar las ventas. Intenta de nuevo.",
-              });
-            }
+            mostrarAviso({
+              type: "warning",
+              title: "Sincronización",
+              message: obtenerMensajeErrorRed(e, MENSAJE_NO_SE_PUDO_CONECTAR),
+            });
           } finally {
             setSincronizando(false);
           }

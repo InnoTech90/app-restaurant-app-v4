@@ -39,16 +39,13 @@ export class Database {
    */
   static async actualizarMesasDesdeAPI() {
     try {
-      console.log("🔄 Obteniendo mesas desde API...");
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.get("/devices/table", { headers });
 
       await PantallaDeCargaDatabase.mesasModel(response.data);
-      console.log("✅ Mesas actualizadas desde API");
 
       return await this.getMesas();
     } catch (error) {
-      console.error("⚠️ Error actualizando mesas desde API:", error);
       return await this.getMesas();
     }
   }

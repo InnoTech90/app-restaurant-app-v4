@@ -256,7 +256,7 @@ export default function Configuraciones() {
         "Error de sincronización",
         obtenerMensajeErrorRed(
           error,
-          "No se pudo actualizar la información. Intenta nuevamente.",
+          "No se pudo actualizar la información. Inténtalo más tarde.",
         ),
       );
     } finally {

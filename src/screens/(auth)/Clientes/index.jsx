@@ -15,6 +15,7 @@ import EstatusSincronizado from "../../../components/atoms/EstatusSincronizado/E
 import ModalWarning from "../../../components/Molecules/ModalWarning/ModalWarning";
 import RecoverButton from "../../../components/atoms/RecoverButton/RecoverButton";
 import {
+  MENSAJE_NO_SE_PUDO_CONECTAR,
   MENSAJE_SIN_INTERNET,
   obtenerMensajeErrorRed,
   verificarConexionInternet,
@@ -295,12 +296,9 @@ const Clientes = () => {
       }
     } catch (e) {
       mostrarAviso({
-        type: "danger",
-        title: "Error",
-        message: obtenerMensajeErrorRed(
-          e,
-          "No se pudieron sincronizar los clientes.",
-        ),
+        type: "warning",
+        title: "Sincronización",
+        message: obtenerMensajeErrorRed(e, MENSAJE_NO_SE_PUDO_CONECTAR),
       });
     } finally {
       setSincronizando(false);

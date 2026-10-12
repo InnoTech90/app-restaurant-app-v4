@@ -6,8 +6,11 @@ import {
 } from "../ConeccionAInternet/ConeccionAInternet";
 import { API_BASE_URL } from "../config/api";
 
+export const DEVICE_API_TIMEOUT_MS = 12000;
+
 export const deviceApi = axios.create({
   baseURL: API_BASE_URL,
+  timeout: DEVICE_API_TIMEOUT_MS,
 });
 
 deviceApi.interceptors.request.use(async (config) => {

@@ -34,7 +34,6 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
   const [tipoMovimiento, setTipoMovimiento] = useState("entrada");
   const [guardando, setGuardando] = useState(false);
 
-  console.log("ModalAjustarInventario renderizado con seleccionado:", seleccionado);
 
   useEffect(() => {
     if (seleccionado) {

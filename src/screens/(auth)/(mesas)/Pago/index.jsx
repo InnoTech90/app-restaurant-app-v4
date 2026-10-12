@@ -34,6 +34,7 @@ import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { sesionPuedeEntrar } from "../../../../utils/gerentePermisos";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
+import { sincronizarEnSegundoPlano } from "../../../../utils/http/sincronizarEnSegundoPlano";
 import { autorizarSeccion } from "../../../../utils/sectionAccess";
 import { mostrarAviso } from "../../../../utils/avisoModal";
 import { gb } from "../../../globalStyles";
@@ -422,14 +423,14 @@ const Pago = () => {
 
       const hayInternet = await verificarConexionInternet();
       if (hayInternet) {
-        try {
-          await integracionVentas.sincronizarVentas([comandaId]);
-        } catch (syncError) {
-          console.warn(
-            "No se pudo sincronizar la venta automáticamente:",
-            syncError,
-          );
-        }
+        sincronizarEnSegundoPlano(
+          () => integracionVentas.sincronizarVentas([comandaId]),
+          {
+            titulo: "Sincronización",
+            mensajeFallo:
+              "La venta se guardó, pero no se pudo conectar con el servidor. Inténtalo más tarde desde Ventas.",
+          },
+        );
       }
 
       router.replace("/Inicio");

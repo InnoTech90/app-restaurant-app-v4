@@ -1,3 +1,8 @@
+import {
+  esErrorDeConexion,
+  MENSAJE_NO_SE_PUDO_CONECTAR,
+  obtenerMensajeErrorRed,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
 import VentasDatabase from "./database";
 
@@ -110,8 +115,6 @@ export class integracionVentas {
       })),
     }));
 
-    console.log("Sincronizando ventas payload:", JSON.stringify(sales, null, 2));
-
     try {
       const response = await deviceApi.post(
         "/devices/synchronize-sale",
@@ -125,13 +128,12 @@ export class integracionVentas {
         );
       }
     } catch (error) {
-      console.error(
-        "Error sincronizando ventas (detalle):",
-        error?.response?.data ?? error?.message,
-      );
+      if (esErrorDeConexion(error)) {
+        throw new Error(obtenerMensajeErrorRed(error, MENSAJE_NO_SE_PUDO_CONECTAR));
+      }
       const detalle = mensajeErrorApi(error);
       if (detalle) throw new Error(detalle);
-      throw error;
+      throw new Error(error?.message || MENSAJE_NO_SE_PUDO_CONECTAR);
     }
 
     const ids = ventasSeleccionadas.map((v) => v.ID);

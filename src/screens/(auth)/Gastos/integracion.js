@@ -1,3 +1,8 @@
+import {
+  esErrorDeConexion,
+  MENSAJE_NO_SE_PUDO_CONECTAR,
+  obtenerMensajeErrorRed,
+} from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
 import { Database } from "./database";
 
@@ -82,9 +87,12 @@ export class integracionGastos {
         { headers },
       );
     } catch (error) {
+      if (esErrorDeConexion(error)) {
+        throw new Error(obtenerMensajeErrorRed(error, MENSAJE_NO_SE_PUDO_CONECTAR));
+      }
       const detalle = mensajeErrorApi(error);
       if (detalle) throw new Error(detalle);
-      throw error;
+      throw new Error(error?.message || MENSAJE_NO_SE_PUDO_CONECTAR);
     }
 
     const ids = pendientes.map((r) => r.ID);

@@ -116,9 +116,7 @@ export function withDb(name = "", operation) {
   const currentOperation = ++operationId;
 
   queue = queue
-    .catch((error) => {
-      console.error("💥 SQL QUEUE ERROR", error);
-    })
+    .catch(() => {})
     .then(async () => {
       const start = Date.now();
 
@@ -129,13 +127,14 @@ export function withDb(name = "", operation) {
 
         return result;
       } catch (error) {
-        console.error(
-          `❌ SQL ERROR #${currentOperation} | ${Date.now() - start}ms`,
-          error,
-        );
+        if (__DEV__) {
+          console.warn(
+            `SQL ERROR #${currentOperation} | ${Date.now() - start}ms`,
+            error?.message ?? error,
+          );
+        }
 
         throw error;
-      } finally {
       }
     });
 

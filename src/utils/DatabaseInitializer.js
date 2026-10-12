@@ -75,13 +75,10 @@ export class DatabaseInitializer {
           const exists = await this._tableExists(db, tableDefinition.name);
 
           if (exists) {
-            console.log(`✅ Tabla ${tableDefinition.name} ya existe`);
             results.tablesExisted.push(tableDefinition.name);
           } else {
-            console.log(`🆕 Creando tabla ${tableDefinition.name}...`);
             await db.runAsync(tableDefinition.ddl);
             results.tablesCreated.push(tableDefinition.name);
-            console.log(`✅ Tabla ${tableDefinition.name} creada exitosamente`);
           }
         } catch (error) {
           const errorMsg = `Error al procesar tabla ${tableDefinition.name}: ${error.message}`;
@@ -99,9 +96,6 @@ export class DatabaseInitializer {
 
       // Ejecutar migraciones si es necesario
       if (currentVersion < DatabaseSchema.version) {
-        console.log(
-          `🔄 Ejecutando migraciones de versión ${currentVersion} a ${DatabaseSchema.version}...`,
-        );
         await this._executeMigrations(
           db,
           currentVersion,
@@ -157,7 +151,6 @@ export class DatabaseInitializer {
       );
       return result?.version ?? 0;
     } catch (error) {
-      console.log("Tabla de versión no existe aún, se creará:", error.message);
       return 0;
     }
   }
@@ -184,7 +177,6 @@ export class DatabaseInitializer {
   static async _executeMigrations(db, fromVersion, toVersion) {
     // Aquí se pueden definir migraciones específicas por versión
     for (let v = fromVersion + 1; v <= toVersion; v++) {
-      console.log(`Ejecutando migración v${v}...`);
 
       switch (v) {
         case 1:
@@ -252,11 +244,7 @@ export class DatabaseInitializer {
       );
 
       if (!hasColumn) {
-        console.log(`  Agregando columna ${columnName} a ${tableName}...`);
         await db.runAsync(migrationSQL);
-        console.log(`  ✅ Columna agregada`);
-      } else {
-        console.log(`  ℹ️  Columna ${columnName} ya existe en ${tableName}`);
       }
     } catch (error) {
       console.error(

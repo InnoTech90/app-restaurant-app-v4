@@ -48,16 +48,6 @@ const Editar = () => {
     try {
       setGuardando(true);
 
-      console.log("Data", {
-        clienteId: cliente.ID,
-        nombre,
-        telefono,
-        correo,
-        direccion,
-        descripcion,
-        notas,
-      });
-
       await Database.updateCliente(cliente.ID, {
         nombre,
         telefono,

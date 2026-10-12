@@ -305,7 +305,6 @@ export class Database {
     // Categorías y conceptos de gasto vienen en general.expenseGroups
     await Database.gastosModel(payload?.expenseGroups ?? data?.expenseGroups);
 
-    console.log("✅ Datos generales insertados correctamente");
   }
 
   /**
@@ -314,7 +313,6 @@ export class Database {
    */
   static async managersModel(db, managers) {
     if (!Array.isArray(managers)) {
-      console.log("⚠️  No hay managers en la respuesta general");
       return;
     }
 
@@ -353,9 +351,6 @@ export class Database {
       }
     }
 
-    console.log(
-      `✅ Gerentes sincronizados: ${gerentesCount} gerentes, ${permisosCount} permisos`,
-    );
   }
 
   /**
@@ -367,7 +362,6 @@ export class Database {
     const db = await getDb();
 
     if (!Array.isArray(data?.data) || data.data.length === 0) {
-      console.log("⚠️  No hay mesas para insertar");
       return;
     }
 
@@ -399,7 +393,6 @@ export class Database {
       );
     }
 
-    console.log(`✅ ${data.data.length} mesas sincronizadas correctamente`);
   }
 
   /**
@@ -503,9 +496,6 @@ export class Database {
       }
     }
 
-    console.log(
-      `✅ Menú insertado: ${articlesCount} artículos, ${complementsCount} complementos`,
-    );
   }
 
   /**
@@ -521,7 +511,6 @@ export class Database {
       : (data?.expenseGroups ?? data?.data ?? []);
 
     if (!Array.isArray(categorias) || categorias.length === 0) {
-      console.log("⚠️  No hay expenseGroups para insertar");
       return;
     }
 
@@ -570,9 +559,6 @@ export class Database {
       }
     }
 
-    console.log(
-      `✅ Gastos insertados: ${categoriasCount} categorías, ${conceptosCount} conceptos`,
-    );
   }
 
   /**
@@ -597,9 +583,6 @@ export class Database {
    */
   static async historialCajaModel() {
     // La tabla es creada por DatabaseInitializer
-    console.log(
-      "ℹ️  Tabla HISTORIAL_CAJA ya existe (creada por DatabaseInitializer)",
-    );
   }
 
   /**
@@ -608,9 +591,6 @@ export class Database {
    */
   static async comandaTableModel() {
     // Las tablas son creadas por DatabaseInitializer
-    console.log(
-      "ℹ️  Tablas de COMANDA ya existen (creadas por DatabaseInitializer)",
-    );
   }
 
   /**
@@ -622,7 +602,6 @@ export class Database {
     const db = await getDb();
 
     if (!data?.data?.length) {
-      console.log("⚠️  No hay clientes para insertar");
       return;
     }
 
@@ -680,7 +659,6 @@ export class Database {
       clientesCount++;
     }
 
-    console.log(`✅ ${clientesCount} clientes insertados correctamente`);
     return true;
   }
 
@@ -692,7 +670,6 @@ export class Database {
     const db = await getDb();
 
     if (!data?.data?.length) {
-      console.log("⚠️  No hay inventario para insertar");
       return true;
     }
 
@@ -736,9 +713,6 @@ export class Database {
       }
     }
 
-    console.log(
-      `✅ Inventario insertado: ${materiasCount} materias primas, ${unidadesCount} unidades, ${sucursalesCount} sucursales`,
-    );
     return true;
   }
 }
