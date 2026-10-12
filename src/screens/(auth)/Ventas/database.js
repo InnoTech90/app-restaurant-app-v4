@@ -30,6 +30,17 @@ export default class VentasDatabase {
                   ), 0)
                 END AS SUBTOTAL,
                 c.DESCUENTO,
+                ABS(COALESCE(c.DESCUENTO, 0)) AS DESCUENTO_COMANDA,
+                COALESCE((
+                  SELECT SUM(ABS(COALESCE(ca.DESCUENTO, 0)))
+                  FROM COMANDA_ARTICULO ca
+                  WHERE ca.ID_COMANDA = c.ID
+                ), 0) AS DESCUENTO_ARTICULOS,
+                (
+                  SELECT COUNT(*)
+                  FROM COMANDA_PAGO_CUENTA_DIVIDIDA cd
+                  WHERE cd.ID_COMANDA = c.ID
+                ) AS PARTES_CUENTA_DIVIDIDA,
                 c.PROPINA,
                 c.COSTO_ENVIO,
                 c.FORMATO_PAGO,

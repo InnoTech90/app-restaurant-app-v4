@@ -1,56 +1,85 @@
 import { Text, View } from "react-native";
 import { s } from "./styles";
 
-const CardProductoVenta = ({ producto, cantidad, precioUnitario, complementos }) => {
-    const calcularComplementos = () => {
-        if (!complementos || complementos.length === 0) return 0;
-        const complementosAgrupados = Object.values(
-            complementos.reduce((acc, item) => {
+const formatMonto = (n) =>
+  Number(n || 0).toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-                if (!acc[item.id]) {
-                    acc[item.id] = { ...item, cantidad: 1 };
-                } else {
-                    acc[item.id].cantidad += 1;
-                    acc[item.id].precio += item.precio;
-                }
+const CardProductoVenta = ({
+  producto,
+  cantidad,
+  precioUnitario,
+  complementos,
+  descuento = 0,
+  total,
+}) => {
+  const calcularComplementos = () => {
+    if (!complementos || complementos.length === 0) return [];
+    return Object.values(
+      complementos.reduce((acc, item) => {
+        if (!acc[item.id]) {
+          acc[item.id] = { ...item, cantidad: 1 };
+        } else {
+          acc[item.id].cantidad += 1;
+          acc[item.id].precio += item.precio;
+        }
+        return acc;
+      }, {}),
+    );
+  };
 
-                return acc;
+  const totalComplementos = complementos
+    ? complementos.reduce((sum, item) => sum + (Number(item.precio) || 0), 0)
+    : 0;
+  const descuentoNum = Number(descuento) || 0;
+  const totalCalculado =
+    (Number(precioUnitario) || 0) * (Number(cantidad) || 0) +
+    totalComplementos -
+    descuentoNum;
+  const totalMostrar =
+    total != null && Number.isFinite(Number(total))
+      ? Number(total)
+      : Math.max(0, totalCalculado);
 
-            }, {})
-        );
-        return complementosAgrupados
-    }
-    const calcularTotal = () => {
-        const totalComplementos = complementos ? complementos.reduce((sum, item) => sum + item.precio, 0) : 0;
-        return (precioUnitario * cantidad) + totalComplementos;
-    }
-
-    return (
-        <View style={s.constenerdorProducto}>
-            <View style={s.row}>
-                <Text style={s.tituloProducto}>{producto}</Text>
-                <Text style={s.precioProducto}>${calcularTotal()}</Text>
-            </View>
-            <View style={s.row}>
-                <Text style={s.textoProducto}>Cantidad: {cantidad}</Text>
-                <Text style={s.textoProducto}>Precio unitario: ${precioUnitario}</Text>
-
-            </View>
-            {complementos && complementos.length > 0 ?
-                <View style={s.contenedorComplementos}>
-                    <View style={s.row}>
-                        <Text style={s.tituloProducto}>Complementos:</Text>
-                    </View>
-                    {calcularComplementos().map((complemento) => (
-                        <View key={complemento.id} style={s.row}>
-                            <Text style={s.textoProducto}>{complemento.nombre} x{complemento.cantidad}</Text>
-                            <Text style={s.precioComplemento}>+ ${complemento.precio}</Text>
-                        </View>
-                    ))}
-                </View>
-                : null
-            }
+  return (
+    <View style={s.constenerdorProducto}>
+      <View style={s.row}>
+        <Text style={s.tituloProducto}>{producto}</Text>
+        <Text style={s.precioProducto}>${formatMonto(totalMostrar)}</Text>
+      </View>
+      <View style={s.row}>
+        <Text style={s.textoProducto}>Cantidad: {cantidad}</Text>
+        <Text style={s.textoProducto}>
+          Precio unitario: ${formatMonto(precioUnitario)}
+        </Text>
+      </View>
+      {descuentoNum > 0 ? (
+        <View style={s.descuentoRow}>
+          <Text style={s.descuentoLabel}>Descuento</Text>
+          <Text style={s.descuentoValor}>-${formatMonto(descuentoNum)}</Text>
         </View>
-    )
-}
+      ) : null}
+      {complementos && complementos.length > 0 ? (
+        <View style={s.contenedorComplementos}>
+          <View style={s.row}>
+            <Text style={s.tituloProducto}>Complementos:</Text>
+          </View>
+          {calcularComplementos().map((complemento) => (
+            <View key={complemento.id} style={s.row}>
+              <Text style={s.textoProducto}>
+                {complemento.nombre} x{complemento.cantidad}
+              </Text>
+              <Text style={s.precioComplemento}>
+                + ${formatMonto(complemento.precio)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+};
+
 export default CardProductoVenta;

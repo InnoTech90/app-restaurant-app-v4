@@ -22,7 +22,11 @@ import {
   revocarTodasLasSecciones,
   tieneAccesoSeccion,
 } from "../../utils/sectionAccess";
-import VentasDatabase from "./Ventas/database";
+import {
+  construirMensajeCierreSesion,
+  hayPendientesCierreSesion,
+  obtenerPendientesSincronizacion,
+} from "../../utils/pendientesSincronizacion";
 
 function CustomDrawerContent({
   onCerrarSesion,
@@ -99,26 +103,13 @@ export default function AuthLayout() {
 
   const intentarCerrarSesion = async () => {
     try {
-      const { pendientes, sinSincronizar } =
-        await VentasDatabase.getBloqueosCierreSesion();
+      const pendientes = await obtenerPendientesSincronizacion();
 
-      const mensajes = [];
-      if (pendientes > 0) {
-        mensajes.push(
-          `Tienes ${pendientes} venta${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} por resolver.`,
-        );
-      }
-      if (sinSincronizar > 0) {
-        mensajes.push(
-          `Tienes ${sinSincronizar} venta${sinSincronizar === 1 ? "" : "s"} sin sincronizar.`,
-        );
-      }
-
-      if (mensajes.length > 0) {
+      if (hayPendientesCierreSesion(pendientes)) {
         mostrarAviso({
           type: "warning",
           title: "No se puede cerrar sesión",
-          message: mensajes.join("\n\n"),
+          message: construirMensajeCierreSesion(pendientes),
         });
         return;
       }
@@ -132,12 +123,12 @@ export default function AuthLayout() {
         { modo: "acceso", keywords: [] },
       );
     } catch (error) {
-      console.error("Error verificando ventas antes de cerrar sesión:", error);
+      console.error("Error verificando pendientes antes de cerrar sesión:", error);
       mostrarAviso({
         type: "danger",
         title: "Error",
         message:
-          "No se pudo verificar el estado de las ventas. Intenta nuevamente.",
+          "No se pudo verificar el estado de la sesión. Intenta nuevamente.",
       });
     }
   };

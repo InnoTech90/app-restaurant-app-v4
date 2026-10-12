@@ -19,6 +19,8 @@ const CardVenta = ({
     seleccionado = false,
     onSeleccionar,
     idComanda,
+    descuento = 0,
+    cuentaDividida = false,
 }) => {
     const router = useRouter();
 
@@ -101,7 +103,6 @@ const CardVenta = ({
 
                     <View style={s.lineaSeparadora} />
 
-                    {/* Productos y Fecha */}
                     <View style={s.rowSpaceBetween}>
                         <View style={s.infoChip}>
                             <Ionicons name="fast-food" size={13} color={gb.gray400} />
@@ -113,11 +114,34 @@ const CardVenta = ({
                         </View>
                     </View>
 
+                    {(Number(descuento) > 0 || cuentaDividida) && (
+                        <>
+                            <View style={s.lineaSeparadora} />
+                            <View style={s.badgesRow}>
+                                {Number(descuento) > 0 && (
+                                    <View style={s.badgeDescuento}>
+                                        <Ionicons name="pricetag-outline" size={12} color="#C62828" />
+                                        <Text style={s.badgeDescuentoText}>
+                                            Desc. -${Number(descuento).toLocaleString("es-MX", {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2,
+                                            })}
+                                        </Text>
+                                    </View>
+                                )}
+                                {cuentaDividida && (
+                                    <View style={s.badgeDividida}>
+                                        <Ionicons name="people-outline" size={12} color={gb.blue550} />
+                                        <Text style={s.badgeDivididaText}>Cuenta dividida</Text>
+                                    </View>
+                                )}
+                            </View>
+                        </>
+                    )}
+
                     <View style={s.lineaSeparadora} />
 
-                    {/* Botón Ver */}
                     <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-
                         <Pressable onPress={onVer} style={s.btnVer}>
                             <Ionicons name="eye-outline" size={15} color={gb.purple550} />
                             <Text style={s.btnVerText}>Ver detalle</Text>

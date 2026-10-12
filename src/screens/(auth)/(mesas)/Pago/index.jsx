@@ -52,7 +52,6 @@ const Pago = () => {
   const [configuraciones, setConfiguraciones] = useState([]);
   const [openModalCliente, setOpenModalCliente] = useState(false);
   const [openModalDividir, setOpenModalDividir] = useState(false);
-  const [openNipModal, setOpenNipModal] = useState(false);
   const [openNipFinalizar, setOpenNipFinalizar] = useState(false);
   const scrollRef = useRef(null);
   const [filasGuardadas, setFilasGuardadas] = useState([]);
@@ -483,11 +482,7 @@ const Pago = () => {
 
   const handleImprimirCuenta = () => {
     if (imprimiendo || !canPrint) return;
-    if (nipFinalizarActivo) {
-      setOpenNipModal(true);
-    } else {
-      ejecutarImpresion();
-    }
+    ejecutarImpresion();
   };
 
   const cambiarCantidad = (renglon, nuevaCantidad) => {
@@ -1029,19 +1024,6 @@ const Pago = () => {
           } catch (error) {
             console.error("Error guardando pago dividido:", error);
           }
-        }}
-      />
-
-      {/* ── MODAL NIP (imprimir) ──────────────────────────── */}
-      <NipModal
-        visible={openNipModal}
-        onClose={() => setOpenNipModal(false)}
-        titulo="Imprimir cuenta"
-        modo="acceso"
-        keywords={["sales"]}
-        onSubmit={async () => {
-          setOpenNipModal(false);
-          await ejecutarImpresion();
         }}
       />
 

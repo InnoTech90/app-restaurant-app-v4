@@ -31,6 +31,52 @@ const estatusColor = (estatus) => {
   return "#F44336";
 };
 
+const parseFechaLocal = (fechaStr) => {
+  if (!fechaStr) return null;
+  const raw = String(fechaStr).trim();
+  const normalizada = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const sinZona = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(normalizada);
+  const iso = sinZona ? `${normalizada}Z` : normalizada;
+  const fecha = new Date(iso);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+};
+
+const formatFechaVenta = (fechaStr) => {
+  if (!fechaStr) return "—";
+  const fecha = parseFechaLocal(fechaStr);
+  if (!fecha) {
+    const [datePart, timePart = ""] = String(fechaStr).split(" ");
+    const [yyyy, mm, dd] = datePart.split("-");
+    return `${dd}/${mm}/${yyyy} ${timePart.slice(0, 5)}`;
+  }
+  const dd = String(fecha.getDate()).padStart(2, "0");
+  const mm = String(fecha.getMonth() + 1).padStart(2, "0");
+  const yyyy = fecha.getFullYear();
+  const hh = String(fecha.getHours()).padStart(2, "0");
+  const min = String(fecha.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+};
+
+const nombreMetodoPago = (formaPago, formatosPago = []) => {
+  const metodo = formatosPago.find(
+    (f) => Number(f.ID ?? f.value) === Number(formaPago),
+  );
+  return metodo?.NOMBRE ?? metodo?.label ?? "Método";
+};
+
+const descuentoArticulo = (art) => {
+  const guardado = Number(art?.DESCUENTO);
+  if (Number.isFinite(guardado) && guardado > 0) return guardado;
+  const subtotal =
+    Number(art?.SUBTOTAL) ||
+    (Number(art?.CANTIDAD) || 0) * (Number(art?.PRECIO_VENTA) || 0);
+  const costoComps = (art?.complementos ?? []).reduce(
+    (acc, c) => acc + (Number(c.COMP_PRECIO ?? c.PRECIO_VENTA) || 0),
+    0,
+  );
+  return Math.max(0, subtotal + costoComps - (Number(art?.TOTAL) || 0));
+};
+
 const DetalleVentas = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -63,6 +109,9 @@ const DetalleVentas = () => {
 
   const comanda = detalle?.comanda;
   const articulos = detalle?.articulos ?? [];
+  const pagoDividido = detalle?.pagoDividido ?? [];
+  const formatosPago = detalle?.formatosPago ?? [];
+  const tieneCuentaDividida = pagoDividido.length > 0;
   const puedeReimprimir = Number(comanda?.ESTATUS) === 1;
   const esCancelada = Number(comanda?.ESTATUS) === 2;
 
@@ -75,6 +124,10 @@ const DetalleVentas = () => {
       (acc, a) => acc + (Number(a.SUBTOTAL) || Number(a.TOTAL) || 0),
       0,
     );
+    const descuentoArticulos = articulos.reduce(
+      (acc, a) => acc + descuentoArticulo(a),
+      0,
+    );
 
     const totalGuardado = Number(comanda?.TOTAL) || 0;
     const subtotalGuardado = Number(comanda?.SUBTOTAL) || 0;
@@ -82,7 +135,8 @@ const DetalleVentas = () => {
     return {
       total: totalGuardado > 0 ? totalGuardado : totalArticulos,
       subtotal: subtotalGuardado > 0 ? subtotalGuardado : subtotalArticulos,
-      descuento: Number(comanda?.DESCUENTO) || 0,
+      descuentoArticulos,
+      descuentoComanda: Math.abs(Number(comanda?.DESCUENTO) || 0),
       propina: Number(comanda?.PROPINA) || 0,
       costoEnvio: Number(comanda?.COSTO_ENVIO) || 0,
     };
@@ -241,88 +295,159 @@ const DetalleVentas = () => {
         </View>
       ) : (
         <>
-          {/* Info general */}
-          <View style={s.contenidoDetalle}>
-            <InformacionOrden
-              montoTotal={formatMonto(totalesCalculados.total)}
-              productosLength={articulos.length}
-              variante={
-                esCancelada
-                  ? "cancelado"
-                  : Number(comanda?.ESTATUS) === 3
-                    ? "pendiente"
-                    : "ok"
-              }
-            />
-            {/* Fila de datos */}
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: normalize(8),
-                marginTop: normalize(8),
-              }}
-            >
-              <_InfoChip
-                icono="grid"
-                texto={comanda.MESA_NOMBRE ?? "Sin mesa"}
+          <ScrollView
+            style={s.scrollDetalle}
+            contentContainerStyle={s.scrollDetalleContent}
+            showsVerticalScrollIndicator
+          >
+            <View style={s.contenidoDetalle}>
+              <InformacionOrden
+                montoTotal={formatMonto(totalesCalculados.total)}
+                productosLength={articulos.length}
+                variante={
+                  esCancelada
+                    ? "cancelado"
+                    : Number(comanda?.ESTATUS) === 3
+                      ? "pendiente"
+                      : "ok"
+                }
               />
-              <_InfoChip
-                icono="person"
-                texto={comanda.CLIENTE_NOMBRE ?? "Sin cliente"}
-              />
-              <_InfoChip
-                icono="wallet-outline"
-                texto={comanda.FORMATO_PAGO ?? "Sin método"}
-              />
-              {comanda.NOTA ? (
-                <_InfoChip icono="document-text-outline" texto={comanda.NOTA} />
-              ) : null}
-            </View>
-            {/* Desglose */}
-            <View style={{ marginTop: normalize(10), gap: normalize(4) }}>
-              <_FilaDesglose
-                label="Subtotal"
-                valor={totalesCalculados.subtotal}
-              />
-              <_FilaDesglose
-                label="Descuento"
-                valor={totalesCalculados.descuento}
-                resta
-              />
-              <_FilaDesglose
-                label="Propina"
-                valor={totalesCalculados.propina}
-              />
-              <_FilaDesglose
-                label="Costo envío"
-                valor={totalesCalculados.costoEnvio}
-              />
-              <View
-                style={{
-                  borderTopWidth: 1,
-                  borderTopColor: gb.gray200,
-                  paddingTop: normalize(4),
-                }}
-              >
-                <_FilaDesglose
-                  label="TOTAL"
-                  valor={totalesCalculados.total}
-                  bold
-                />
-              </View>
-            </View>
-          </View>
 
-          {/* Artículos */}
-          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+              <View style={s.bloqueInfo}>
+                <Text style={s.bloqueTitulo}>Datos de la venta</Text>
+                <_DatoFila
+                  icono="calendar-outline"
+                  etiqueta="Fecha"
+                  valor={formatFechaVenta(comanda.FECHA)}
+                />
+                <_DatoFila
+                  icono="grid-outline"
+                  etiqueta="Mesa"
+                  valor={comanda.MESA_NOMBRE ?? "Sin mesa"}
+                />
+                <_DatoFila
+                  icono="person-outline"
+                  etiqueta="Cliente"
+                  valor={comanda.CLIENTE_NOMBRE ?? "Sin cliente"}
+                />
+                <_DatoFila
+                  icono="wallet-outline"
+                  etiqueta="Forma de pago"
+                  valor={
+                    tieneCuentaDividida
+                      ? "Cuenta dividida"
+                      : (comanda.FORMATO_PAGO ?? "Sin método")
+                  }
+                  destacado={tieneCuentaDividida}
+                />
+                {!!comanda.NOTA && (
+                  <_DatoFila
+                    icono="document-text-outline"
+                    etiqueta="Nota"
+                    valor={comanda.NOTA}
+                  />
+                )}
+              </View>
+
+              <View style={s.bloqueInfo}>
+                <Text style={s.bloqueTitulo}>Resumen de montos</Text>
+                <_FilaDesglose
+                  label="Subtotal"
+                  valor={totalesCalculados.subtotal}
+                />
+                <_FilaDesglose
+                  label="Desc. en artículos"
+                  valor={totalesCalculados.descuentoArticulos}
+                  resta
+                />
+                <_FilaDesglose
+                  label="Desc. en comanda"
+                  valor={totalesCalculados.descuentoComanda}
+                  resta
+                />
+                <_FilaDesglose
+                  label="Propina"
+                  valor={totalesCalculados.propina}
+                />
+                <_FilaDesglose
+                  label="Costo envío"
+                  valor={totalesCalculados.costoEnvio}
+                />
+                <View style={s.totalSeparador}>
+                  <_FilaDesglose
+                    label="TOTAL"
+                    valor={totalesCalculados.total}
+                    bold
+                  />
+                </View>
+              </View>
+
+              {tieneCuentaDividida && (
+                <View style={s.cuentaDivididaBox}>
+                  <View style={s.cuentaDivididaHeader}>
+                    <View style={s.cuentaDivididaHeaderLeft}>
+                      <View style={s.cuentaDivididaIconWrap}>
+                        <Ionicons
+                          name="people-outline"
+                          size={normalize(18)}
+                          color={gb.blue550}
+                        />
+                      </View>
+                      <View>
+                        <Text style={s.cuentaDivididaTitulo}>
+                          Cómo se pagó
+                        </Text>
+                        <Text style={s.cuentaDivididaSubtitulo}>
+                          {pagoDividido.length} partes
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {pagoDividido.map((fila, index) => (
+                    <View
+                      key={String(fila.ID ?? index)}
+                      style={s.cuentaDivididaCard}
+                    >
+                      <View style={s.cuentaDivididaBadge}>
+                        <Text style={s.cuentaDivididaBadgeText}>
+                          {index + 1}
+                        </Text>
+                      </View>
+                      <View style={s.cuentaDivididaCardBody}>
+                        <Text style={s.cuentaDivididaCliente}>
+                          Parte {index + 1}
+                        </Text>
+                        <View style={s.cuentaDivididaMetodoPill}>
+                          <Ionicons
+                            name="card-outline"
+                            size={normalize(12)}
+                            color={gb.blue550}
+                          />
+                          <Text style={s.cuentaDivididaMetodo}>
+                            {nombreMetodoPago(fila.FORMA_PAGO, formatosPago)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={s.cuentaDivididaMonto}>
+                        ${formatMonto(fila.TOTAL)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
             <View style={s.contenidoProductos}>
+              <Text style={s.bloqueTituloProductos}>Productos</Text>
               {articulos.map((art) => (
                 <CardProductoVenta
                   key={art.ID}
                   producto={art.ARTICULO_NOMBRE ?? "Artículo"}
                   cantidad={art.CANTIDAD}
                   precioUnitario={art.PRECIO_VENTA ?? art.ARTICULO_PRECIO ?? 0}
+                  descuento={descuentoArticulo(art)}
+                  total={art.TOTAL}
                   complementos={(art.complementos ?? []).map((c) => ({
                     id: c.ID,
                     nombre: c.COMP_NOMBRE ?? "Complemento",
@@ -380,21 +505,24 @@ const DetalleVentas = () => {
   );
 };
 
-// ── Subcomponentes internos ───────────────────────────────────────────────────
-const _InfoChip = ({ icono, texto }) => (
-  <View
-    style={{
-      flexDirection: "row",
-      alignItems: "center",
-      gap: normalize(4),
-      backgroundColor: gb.gray100,
-      borderRadius: normalize(8),
-      paddingHorizontal: normalize(8),
-      paddingVertical: normalize(4),
-    }}
-  >
-    <Ionicons name={icono} size={normalize(13)} color={gb.gray500} />
-    <Text style={{ fontSize: normalize(12), color: gb.gray600 }}>{texto}</Text>
+const _DatoFila = ({ icono, etiqueta, valor, destacado = false }) => (
+  <View style={s.datoFila}>
+    <View style={[s.datoIcono, destacado && s.datoIconoDestacado]}>
+      <Ionicons
+        name={icono}
+        size={normalize(16)}
+        color={destacado ? gb.blue550 : gb.gray500}
+      />
+    </View>
+    <View style={s.datoTextos}>
+      <Text style={s.datoEtiqueta}>{etiqueta}</Text>
+      <Text
+        style={[s.datoValor, destacado && s.datoValorDestacado]}
+        numberOfLines={2}
+      >
+        {valor}
+      </Text>
+    </View>
   </View>
 );
 
@@ -402,22 +530,16 @@ const _FilaDesglose = ({ label, valor, resta, bold }) => {
   const num = parseFloat(valor) || 0;
   if (!bold && num === 0) return null;
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-      <Text
-        style={{
-          fontSize: normalize(12),
-          color: gb.gray500,
-          fontWeight: bold ? "700" : "400",
-        }}
-      >
+    <View style={s.filaDesglose}>
+      <Text style={[s.filaDesgloseLabel, bold && s.filaDesgloseBold]}>
         {label}
       </Text>
       <Text
-        style={{
-          fontSize: normalize(12),
-          color: resta ? "#F44336" : gb.gray700,
-          fontWeight: bold ? "700" : "400",
-        }}
+        style={[
+          s.filaDesgloseValor,
+          bold && s.filaDesgloseBold,
+          resta && s.filaDesgloseResta,
+        ]}
       >
         {resta ? "- " : ""}$
         {num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}

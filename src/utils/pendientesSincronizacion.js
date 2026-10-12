@@ -73,7 +73,12 @@ export const hayPendientesInicioDeDia = (pendientes) =>
   Number(pendientes?.cajaAbierta ?? 0) > 0 ||
   Number(pendientes?.ventasAnteriores ?? 0) > 0;
 
-export const construirListaPendientes = (pendientes) => {
+export const hayPendientesCierreSesion = (pendientes) =>
+  hayPendientesParaSincronizacionGeneral(pendientes) ||
+  Number(pendientes?.cajaAbierta ?? 0) > 0;
+
+export const construirListaPendientes = (pendientes, opciones = {}) => {
+  const incluirVentasAnteriores = opciones.incluirVentasAnteriores !== false;
   const partes = [];
 
   if (pendientes.comandasAbiertas > 0) {
@@ -109,13 +114,22 @@ export const construirListaPendientes = (pendientes) => {
       `${pendientes.inventario} movimiento${pendientes.inventario === 1 ? "" : "s"} de inventario sin sincronizar`,
     );
   }
-  if (pendientes.ventasAnteriores > 0) {
+  if (incluirVentasAnteriores && pendientes.ventasAnteriores > 0) {
     partes.push(
       `${pendientes.ventasAnteriores} venta${pendientes.ventasAnteriores === 1 ? "" : "s"} de días anteriores por limpiar`,
     );
   }
 
   return partes;
+};
+
+export const construirMensajeCierreSesion = (pendientes) => {
+  const lista = construirListaPendientes(pendientes, {
+    incluirVentasAnteriores: false,
+  });
+  if (lista.length === 0) return "";
+  const bullets = lista.map((item) => `• ${item}`).join("\n");
+  return `Resuelve lo siguiente antes de cerrar sesión:\n\n${bullets}`;
 };
 
 export const construirMensajePendientes = (pendientes) => {

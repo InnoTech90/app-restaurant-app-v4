@@ -588,29 +588,36 @@ const Ventas = () => {
                 paddingBottom: normalize(20),
               }}
             >
-              {ventasFiltradasState.map((venta) => (
-                <CardVenta
-                  key={venta.ID}
-                  ficha={String(venta.FICHA ?? venta.ID)}
-                  mesa={venta.MESA_NOMBRE ?? "Mesa"}
-                  total={formatTotal(venta.TOTAL)}
-                  productos={venta.NUM_ARTICULOS ?? 0}
-                  fecha={formatFecha(venta.FECHA)}
-                  status={estatusTexto(venta.ESTATUS)}
-                  sincronizado={ventaEstaSincronizada(venta)}
-                  seleccionado={venta.seleccionado}
-                  idComanda={venta.ID}
-                  onSeleccionar={(valor) => {
-                    setVentas((prev) =>
-                      prev.map((v) =>
-                        Number(v.ID) === Number(venta.ID)
-                          ? { ...v, seleccionado: valor }
-                          : v,
-                      ),
-                    );
-                  }}
-                />
-              ))}
+              {ventasFiltradasState.map((venta) => {
+                const descuentoTotal =
+                  (Number(venta.DESCUENTO_COMANDA) || 0) +
+                  (Number(venta.DESCUENTO_ARTICULOS) || 0);
+                return (
+                  <CardVenta
+                    key={venta.ID}
+                    ficha={String(venta.FICHA ?? venta.ID)}
+                    mesa={venta.MESA_NOMBRE ?? "Mesa"}
+                    total={formatTotal(venta.TOTAL)}
+                    productos={venta.NUM_ARTICULOS ?? 0}
+                    fecha={formatFecha(venta.FECHA)}
+                    status={estatusTexto(venta.ESTATUS)}
+                    sincronizado={ventaEstaSincronizada(venta)}
+                    seleccionado={venta.seleccionado}
+                    idComanda={venta.ID}
+                    descuento={descuentoTotal}
+                    cuentaDividida={Number(venta.PARTES_CUENTA_DIVIDIDA) > 0}
+                    onSeleccionar={(valor) => {
+                      setVentas((prev) =>
+                        prev.map((v) =>
+                          Number(v.ID) === Number(venta.ID)
+                            ? { ...v, seleccionado: valor }
+                            : v,
+                        ),
+                      );
+                    }}
+                  />
+                );
+              })}
             </ScrollView>
           )}
         </View>

@@ -44,6 +44,25 @@ export const s = StyleSheet.create({
         fontSize: normalize(14),
         color: gb.green500,
         fontWeight: "bold",
-    }
-
+    },
+    descuentoRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginTop: normalize(6),
+        paddingVertical: normalize(4),
+        paddingHorizontal: normalize(8),
+        backgroundColor: "#FFEBEE",
+        borderRadius: normalize(6),
+    },
+    descuentoLabel: {
+        fontSize: normalize(12),
+        color: "#C62828",
+        fontWeight: "600",
+    },
+    descuentoValor: {
+        fontSize: normalize(13),
+        color: "#C62828",
+        fontWeight: "700",
+    },
 })

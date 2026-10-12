@@ -38,13 +38,10 @@ export const s = StyleSheet.create({
         padding: normalize(14),
         paddingBottom: normalize(30),
         gap: normalize(10),
-        // En tablet: grid de 2 columnas centrado
         ...(isTablet && {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
             alignSelf: "center",
             width: CONTENT_MAX_WIDTH,
+            maxWidth: "100%",
         }),
     },
     emptyContainer: {
@@ -70,8 +67,7 @@ export const s = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 6,
         elevation: 3,
-        // En tablet cada card ocupa ~48%
-        ...(isTablet && { width: "48%" }),
+        ...(isTablet && { width: "100%" }),
     },
     cardAccent: {
         width: normalize(5),
@@ -130,6 +126,11 @@ export const s = StyleSheet.create({
         paddingBottom: normalize(40),
         gap: normalize(12),
         backgroundColor: gb.gray100,
+        ...(isTablet && {
+            alignSelf: "center",
+            width: CONTENT_MAX_WIDTH,
+            maxWidth: "100%",
+        }),
     },
     sectionLabel: {
         color: gb.purple800,
@@ -291,6 +292,7 @@ export const s = StyleSheet.create({
 
     /* ── Sección de categoría ────────────────── */
     seccion: {
+        width: "100%",
         backgroundColor: "white",
         borderRadius: normalize(12),
         overflow: "hidden",
@@ -314,11 +316,14 @@ export const s = StyleSheet.create({
         textTransform: "uppercase",
         letterSpacing: 0.6,
         flex: 1,
+        flexShrink: 1,
+        minWidth: 0,
     },
     seccionHeaderTotal: {
         color: "white",
         fontWeight: "800",
         fontSize: normalize(14),
+        flexShrink: 0,
     },
     seccionNombrePendiente: {
         color: "#8A4E2A",
@@ -367,21 +372,25 @@ export const s = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: normalize(8),
+        minWidth: 0,
     },
     gastoFecha: {
         color: gb.gray700,
         fontWeight: "600",
         fontSize: normalize(12),
+        flexShrink: 1,
     },
     gastoNota: {
         color: gb.gray400,
         fontSize: normalize(11),
         marginTop: normalize(2),
+        flexShrink: 1,
     },
     gastoMonto: {
         color: gb.blue550,
         fontWeight: "700",
         fontSize: normalize(13),
+        flexShrink: 0,
     },
     seccionAddBtn: {
         width: normalize(28),
@@ -544,21 +553,25 @@ export const s = StyleSheet.create({
     conceptoRowInfo: {
         flex: 1,
         gap: normalize(2),
+        minWidth: 0,
     },
     conceptoRowTopLine: {
         flexDirection: "row",
         alignItems: "center",
         gap: normalize(6),
+        minWidth: 0,
     },
     conceptoRowNombre: {
         color: gb.gray700,
         fontWeight: "600",
         fontSize: normalize(13),
         flex: 1,
+        flexShrink: 1,
     },
     conceptoRowPrecioBase: {
         color: gb.gray400,
         fontSize: normalize(11),
+        flexShrink: 1,
     },
     conceptoRowHint: {
         color: gb.blue550,
@@ -571,10 +584,12 @@ export const s = StyleSheet.create({
         fontWeight: "700",
         fontSize: normalize(14),
         marginLeft: normalize(4),
+        flexShrink: 0,
     },
     conceptoDeleteBtn: {
         padding: normalize(4),
         marginLeft: normalize(2),
+        flexShrink: 0,
     },
     conceptoDivider: {
         height: 1,

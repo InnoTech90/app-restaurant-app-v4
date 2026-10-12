@@ -170,16 +170,197 @@ export const s = StyleSheet.create({
         color: gb.gray50,
         fontWeight: "bold"
     },
+    scrollDetalle: {
+        flex: 1,
+        backgroundColor: gb.gray50,
+    },
+    scrollDetalleContent: {
+        flexGrow: 1,
+        paddingBottom: normalize(20),
+    },
     contenidoDetalle: {
         backgroundColor: gb.gray50,
-        padding: normalize(10),
-
-
+        padding: normalize(12),
+        gap: normalize(12),
     },
     contenidoProductos: {
         backgroundColor: gb.gray50,
-        paddingHorizontal: normalize(20),
-        flex: 1
+        paddingHorizontal: normalize(12),
+        paddingTop: normalize(4),
+    },
+    bloqueTituloProductos: {
+        fontSize: normalize(13),
+        fontWeight: "700",
+        color: gb.gray700,
+        marginBottom: normalize(10),
+        paddingHorizontal: normalize(4),
+    },
+    bloqueInfo: {
+        backgroundColor: "white",
+        borderRadius: normalize(12),
+        paddingHorizontal: normalize(12),
+        paddingVertical: normalize(12),
+        gap: normalize(10),
+        borderWidth: 1,
+        borderColor: gb.gray200,
+    },
+    bloqueTitulo: {
+        fontSize: normalize(13),
+        fontWeight: "700",
+        color: gb.gray700,
+        marginBottom: normalize(2),
+    },
+    datoFila: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(10),
+    },
+    datoIcono: {
+        width: normalize(34),
+        height: normalize(34),
+        borderRadius: normalize(10),
+        backgroundColor: gb.gray100,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    datoIconoDestacado: {
+        backgroundColor: gb.blue100,
+    },
+    datoTextos: {
+        flex: 1,
+        gap: normalize(1),
+    },
+    datoEtiqueta: {
+        fontSize: normalize(11),
+        color: gb.gray400,
+        fontWeight: "600",
+        textTransform: "uppercase",
+        letterSpacing: 0.3,
+    },
+    datoValor: {
+        fontSize: normalize(14),
+        color: gb.gray800,
+        fontWeight: "600",
+    },
+    datoValorDestacado: {
+        color: gb.blue550,
+    },
+    filaDesglose: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    filaDesgloseLabel: {
+        fontSize: normalize(13),
+        color: gb.gray500,
+    },
+    filaDesgloseValor: {
+        fontSize: normalize(13),
+        color: gb.gray700,
+        fontWeight: "500",
+    },
+    filaDesgloseBold: {
+        fontWeight: "700",
+        color: gb.gray800,
+        fontSize: normalize(15),
+    },
+    filaDesgloseResta: {
+        color: "#F44336",
+    },
+    totalSeparador: {
+        borderTopWidth: 1,
+        borderTopColor: gb.gray200,
+        paddingTop: normalize(8),
+        marginTop: normalize(2),
+    },
+    cuentaDivididaBox: {
+        backgroundColor: "white",
+        borderRadius: normalize(12),
+        padding: normalize(12),
+        gap: normalize(10),
+        borderWidth: 1,
+        borderColor: gb.blue100,
+    },
+    cuentaDivididaHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+    cuentaDivididaHeaderLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(10),
+    },
+    cuentaDivididaIconWrap: {
+        width: normalize(36),
+        height: normalize(36),
+        borderRadius: normalize(18),
+        backgroundColor: gb.blue100,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cuentaDivididaTitulo: {
+        fontSize: normalize(14),
+        fontWeight: "700",
+        color: gb.gray800,
+    },
+    cuentaDivididaSubtitulo: {
+        fontSize: normalize(12),
+        color: gb.gray500,
+        marginTop: normalize(1),
+    },
+    cuentaDivididaCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(10),
+        backgroundColor: gb.gray50,
+        borderRadius: normalize(10),
+        paddingHorizontal: normalize(10),
+        paddingVertical: normalize(10),
+        borderWidth: 1,
+        borderColor: gb.gray200,
+    },
+    cuentaDivididaBadge: {
+        width: normalize(28),
+        height: normalize(28),
+        borderRadius: normalize(14),
+        backgroundColor: gb.blue550,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cuentaDivididaBadgeText: {
+        color: "white",
+        fontSize: normalize(13),
+        fontWeight: "700",
+    },
+    cuentaDivididaCardBody: {
+        flex: 1,
+        gap: normalize(4),
+    },
+    cuentaDivididaCliente: {
+        fontSize: normalize(13),
+        fontWeight: "700",
+        color: gb.gray800,
+    },
+    cuentaDivididaMetodoPill: {
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(4),
+        backgroundColor: gb.blue100,
+        borderRadius: normalize(20),
+        paddingHorizontal: normalize(8),
+        paddingVertical: normalize(3),
+    },
+    cuentaDivididaMetodo: {
+        fontSize: normalize(11),
+        color: gb.blue550,
+        fontWeight: "600",
+    },
+    cuentaDivididaMonto: {
+        fontSize: normalize(15),
+        fontWeight: "800",
+        color: gb.gray800,
     },
     footerReimprimir: {
         backgroundColor: gb.gray50,
