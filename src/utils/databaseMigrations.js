@@ -69,6 +69,36 @@ export async function runDatabaseMigrations(db) {
     "CONCEPTO",
     "ALTER TABLE MOVIMIENTO_CAJA ADD COLUMN CONCEPTO NVARCHAR",
   );
+  await ensureColumn(
+    db,
+    "HISTORIAL_CAJA",
+    "UUID",
+    "ALTER TABLE HISTORIAL_CAJA ADD COLUMN UUID NVARCHAR",
+  );
+  await ensureColumn(
+    db,
+    "HISTORIAL_CAJA",
+    "SINCRONIZADO",
+    "ALTER TABLE HISTORIAL_CAJA ADD COLUMN SINCRONIZADO INTEGER DEFAULT 0",
+  );
+  await ensureColumn(
+    db,
+    "HISTORIAL_CAJA",
+    "CIERRE_SINCRONIZADO",
+    "ALTER TABLE HISTORIAL_CAJA ADD COLUMN CIERRE_SINCRONIZADO INTEGER DEFAULT 1",
+  );
+  await ensureColumn(
+    db,
+    "MOVIMIENTO_CAJA",
+    "UUID",
+    "ALTER TABLE MOVIMIENTO_CAJA ADD COLUMN UUID NVARCHAR",
+  );
+  await ensureColumn(
+    db,
+    "MOVIMIENTO_CAJA",
+    "SINCRONIZADO",
+    "ALTER TABLE MOVIMIENTO_CAJA ADD COLUMN SINCRONIZADO INTEGER DEFAULT 0",
+  );
 
   await db.runAsync(`
     CREATE TABLE IF NOT EXISTS CAJA_VENTA (

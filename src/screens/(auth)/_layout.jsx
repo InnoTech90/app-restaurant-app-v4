@@ -239,6 +239,7 @@ export default function AuthLayout() {
     { name: "Gastos/styles" },
     { name: "Caja/styles" },
     { name: "Caja/dataBase" },
+    { name: "Caja/integracion" },
     { name: "Ventas/styles" },
     { name: "Ventas/ticket" },
     { name: "Ventas/integracion" },

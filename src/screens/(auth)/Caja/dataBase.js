@@ -69,9 +69,6 @@ export class Database {
           .filter((m) => m.TIPO === "retiro")
           .reduce((sum, m) => sum + Number(m.MONTO ?? 0), 0);
         const ventasSesion = ventasPorCaja[sesion.ID] ?? [];
-        const efectivoVentas = ventasSesion
-          .filter((v) => Number(v.ES_EFECTIVO) === 1)
-          .reduce((sum, v) => sum + Number(v.TOTAL ?? 0), 0);
         const totales = new Map(metodos.map((m) => [m.NOMBRE, 0]));
         for (const venta of ventasSesion) {
           const nombre = venta.METODO || "Otro";
@@ -92,8 +89,7 @@ export class Database {
           ...sesion,
           movimientos: lista,
           ventasPorMetodo,
-          SALDO:
-            Number(sesion.MONTO ?? 0) + depositos - retiros + efectivoVentas,
+          SALDO: Number(sesion.MONTO ?? 0) + depositos - retiros,
         };
       });
     });
@@ -213,7 +209,7 @@ export class Database {
       await runDatabaseMigrations(db);
       const { idSucursal, nombreDispositivo, monto } = params;
 
-      await db.runAsync(
+      const result = await db.runAsync(
         `
                 INSERT INTO HISTORIAL_CAJA
                 (
@@ -221,13 +217,15 @@ export class Database {
                     NOMBRE_DISPOCITIVO,
                     MONTO,
                     ESTATUS,
-                    CONCEPTO
+                    CONCEPTO,
+                    SINCRONIZADO,
+                    CIERRE_SINCRONIZADO
                 )
-                VALUES (?, ?, ?, 1, ?)
+                VALUES (?, ?, ?, 1, ?, 0, 1)
                 `,
         [idSucursal, nombreDispositivo, monto, concepto],
       );
-      return { ok: true };
+      return { ok: true, id: result.lastInsertRowId };
     });
   }
 
@@ -248,7 +246,7 @@ export class Database {
     return withDb("Caja.insertarMovimiento", async (db) => {
       await runDatabaseMigrations(db);
       const caja = await db.getFirstAsync(
-        `SELECT ID, ESTATUS, MONTO FROM HISTORIAL_CAJA WHERE ID = ?`,
+        `SELECT ID, ESTATUS, MONTO, UUID FROM HISTORIAL_CAJA WHERE ID = ?`,
         [idCaja],
       );
 
@@ -273,19 +271,10 @@ export class Database {
                     `,
           [idCaja],
         );
-        const efectivoVentas = await db.getFirstAsync(
-          `
-                    SELECT COALESCE(SUM(MONTO), 0) AS TOTAL
-                    FROM CAJA_VENTA
-                    WHERE ID_CAJA = ? AND ES_EFECTIVO = 1
-                    `,
-          [idCaja],
-        );
         const saldo =
           Number(caja.MONTO ?? 0) +
           Number(sums?.DEPOSITOS ?? 0) -
-          Number(sums?.RETIROS ?? 0) +
-          Number(efectivoVentas?.TOTAL ?? 0);
+          Number(sums?.RETIROS ?? 0);
         if (cantidad > saldo + 0.001) {
           return {
             ok: false,
@@ -295,11 +284,16 @@ export class Database {
         }
       }
 
-      await db.runAsync(
-        `INSERT INTO MOVIMIENTO_CAJA (ID_CAJA, TIPO, MONTO, CONCEPTO) VALUES (?, ?, ?, ?)`,
+      const result = await db.runAsync(
+        `INSERT INTO MOVIMIENTO_CAJA (ID_CAJA, TIPO, MONTO, CONCEPTO, SINCRONIZADO)
+         VALUES (?, ?, ?, ?, 0)`,
         [idCaja, tipo, cantidad, motivo],
       );
-      return { ok: true };
+      return {
+        ok: true,
+        id: result.lastInsertRowId,
+        uuidCaja: caja.UUID ?? null,
+      };
     });
   }
 
@@ -315,7 +309,7 @@ export class Database {
     return withDb("Caja.cerrarCaja", async (db) => {
       await runDatabaseMigrations(db);
       const caja = await db.getFirstAsync(
-        `SELECT ID, ESTATUS FROM HISTORIAL_CAJA WHERE ID = ?`,
+        `SELECT ID, ESTATUS, UUID FROM HISTORIAL_CAJA WHERE ID = ?`,
         [id],
       );
       if (!caja || Number(caja.ESTATUS) !== 1) {
@@ -327,12 +321,13 @@ export class Database {
                 UPDATE HISTORIAL_CAJA
                 SET ESTATUS = 0,
                     FECHA_CIERRE = CURRENT_TIMESTAMP,
-                    FONDO = ?
+                    FONDO = ?,
+                    CIERRE_SINCRONIZADO = 0
                 WHERE ID = ?
                 `,
         [montoFondo, id],
       );
-      return { ok: true };
+      return { ok: true, uuidCaja: caja.UUID ?? null };
     });
   }
 
@@ -371,4 +366,244 @@ export class Database {
       return { ok: true };
     });
   }
+
+  static async eliminarMovimiento(id) {
+    if (!id) return { ok: false };
+    return withDb("Caja.eliminarMovimiento", async (db) => {
+      await db.runAsync(`DELETE FROM MOVIMIENTO_CAJA WHERE ID = ?`, [id]);
+      return { ok: true };
+    });
+  }
+
+  static async eliminarSesion(id) {
+    if (!id) return { ok: false };
+    return withDb("Caja.eliminarSesion", async (db) => {
+      await db.runAsync(`DELETE FROM MOVIMIENTO_CAJA WHERE ID_CAJA = ?`, [id]);
+      await db.runAsync(`DELETE FROM HISTORIAL_CAJA WHERE ID = ?`, [id]);
+      return { ok: true };
+    });
+  }
+
+  static async marcarSesionSincronizada(id, uuid) {
+    return withDb("Caja.marcarSesionSincronizada", async (db) => {
+      await db.runAsync(
+        `UPDATE HISTORIAL_CAJA
+         SET UUID = ?, SINCRONIZADO = 1
+         WHERE ID = ?`,
+        [uuid, id],
+      );
+      return { ok: true };
+    });
+  }
+
+  static async marcarCierreSincronizado(id) {
+    return withDb("Caja.marcarCierreSincronizado", async (db) => {
+      await db.runAsync(
+        `UPDATE HISTORIAL_CAJA
+         SET CIERRE_SINCRONIZADO = 1
+         WHERE ID = ?`,
+        [id],
+      );
+      return { ok: true };
+    });
+  }
+
+  static async marcarMovimientoSincronizado(id, uuid) {
+    return withDb("Caja.marcarMovimientoSincronizado", async (db) => {
+      await db.runAsync(
+        `UPDATE MOVIMIENTO_CAJA
+         SET UUID = ?, SINCRONIZADO = 1
+         WHERE ID = ?`,
+        [uuid, id],
+      );
+      return { ok: true };
+    });
+  }
+
+  static async getPendientesParaSincronizar() {
+    const idSucursal = await AsyncStorage.getItem("qrCode");
+    return withDb("Caja.getPendientesParaSincronizar", async (db) => {
+      await runDatabaseMigrations(db);
+      const sesiones = await db.getAllAsync(
+        `
+        SELECT *
+        FROM HISTORIAL_CAJA
+        WHERE ID_SUCURSAL = ?
+          AND (
+            SINCRONIZADO = 0
+            OR (ESTATUS = 0 AND CIERRE_SINCRONIZADO = 0)
+          )
+        ORDER BY FECHA ASC
+        `,
+        [idSucursal],
+      );
+
+      const movimientos = await db.getAllAsync(
+        `
+        SELECT m.*, c.UUID AS UUID_CAJA
+        FROM MOVIMIENTO_CAJA m
+        INNER JOIN HISTORIAL_CAJA c ON c.ID = m.ID_CAJA
+        WHERE c.ID_SUCURSAL = ?
+          AND m.SINCRONIZADO = 0
+        ORDER BY m.FECHA ASC, m.ID ASC
+        `,
+        [idSucursal],
+      );
+
+      return { sesiones, movimientos };
+    });
+  }
+
+  static async upsertDesdeApi(registros, idSucursal) {
+    return withDb("Caja.upsertDesdeApi", async (db) => {
+      await runDatabaseMigrations(db);
+
+      for (const registro of registros ?? []) {
+        const uuid = registro.id;
+        if (!uuid) continue;
+
+        let local = await db.getFirstAsync(
+          `SELECT ID FROM HISTORIAL_CAJA WHERE UUID = ?`,
+          [uuid],
+        );
+
+        if (!local) {
+          const localId = extraerIdLocal(registro.externalId, "caja-local-");
+          if (localId) {
+            local = await db.getFirstAsync(
+              `SELECT ID FROM HISTORIAL_CAJA WHERE ID = ?`,
+              [localId],
+            );
+          }
+        }
+
+        const estatus = registro.status === "open" ? 1 : 0;
+        const payload = [
+          idSucursal,
+          registro.deviceName ?? null,
+          registro.openedAt ?? null,
+          registro.closedAt ?? null,
+          estatus,
+          Number(registro.openingAmount ?? 0),
+          registro.openingConcept ?? "",
+          registro.closingFund == null ? null : Number(registro.closingFund),
+          uuid,
+        ];
+
+        let idCaja = local?.ID;
+        if (local) {
+          await db.runAsync(
+            `
+            UPDATE HISTORIAL_CAJA
+            SET ID_SUCURSAL = ?,
+                NOMBRE_DISPOCITIVO = ?,
+                FECHA = ?,
+                FECHA_CIERRE = ?,
+                ESTATUS = ?,
+                MONTO = ?,
+                CONCEPTO = ?,
+                FONDO = ?,
+                UUID = ?,
+                SINCRONIZADO = 1,
+                CIERRE_SINCRONIZADO = 1
+            WHERE ID = ?
+            `,
+            [...payload, local.ID],
+          );
+        } else {
+          const insert = await db.runAsync(
+            `
+            INSERT INTO HISTORIAL_CAJA
+            (
+              ID_SUCURSAL,
+              NOMBRE_DISPOCITIVO,
+              FECHA,
+              FECHA_CIERRE,
+              ESTATUS,
+              MONTO,
+              CONCEPTO,
+              FONDO,
+              UUID,
+              SINCRONIZADO,
+              CIERRE_SINCRONIZADO
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+            `,
+            payload,
+          );
+          idCaja = insert.lastInsertRowId;
+        }
+
+        for (const movimiento of registro.movements ?? []) {
+          if (!movimiento?.id || !idCaja) continue;
+          const tipo =
+            movimiento.type === "withdrawal" ? "retiro" : "deposito";
+          let localMov = await db.getFirstAsync(
+            `SELECT ID FROM MOVIMIENTO_CAJA WHERE UUID = ?`,
+            [movimiento.id],
+          );
+          if (!localMov) {
+            const movLocalId = extraerIdLocal(
+              movimiento.externalId,
+              "mov-local-",
+            );
+            if (movLocalId) {
+              localMov = await db.getFirstAsync(
+                `SELECT ID FROM MOVIMIENTO_CAJA WHERE ID = ?`,
+                [movLocalId],
+              );
+            }
+          }
+
+          if (localMov) {
+            await db.runAsync(
+              `
+              UPDATE MOVIMIENTO_CAJA
+              SET ID_CAJA = ?,
+                  TIPO = ?,
+                  MONTO = ?,
+                  CONCEPTO = ?,
+                  FECHA = ?,
+                  UUID = ?,
+                  SINCRONIZADO = 1
+              WHERE ID = ?
+              `,
+              [
+                idCaja,
+                tipo,
+                Number(movimiento.amount ?? 0),
+                movimiento.concept ?? "",
+                movimiento.movementDate ?? null,
+                movimiento.id,
+                localMov.ID,
+              ],
+            );
+          } else {
+            await db.runAsync(
+              `
+              INSERT INTO MOVIMIENTO_CAJA
+              (ID_CAJA, TIPO, MONTO, CONCEPTO, FECHA, UUID, SINCRONIZADO)
+              VALUES (?, ?, ?, ?, ?, ?, 1)
+              `,
+              [
+                idCaja,
+                tipo,
+                Number(movimiento.amount ?? 0),
+                movimiento.concept ?? "",
+                movimiento.movementDate ?? null,
+                movimiento.id,
+              ],
+            );
+          }
+        }
+      }
+    });
+  }
 }
+
+const extraerIdLocal = (valor, prefijo) => {
+  const raw = String(valor ?? "");
+  if (!raw.startsWith(prefijo)) return null;
+  const id = Number(raw.slice(prefijo.length));
+  return Number.isFinite(id) ? id : null;
+};

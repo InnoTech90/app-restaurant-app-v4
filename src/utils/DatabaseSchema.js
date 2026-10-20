@@ -386,7 +386,10 @@ export const DatabaseSchema = {
           ESTATUS INTEGER,
           MONTO REAL,
           CONCEPTO NVARCHAR,
-          FONDO REAL
+          FONDO REAL,
+          UUID NVARCHAR,
+          SINCRONIZADO INTEGER DEFAULT 0,
+          CIERRE_SINCRONIZADO INTEGER DEFAULT 1
         )
       `,
       dependencies: ["SUCURSAL"],
@@ -401,7 +404,9 @@ export const DatabaseSchema = {
           TIPO NVARCHAR,
           MONTO REAL,
           CONCEPTO NVARCHAR,
-          FECHA DATETIME DEFAULT CURRENT_TIMESTAMP
+          FECHA DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UUID NVARCHAR,
+          SINCRONIZADO INTEGER DEFAULT 0
         )
       `,
       dependencies: ["HISTORIAL_CAJA"],

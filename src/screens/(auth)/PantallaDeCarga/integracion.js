@@ -1,5 +1,7 @@
 import { initializeSchema } from "../../../utils/db";
+import { esErrorDeConexion } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
+import { integracionCaja } from "../Caja/integracion";
 import { Database } from "./database";
 
 export class integracionPantallaDeCarga {
@@ -111,9 +113,12 @@ export class integracionPantallaDeCarga {
   static historialCaja = async () => {
     try {
       await Database.historialCajaModel();
+      await integracionCaja.descargarHistorial();
     } catch (error) {
+      if (esErrorDeConexion(error)) {
+        return;
+      }
       console.error("Error fetching historialCaja data:", error);
-
       throw error;
     }
   };

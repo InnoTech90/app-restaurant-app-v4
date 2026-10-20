@@ -22,6 +22,7 @@ import { setAuthHeaderTitulo } from "../../../utils/authHeaderTitle";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { Database } from "./dataBase";
+import { integracionCaja } from "./integracion";
 import { s } from "./styles";
 
 /** SQLite CURRENT_TIMESTAMP guarda UTC sin zona; convertir a hora local para mostrar. */
@@ -102,7 +103,7 @@ const Caja = () => {
 
   const getData = useCallback(async () => {
     try {
-      const res = await Database.getHistorial();
+      const res = await integracionCaja.getHistorial();
       setHistorial(res || []);
       return res || [];
     } catch (error) {
@@ -144,8 +145,6 @@ const Caja = () => {
   );
 
   const actualizarCajaAbierta = async () => {
-    const abierta = historial.some((item) => Number(item.ESTATUS) === 1);
-    if (!abierta) return;
     setRefrescando(true);
     try {
       await getData();
@@ -169,7 +168,7 @@ const Caja = () => {
     const qrData = await AsyncStorage.getItem("qrCode");
     const nombreDispositivo = await Database.getNombreDispocitivo();
     try {
-      const resultado = await Database.insertarApertura({
+      const resultado = await integracionCaja.abrirCaja({
         idSucursal: qrData,
         nombreDispositivo,
         monto: montoInicial,
@@ -207,7 +206,7 @@ const Caja = () => {
       return;
     }
     try {
-      const resultado = await Database.cerrarCaja(ultimaSesion.ID, fondo);
+      const resultado = await integracionCaja.cerrarCaja(ultimaSesion.ID, fondo);
       if (resultado && resultado.ok === false) {
         mostrarAviso(
           "No se pudo cerrar",
@@ -308,7 +307,7 @@ const Caja = () => {
       return;
     }
     try {
-      const resultado = await Database.insertarMovimiento({
+      const resultado = await integracionCaja.registrarMovimiento({
         idCaja: sesionActual.ID,
         tipo: tipoMovimiento,
         monto: cantidad,
@@ -360,7 +359,7 @@ const Caja = () => {
           <RefreshControl
             refreshing={refrescando}
             onRefresh={actualizarCajaAbierta}
-            enabled={cajaAbierta}
+            enabled
             colors={gb.gradient_blue}
             tintColor={gb.blue550}
           />
