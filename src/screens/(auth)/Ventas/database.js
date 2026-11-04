@@ -48,6 +48,9 @@ export default class VentasDatabase {
                 c.SINCRONIZADO,
                 c.ID_CLIENTE,
                 c.ID_MESA,
+                c.ORIGEN,
+                c.ID_PEDIDO_DIGITAL,
+                c.TIPO_ENTREGA,
                 m.NOMBRE AS MESA_NOMBRE,
                 cl.NOMBRE AS CLIENTE_NOMBRE,
                 (SELECT COUNT(*) FROM COMANDA_ARTICULO ca WHERE ca.ID_COMANDA = c.ID) AS NUM_ARTICULOS

@@ -21,6 +21,7 @@ const CardVenta = ({
     idComanda,
     descuento = 0,
     cuentaDividida = false,
+    esPedidoEnLinea = false,
 }) => {
     const router = useRouter();
 
@@ -114,10 +115,16 @@ const CardVenta = ({
                         </View>
                     </View>
 
-                    {(Number(descuento) > 0 || cuentaDividida) && (
+                    {(Number(descuento) > 0 || cuentaDividida || esPedidoEnLinea) && (
                         <>
                             <View style={s.lineaSeparadora} />
                             <View style={s.badgesRow}>
+                                {esPedidoEnLinea && (
+                                    <View style={s.badgeOnline}>
+                                        <Ionicons name="phone-portrait-outline" size={12} color="#7C2D12" />
+                                        <Text style={s.badgeOnlineText}>Pedido en línea</Text>
+                                    </View>
+                                )}
                                 {Number(descuento) > 0 && (
                                     <View style={s.badgeDescuento}>
                                         <Ionicons name="pricetag-outline" size={12} color="#C62828" />

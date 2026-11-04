@@ -597,7 +597,13 @@ const Ventas = () => {
                   <CardVenta
                     key={venta.ID}
                     ficha={String(venta.FICHA ?? venta.ID)}
-                    mesa={venta.MESA_NOMBRE ?? "Mesa"}
+                    mesa={
+                      String(venta.ORIGEN || "").toUpperCase() === "ONLINE"
+                        ? venta.TIPO_ENTREGA === "delivery"
+                          ? "Pedido en línea · Delivery"
+                          : "Pedido en línea · Recoger"
+                        : (venta.MESA_NOMBRE ?? "Mesa")
+                    }
                     total={formatTotal(venta.TOTAL)}
                     productos={venta.NUM_ARTICULOS ?? 0}
                     fecha={formatFecha(venta.FECHA)}
@@ -607,6 +613,9 @@ const Ventas = () => {
                     idComanda={venta.ID}
                     descuento={descuentoTotal}
                     cuentaDividida={Number(venta.PARTES_CUENTA_DIVIDIDA) > 0}
+                    esPedidoEnLinea={
+                      String(venta.ORIGEN || "").toUpperCase() === "ONLINE"
+                    }
                     onSeleccionar={(valor) => {
                       setVentas((prev) =>
                         prev.map((v) =>

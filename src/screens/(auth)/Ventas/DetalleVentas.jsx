@@ -323,8 +323,21 @@ const DetalleVentas = () => {
                 <_DatoFila
                   icono="grid-outline"
                   etiqueta="Mesa"
-                  valor={comanda.MESA_NOMBRE ?? "Sin mesa"}
+                  valor={
+                    String(comanda.ORIGEN || "").toUpperCase() === "ONLINE"
+                      ? comanda.TIPO_ENTREGA === "delivery"
+                        ? "Pedido en línea · Delivery"
+                        : "Pedido en línea · Recoger"
+                      : (comanda.MESA_NOMBRE ?? "Sin mesa")
+                  }
                 />
+                {String(comanda.ORIGEN || "").toUpperCase() === "ONLINE" ? (
+                  <_DatoFila
+                    icono="phone-portrait-outline"
+                    etiqueta="Origen"
+                    valor="Pedido en línea"
+                  />
+                ) : null}
                 <_DatoFila
                   icono="person-outline"
                   etiqueta="Cliente"

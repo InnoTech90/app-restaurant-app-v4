@@ -3,14 +3,31 @@ import {
   DrawerItem,
   DrawerItemList,
 } from "@react-navigation/drawer";
-import { Redirect, useSegments } from "expo-router";
+import { Redirect, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { DeviceEventEmitter, Platform, Text, View } from "react-native";
 import AuthHeader from "../../components/Molecules/AuthHeader/AuthHeader";
 import NipModal from "../../components/Molecules/NipModal/NipModal";
 import { dataBase } from "../../components/Molecules/NipModal/database";
 import { AuthContext } from "../../utils/AuthContext/AuthContext";
 import { mostrarAviso } from "../../utils/avisoModal";
+import {
+  DIGITAL_ORDERS_CAPABILITY_EVENT,
+  refreshDigitalOrdersBadge,
+  setDigitalOrdersPendingCount,
+  useDigitalOrdersBadge,
+} from "../../utils/digitalOrders/badgeStore";
+import {
+  attachDigitalOrderNotificationListeners,
+  registerDigitalOrderPushToken,
+} from "../../utils/digitalOrders/notifications";
+import {
+  connectDigitalOrdersSocket,
+  deviceReceivesOrdersLocal,
+  disconnectDigitalOrdersSocket,
+  subscribeDigitalOrders,
+} from "../../utils/digitalOrders/socket";
 import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
@@ -27,6 +44,52 @@ import {
   hayPendientesCierreSesion,
   obtenerPendientesSincronizacion,
 } from "../../utils/pendientesSincronizacion";
+
+function PedidoEnLineaDrawerLabel({ color, label }) {
+  const pendingCount = useDigitalOrdersBadge();
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flex: 1,
+        paddingRight: 8,
+      }}
+    >
+      <Text
+        style={{
+          color,
+          fontWeight: Platform.OS === "ios" ? "600" : undefined,
+          fontFamily: Platform.select({
+            ios: undefined,
+            default: "sans-serif-medium",
+          }),
+        }}
+      >
+        {label}
+      </Text>
+      {pendingCount > 0 ? (
+        <View
+          style={{
+            minWidth: 20,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: "#DC2626",
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 5,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
+            {pendingCount > 9 ? "9+" : String(pendingCount)}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 function CustomDrawerContent({
   onCerrarSesion,
@@ -52,8 +115,11 @@ function CustomDrawerContent({
 
 export default function AuthLayout() {
   const contextoAutenticacion = useContext(AuthContext);
+  const router = useRouter();
   const segments = useSegments();
   const [exportandoDb, setExportandoDb] = useState(false);
+  const [recibePedidos, setRecibePedidos] = useState(false);
+  const [capabilityTick, setCapabilityTick] = useState(0);
   const [nipModal, setNipModal] = useState({
     visible: false,
     titulo: "",
@@ -63,6 +129,88 @@ export default function AuthLayout() {
   });
 
   const enPantallaLibre = segments.includes("PantallaDeCarga");
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      DIGITAL_ORDERS_CAPABILITY_EVENT,
+      () => setCapabilityTick((tick) => tick + 1),
+    );
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!contextoAutenticacion?.autenticado || enPantallaLibre) {
+      setRecibePedidos(false);
+      setDigitalOrdersPendingCount(0);
+      disconnectDigitalOrdersSocket();
+      return undefined;
+    }
+
+    let removeNotificationListeners = () => {};
+    let unsubscribeSocket = () => {};
+    let cancelled = false;
+
+    const setupRealtime = async () => {
+      disconnectDigitalOrdersSocket();
+
+      const receivesOrders = await deviceReceivesOrdersLocal();
+      if (cancelled) return;
+      setRecibePedidos(receivesOrders);
+      if (!receivesOrders) {
+        setDigitalOrdersPendingCount(0);
+        return;
+      }
+
+      try {
+        await connectDigitalOrdersSocket();
+        await registerDigitalOrderPushToken();
+        await refreshDigitalOrdersBadge();
+      } catch (error) {
+        console.warn("No se pudo iniciar notificaciones de pedidos", error);
+      }
+
+      if (cancelled) return;
+
+      removeNotificationListeners = attachDigitalOrderNotificationListeners({
+        onReceive: () => {
+          refreshDigitalOrdersBadge();
+          mostrarAviso({
+            type: "info",
+            title: "Nuevo pedido en línea",
+            message: "Revisa la sección Pedido en línea",
+          });
+        },
+        onRespond: () => {
+          router.push("/PedidoEnLinea");
+        },
+      });
+
+      unsubscribeSocket = subscribeDigitalOrders((event) => {
+        refreshDigitalOrdersBadge();
+        if (event === "created") {
+          mostrarAviso({
+            type: "info",
+            title: "Nuevo pedido en línea",
+            message: "Llegó un pedido nuevo",
+          });
+        }
+      });
+    };
+
+    setupRealtime();
+
+    return () => {
+      cancelled = true;
+      unsubscribeSocket?.();
+      removeNotificationListeners?.();
+      disconnectDigitalOrdersSocket();
+    };
+  }, [
+    contextoAutenticacion?.autenticado,
+    enPantallaLibre,
+    router,
+    capabilityTick,
+  ]);
 
   const pedirNip = (titulo, accion, { keywords = null, modo = "dueño" } = {}) => {
     setNipModal({ visible: true, titulo, accion, keywords, modo });
@@ -172,6 +320,12 @@ export default function AuthLayout() {
       seccionAcceso: "restaurante",
     },
     {
+      name: "PedidoEnLinea/index",
+      label: "Pedido en línea",
+      title: "Pedido en línea",
+      accesoLibre: true,
+    },
+    {
       name: "Clientes",
       label: "Clientes",
       title: "Clientes",
@@ -253,6 +407,9 @@ export default function AuthLayout() {
     { name: "PantallaDeCarga/styles" },
     { name: "PantallaDeCarga/database" },
     { name: "PantallaDeCarga/integracion" },
+    { name: "PedidoEnLinea/database" },
+    { name: "PedidoEnLinea/styles" },
+    { name: "PedidoEnLinea/integracion" },
     { name: "Impresoras/Funciones/Impresion" },
     { name: "Impresoras/templates/TicketDePrueba" },
   ];
@@ -367,9 +524,19 @@ export default function AuthLayout() {
             key={screen.name}
             name={screen.name}
             options={{
-              drawerLabel: screen.label,
+              drawerLabel:
+                screen.name === "PedidoEnLinea/index"
+                  ? ({ color }) => (
+                      <PedidoEnLineaDrawerLabel
+                        color={color}
+                        label={screen.label}
+                      />
+                    )
+                  : screen.label,
               title: screen.title,
-              ...(ocultarDrawer || (screen.soloDesarrollo && !__DEV__)
+              ...(ocultarDrawer ||
+              (screen.soloDesarrollo && !__DEV__) ||
+              (screen.name === "PedidoEnLinea/index" && !recibePedidos)
                 ? {
                     drawerItemStyle: { display: "none" },
                     href: null,

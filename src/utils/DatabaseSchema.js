@@ -521,7 +521,10 @@ export const DatabaseSchema = {
           SUBTOTAL REAL,
           IMPUESTOS REAL DEFAULT 0,
           TOTAL REAL,
-          ACTIVO INTEGER DEFAULT 1
+          ACTIVO INTEGER DEFAULT 1,
+          ORIGEN NVARCHAR DEFAULT 'POS',
+          ID_PEDIDO_DIGITAL NVARCHAR,
+          TIPO_ENTREGA NVARCHAR
         )
       `,
       dependencies: ["SUCURSAL", "MESA", "CLIENTES"],

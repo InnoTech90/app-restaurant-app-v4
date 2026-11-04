@@ -138,6 +138,20 @@ export const s = StyleSheet.create({
         fontWeight: "700",
         color: gb.blue550,
     },
+    badgeOnline: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(4),
+        backgroundColor: "#FFEDD5",
+        borderRadius: normalize(20),
+        paddingHorizontal: normalize(8),
+        paddingVertical: normalize(3),
+    },
+    badgeOnlineText: {
+        fontSize: normalize(11),
+        fontWeight: "700",
+        color: "#7C2D12",
+    },
     btnVer: {
         flexDirection: "row",
         alignItems: "center",

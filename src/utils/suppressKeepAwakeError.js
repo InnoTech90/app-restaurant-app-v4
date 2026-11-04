@@ -1,14 +1,20 @@
 const KEEP_AWAKE_RE = /Unable to (activate|deactivate) keep awake/i;
+const EXPO_GO_PUSH_RE =
+  /Android Push notifications \(remote notifications\) functionality provided by expo-notifications was removed from Expo Go/i;
 
-function isKeepAwakeError(value) {
+function matchesKnownNoise(value) {
   if (!value) return false;
-  if (typeof value === "string") return KEEP_AWAKE_RE.test(value);
-  if (value instanceof Error) return KEEP_AWAKE_RE.test(value.message);
-  return KEEP_AWAKE_RE.test(String(value));
+  const text =
+    typeof value === "string"
+      ? value
+      : value instanceof Error
+        ? value.message
+        : String(value);
+  return KEEP_AWAKE_RE.test(text) || EXPO_GO_PUSH_RE.test(text);
 }
 
 function shouldSuppress(args) {
-  return args.some((arg) => isKeepAwakeError(arg));
+  return args.some((arg) => matchesKnownNoise(arg));
 }
 
 /**
@@ -37,7 +43,7 @@ export function installKeepAwakeErrorSuppressor() {
     rejectionTracking.enable({
       allRejections: true,
       onUnhandled: (id, error) => {
-        if (isKeepAwakeError(error)) return;
+        if (matchesKnownNoise(error)) return;
         originalWarn(
           `Possible Unhandled Promise Rejection (id: ${id}):`,
           error,

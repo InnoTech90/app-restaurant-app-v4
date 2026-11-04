@@ -205,5 +205,34 @@ export async function runDatabaseMigrations(db) {
     console.warn("  ⚠️  idx_gerentes_uuid:", e?.message ?? e);
   }
 
+  await ensureColumn(
+    db,
+    "COMANDA",
+    "ORIGEN",
+    "ALTER TABLE COMANDA ADD COLUMN ORIGEN NVARCHAR DEFAULT 'POS'",
+  );
+  await ensureColumn(
+    db,
+    "COMANDA",
+    "ID_PEDIDO_DIGITAL",
+    "ALTER TABLE COMANDA ADD COLUMN ID_PEDIDO_DIGITAL NVARCHAR",
+  );
+  await ensureColumn(
+    db,
+    "COMANDA",
+    "TIPO_ENTREGA",
+    "ALTER TABLE COMANDA ADD COLUMN TIPO_ENTREGA NVARCHAR",
+  );
+
+  try {
+    await db.runAsync(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_comanda_pedido_digital
+       ON COMANDA(ID_PEDIDO_DIGITAL)
+       WHERE ID_PEDIDO_DIGITAL IS NOT NULL`,
+    );
+  } catch (e) {
+    console.warn("  ⚠️  idx_comanda_pedido_digital:", e?.message ?? e);
+  }
+
   console.log("✅ Migraciones de columnas verificadas");
 }

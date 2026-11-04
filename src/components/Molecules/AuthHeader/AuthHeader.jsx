@@ -2,13 +2,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { usePathname } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { AppState, DeviceEventEmitter, Text, View } from "react-native";
+import {
+  AppState,
+  DeviceEventEmitter,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import DrawerButton from "../../../components/atoms/DraweButton/DraweButton";
 import { gb } from "../../../screens/globalStyles";
 import {
   AUTH_HEADER_REFRESH_EVENT,
   AUTH_HEADER_TITLE_KEY,
 } from "../../../utils/authHeaderTitle";
+import { useDigitalOrdersBadge } from "../../../utils/digitalOrders/badgeStore";
 import ButtonMesas from "../../atoms/ButtonMesas/ButtonMesas";
 import { s } from "./styles";
 
@@ -24,6 +31,7 @@ const esListaMesas = (pathname = "") => {
 
 const AuthHeader = ({ navigation, route, options }) => {
   const pathname = usePathname();
+  const pendingOrders = useDigitalOrdersBadge();
   const tituloBase = options?.title
     ? options.title.toUpperCase()
     : pathname.replace("/", "").toUpperCase() || "INICIO";
@@ -89,7 +97,20 @@ const AuthHeader = ({ navigation, route, options }) => {
           {titulo}
         </Text>
 
-        <ButtonMesas />
+        <View style={s.rightActions}>
+          {pendingOrders > 0 ? (
+            <Pressable
+              style={s.ordersBadgeBtn}
+              onPress={() => navigation.navigate("PedidoEnLinea/index")}
+              hitSlop={8}
+            >
+              <Text style={s.ordersBadgeText}>
+                {pendingOrders > 9 ? "9+" : String(pendingOrders)}
+              </Text>
+            </Pressable>
+          ) : null}
+          <ButtonMesas />
+        </View>
       </View>
     </LinearGradient>
   );

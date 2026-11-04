@@ -194,6 +194,10 @@ export class Database {
       ],
     );
 
+    if (branch?.id) {
+      await AsyncStorage.setItem("branchId", String(branch.id));
+    }
+
     // Insertar sucursal
     await db.runAsync(
       `INSERT OR IGNORE INTO SUCURSAL (UUID, NOMBRE, DESCRIPCION, CODIGO_QR, DIRECCION, LAT, LNG, TELEFONO, WHATSAPP, FACEBOK, INSTAGRAM, TIKTOK, TWITTER, WEBSITE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

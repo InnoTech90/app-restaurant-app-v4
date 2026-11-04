@@ -24,7 +24,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/img/avatar_app_rest.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
     },
     "web": {
       "output": "static"
@@ -73,6 +77,14 @@
               "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
             ]
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/img/avatar_app_rest.png",
+          "color": "#1D4ED8",
+          "defaultChannel": "digital-orders"
         }
       ]
     ],

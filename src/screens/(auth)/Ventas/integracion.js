@@ -89,6 +89,9 @@ export class integracionVentas {
       total: aNumero(v.TOTAL),
       notes: v.NOTA == null ? "" : String(v.NOTA),
       voucher: v.FICHA != null ? String(v.FICHA) : null,
+      origin:
+        String(v.ORIGEN || "").toUpperCase() === "ONLINE" ? "ONLINE" : "POS",
+      digitalOrderId: v.ID_PEDIDO_DIGITAL || null,
       articles: (v.articulos ?? []).map((a) => ({
         articleId: a.ARTICULO_UUID ?? a.ID_ARTICULO ?? null,
         soldQuantity: aNumero(a.CANTIDAD),

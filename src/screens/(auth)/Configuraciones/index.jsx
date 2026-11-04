@@ -25,6 +25,7 @@ import {
 } from "../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { AuthContext } from "../../../utils/AuthContext/AuthContext";
 import { clearLocalTables, resetLocalData } from "../../../utils/db";
+import { notifyDigitalOrdersCapabilityChanged } from "../../../utils/digitalOrders/badgeStore";
 import {
   construirMensajePendientes,
   hayPendientesParaSincronizacionGeneral,
@@ -243,6 +244,7 @@ export default function Configuraciones() {
       setConfig(cfg ?? {});
       setFormatosPago(fp.map((f) => ({ label: f.NOMBRE, value: f.ID })));
       setTamañoFuentes(tf.map((f) => ({ label: f.NOMBRE, value: f.ID })));
+      notifyDigitalOrdersCapabilityChanged();
 
       mostrarAviso(
         "info",
