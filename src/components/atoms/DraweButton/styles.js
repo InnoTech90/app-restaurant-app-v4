@@ -16,6 +16,9 @@ export const s = StyleSheet.create({
   drawerIcon: {
     width: 70,
     height: 70,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
   badge: {
     position: "absolute",

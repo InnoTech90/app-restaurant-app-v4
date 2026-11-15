@@ -2,16 +2,19 @@ import {
   DrawerContentScrollView,
   DrawerItem,
   DrawerItemList,
+  useDrawerStatus,
 } from "@react-navigation/drawer";
+import { Image } from "expo-image";
 import { Redirect, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { useContext, useEffect, useState } from "react";
-import { DeviceEventEmitter, Platform, Text, View } from "react-native";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from "react-native";
 import AuthHeader from "../../components/Molecules/AuthHeader/AuthHeader";
 import NipModal from "../../components/Molecules/NipModal/NipModal";
 import { dataBase } from "../../components/Molecules/NipModal/database";
 import { AuthContext } from "../../utils/AuthContext/AuthContext";
 import { mostrarAviso } from "../../utils/avisoModal";
+import { getDb } from "../../utils/db";
 import {
   DIGITAL_ORDERS_CAPABILITY_EVENT,
   refreshDigitalOrdersBadge,
@@ -32,6 +35,7 @@ import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
 } from "../../utils/exportDatabase";
+import { normalize } from "../../utils/funcionesMaquetado/responsiveWH";
 import { requiereNipAcceso, sesionPuedeEntrar } from "../../utils/gerentePermisos";
 import {
   autorizarSeccion,
@@ -44,6 +48,8 @@ import {
   hayPendientesCierreSesion,
   obtenerPendientesSincronizacion,
 } from "../../utils/pendientesSincronizacion";
+import { SUCURSAL_INFO_UPDATED_EVENT } from "./PantallaDeCarga/database";
+import { gb } from "../globalStyles";
 
 function PedidoEnLineaDrawerLabel({ color, label }) {
   const pendingCount = useDigitalOrdersBadge();
@@ -98,8 +104,71 @@ function CustomDrawerContent({
   mostrarExportarDb,
   ...props
 }) {
+  const drawerStatus = useDrawerStatus();
+  const [sucursal, setSucursal] = useState(null);
+
+  const cargarSucursal = useCallback(async () => {
+    try {
+      const db = await getDb();
+      const row = await db.getFirstAsync(
+        `SELECT NOMBRE, LOGO FROM SUCURSAL LIMIT 1`,
+      );
+      setSucursal(row ?? null);
+    } catch {
+      setSucursal(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarSucursal();
+  }, [cargarSucursal]);
+
+  useEffect(() => {
+    if (drawerStatus === "open") {
+      cargarSucursal();
+    }
+  }, [drawerStatus, cargarSucursal]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      SUCURSAL_INFO_UPDATED_EVENT,
+      (payload) => {
+        if (payload?.nombre || payload?.logo) {
+          setSucursal({
+            NOMBRE: payload.nombre ?? null,
+            LOGO: payload.logo ?? null,
+          });
+          return;
+        }
+        cargarSucursal();
+      },
+    );
+    return () => sub.remove();
+  }, [cargarSucursal]);
+
+  const logoUri = typeof sucursal?.LOGO === "string" ? sucursal.LOGO.trim() : "";
+
   return (
     <DrawerContentScrollView {...props}>
+      <View style={drawerStyles.header}>
+        <Image
+          key={logoUri || "fallback-logo"}
+          source={
+            logoUri
+              ? { uri: logoUri }
+              : require("../../assets/img/logo_app_rest_blanco.png")
+          }
+          style={drawerStyles.logo}
+          contentFit="contain"
+          cachePolicy="none"
+          transition={200}
+        />
+        {sucursal?.NOMBRE ? (
+          <Text style={drawerStyles.nombre} numberOfLines={2}>
+            {sucursal.NOMBRE}
+          </Text>
+        ) : null}
+      </View>
       <DrawerItemList {...props} />
       {mostrarExportarDb ? (
         <DrawerItem
@@ -112,6 +181,30 @@ function CustomDrawerContent({
     </DrawerContentScrollView>
   );
 }
+
+const drawerStyles = StyleSheet.create({
+  header: {
+    paddingHorizontal: normalize(16),
+    paddingTop: normalize(12),
+    paddingBottom: normalize(16),
+    marginBottom: normalize(8),
+    marginHorizontal: normalize(8),
+    alignItems: "center",
+    backgroundColor: gb.blue950,
+    borderRadius: normalize(12),
+  },
+  logo: {
+    width: normalize(120),
+    height: normalize(72),
+  },
+  nombre: {
+    marginTop: normalize(10),
+    fontSize: normalize(15),
+    fontWeight: "600",
+    color: "#fff",
+    textAlign: "center",
+  },
+});
 
 export default function AuthLayout() {
   const contextoAutenticacion = useContext(AuthContext);

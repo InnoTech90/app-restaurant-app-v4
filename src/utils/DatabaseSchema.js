@@ -43,7 +43,8 @@ export const DatabaseSchema = {
           INSTAGRAM NVARCHAR,
           TIKTOK NVARCHAR,
           TWITTER NVARCHAR,
-          WEBSITE NVARCHAR
+          WEBSITE NVARCHAR,
+          LOGO NVARCHAR
         )
       `,
       dependencies: [],

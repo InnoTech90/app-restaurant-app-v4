@@ -1,6 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from "expo-device";
+import { DeviceEventEmitter } from "react-native";
 import { getDb } from "../../../utils/db";
+
+export const SUCURSAL_INFO_UPDATED_EVENT = "sucursal-info-updated";
 
 const normalizeNip = (value) => {
   if (value == null || value === "") return null;
@@ -198,26 +201,48 @@ export class Database {
       await AsyncStorage.setItem("branchId", String(branch.id));
     }
 
-    // Insertar sucursal
+    // Insertar / actualizar sucursal
     await db.runAsync(
-      `INSERT OR IGNORE INTO SUCURSAL (UUID, NOMBRE, DESCRIPCION, CODIGO_QR, DIRECCION, LAT, LNG, TELEFONO, WHATSAPP, FACEBOK, INSTAGRAM, TIKTOK, TWITTER, WEBSITE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO SUCURSAL (UUID, NOMBRE, DESCRIPCION, CODIGO_QR, DIRECCION, LAT, LNG, TELEFONO, WHATSAPP, FACEBOK, INSTAGRAM, TIKTOK, TWITTER, WEBSITE, LOGO)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(UUID) DO UPDATE SET
+         NOMBRE = excluded.NOMBRE,
+         DESCRIPCION = excluded.DESCRIPCION,
+         CODIGO_QR = excluded.CODIGO_QR,
+         DIRECCION = excluded.DIRECCION,
+         LAT = excluded.LAT,
+         LNG = excluded.LNG,
+         TELEFONO = excluded.TELEFONO,
+         WHATSAPP = excluded.WHATSAPP,
+         FACEBOK = excluded.FACEBOK,
+         INSTAGRAM = excluded.INSTAGRAM,
+         TIKTOK = excluded.TIKTOK,
+         TWITTER = excluded.TWITTER,
+         WEBSITE = excluded.WEBSITE,
+         LOGO = excluded.LOGO`,
       [
         branch.id,
         branch.name,
         branch.description,
         branch.qrCode,
         branch.address,
-        branch.location.latitude,
-        branch.location.longitude,
-        branch.contact.phoneNumber,
-        branch.contact.whatsapp,
-        branch.socialMedia.facebook,
-        branch.socialMedia.instagram,
-        branch.socialMedia.tiktok,
-        branch.socialMedia.twitter,
-        branch.socialMedia.website,
+        branch.location?.latitude ?? null,
+        branch.location?.longitude ?? null,
+        branch.contact?.phoneNumber ?? null,
+        branch.contact?.whatsapp ?? null,
+        branch.socialMedia?.facebook ?? null,
+        branch.socialMedia?.instagram ?? null,
+        branch.socialMedia?.tiktok ?? null,
+        branch.socialMedia?.twitter ?? null,
+        branch.socialMedia?.website ?? null,
+        branch.logo ?? null,
       ],
     );
+
+    DeviceEventEmitter.emit(SUCURSAL_INFO_UPDATED_EVENT, {
+      nombre: branch.name ?? null,
+      logo: branch.logo ?? null,
+    });
 
     // Insertar negocio
     await db.runAsync(

@@ -224,6 +224,13 @@ export async function runDatabaseMigrations(db) {
     "ALTER TABLE COMANDA ADD COLUMN TIPO_ENTREGA NVARCHAR",
   );
 
+  await ensureColumn(
+    db,
+    "SUCURSAL",
+    "LOGO",
+    "ALTER TABLE SUCURSAL ADD COLUMN LOGO NVARCHAR",
+  );
+
   try {
     await db.runAsync(
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_comanda_pedido_digital
