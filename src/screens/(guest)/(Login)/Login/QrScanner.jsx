@@ -1,13 +1,23 @@
+import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import { useKeepAwake } from "expo-keep-awake";
 import { useCallback, useEffect, useState } from "react";
-import { AppState, StyleSheet, Text, View } from "react-native";
+import {
+  AppState,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import GeneralModal from "../../../../components/atoms/GeneralModal/GeneralModal";
 import { s } from "./style";
 
-function ActiveQrCamera({ facing, onBarcodeScanned }) {
+function ActiveQrCamera({ facing, onBarcodeScanned, topInset, onClose }) {
   useKeepAwake("qr-scanner");
 
   return (
@@ -17,11 +27,27 @@ function ActiveQrCamera({ facing, onBarcodeScanned }) {
       active
       barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
       onBarcodeScanned={onBarcodeScanned}
-    />
+    >
+      <View
+        pointerEvents="box-none"
+        style={[styles.overlay, { paddingTop: topInset + 12 }]}
+      >
+        <Pressable
+          onPress={onClose}
+          style={styles.backButton}
+          hitSlop={12}
+          android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+        >
+          <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+          <Text style={styles.backButtonText}>Regresar</Text>
+        </Pressable>
+      </View>
+    </CameraView>
   );
 }
 
 export default function QrScanner({ visible, onClose, onScanned }) {
+  const insets = useSafeAreaInsets();
   const [facing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [appIsActive, setAppIsActive] = useState(
@@ -40,14 +66,18 @@ export default function QrScanner({ visible, onClose, onScanned }) {
     if (!visible) setScanned(false);
   }, [visible]);
 
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
+
   const handleScanned = useCallback(
     ({ data }) => {
       if (scanned) return;
       setScanned(true);
       onScanned(data);
-      onClose();
+      handleClose();
     },
-    [scanned, onScanned, onClose],
+    [scanned, onScanned, handleClose],
   );
 
   if (!visible) {
@@ -55,7 +85,7 @@ export default function QrScanner({ visible, onClose, onScanned }) {
   }
 
   if (!permission) {
-    return <View />;
+    return null;
   }
 
   if (!permission.granted) {
@@ -63,7 +93,7 @@ export default function QrScanner({ visible, onClose, onScanned }) {
       <GeneralModal
         visible={visible}
         animationType="slide"
-        onRequestClose={onClose}
+        onRequestClose={handleClose}
       >
         <View style={s.containerPermisosCamara}>
           <View style={{ alignItems: "center" }}>
@@ -83,6 +113,9 @@ export default function QrScanner({ visible, onClose, onScanned }) {
           <Button onPress={requestPermission} style={s.btnAceptarPermisos}>
             <Text style={s.btnAceptarPermisosText}>Habilitar Cámara</Text>
           </Button>
+          <Pressable onPress={handleClose} style={styles.permissionBack}>
+            <Text style={styles.permissionBackText}>Regresar</Text>
+          </Pressable>
         </View>
       </GeneralModal>
     );
@@ -91,36 +124,79 @@ export default function QrScanner({ visible, onClose, onScanned }) {
   const canShowCamera = appIsActive;
 
   return (
-    <View style={styles.container}>
-      {canShowCamera ? (
-        <ActiveQrCamera facing={facing} onBarcodeScanned={handleScanned} />
-      ) : (
-        <View style={styles.camera} />
-      )}
-      <View style={styles.buttonContainer} />
-    </View>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      onRequestClose={handleClose}
+      statusBarTranslucent
+    >
+      <View style={styles.container}>
+        {canShowCamera ? (
+          <ActiveQrCamera
+            facing={facing}
+            onBarcodeScanned={handleScanned}
+            topInset={insets.top}
+            onClose={handleClose}
+          />
+        ) : (
+          <View style={styles.camera}>
+            <View
+              pointerEvents="box-none"
+              style={[styles.overlay, { paddingTop: insets.top + 12 }]}
+            >
+              <Pressable
+                onPress={handleClose}
+                style={styles.backButton}
+                hitSlop={12}
+              >
+                <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+                <Text style={styles.backButtonText}>Regresar</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    zIndex: 999,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    backgroundColor: "#000",
   },
   camera: {
     flex: 1,
   },
-  buttonContainer: {
-    position: "absolute",
-    bottom: 64,
+  overlay: {
+    flex: 1,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    marginLeft: 16,
     flexDirection: "row",
-    backgroundColor: "transparent",
-    width: "100%",
-    paddingHorizontal: 64,
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    ...(Platform.OS === "android" ? { elevation: 6 } : null),
+  },
+  backButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  permissionBack: {
+    marginTop: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  permissionBackText: {
+    color: "#404040",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

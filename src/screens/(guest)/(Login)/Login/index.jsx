@@ -1,6 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import { useContext, useState } from "react";
-import { ActivityIndicator, Image, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../../components/atoms/Button/Button";
 import Input from "../../../../components/atoms/Input/Input";
@@ -67,87 +74,84 @@ function Login() {
 
   return (
     <>
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: "black" }}
-        edges={["bottom"]}
-      >
+      <SafeAreaView style={s.safe} edges={["top", "bottom"]}>
         <Image
           source={require("../../../../assets/img/background_registro.png")}
           style={s.loginBackground}
+          contentFit="cover"
         />
-        <View style={s.login}>
-          <View style={s.logoContainer}>
-            <Image
-              source={require("../../../../assets/img/logo_app_rest_blanco.png")}
-              style={s.logoImage}
-            />
-          </View>
-          <View style={s.loginForm}>
-            <Text style={s.title}>CÓDIGO DE SUCURSAL</Text>
-            <View style={s.inputContainer}>
-              <Input
-                placeholder="Ingrese el código de su sucursal"
-                style={s.inputQr}
-                value={codigoSucursal}
-                onChange={setCodigoSucursal}
-              />
-              <QrButton
-                onPress={() => {
-                  if (!cargando) setShowScanner(true);
-                }}
-                style={[s.qrButton, cargando && { opacity: 0.5 }]}
-              />
-            </View>
-            <View style={s.infoContainer}>
-              {__DEV__ && (
+        <View style={s.overlay} />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={s.login}>
+            <View style={s.content}>
+              <View style={s.logoContainer}>
+                <Image
+                  source={require("../../../../assets/img/logo_app_rest_blanco.png")}
+                  style={s.logoImage}
+                  contentFit="contain"
+                />
+              </View>
+
+              <View style={s.panel}>
+                <Text style={s.title}>Asocia tu dispositivo</Text>
                 <Text style={s.subtitle}>
-                  Modo desarrollo: usa el código de tu sucursal
+                  Ingresa el código de tu sucursal o escanea el código QR.
                 </Text>
-              )}
+
+                <View style={s.inputContainer}>
+                  <Input
+                    placeholder="Código de sucursal"
+                    style={s.inputQr}
+                    styleInput={s.inputField}
+                    value={codigoSucursal}
+                    onChange={setCodigoSucursal}
+                  />
+                  <View
+                    style={[s.qrButtonWrap, cargando && { opacity: 0.5 }]}
+                  >
+                    <QrButton
+                      onPress={() => {
+                        if (!cargando) setShowScanner(true);
+                      }}
+                      style={s.qrButton}
+                    />
+                  </View>
+                </View>
+
+                {__DEV__ ? (
+                  <Text style={s.devHint}>Código de demo: 123456</Text>
+                ) : null}
+
+                <View style={s.asociarContainer}>
+                  <Button
+                    onPress={handleAsociar}
+                    style={[s.btn_sesion, cargando && { opacity: 0.75 }]}
+                    disabled={cargando}
+                  >
+                    {cargando ? (
+                      <View style={s.loadingRow}>
+                        <ActivityIndicator color={gb.gray50} />
+                        <Text style={s.btn_sesionText}>Asociando…</Text>
+                      </View>
+                    ) : (
+                      <Text style={s.btn_sesionText}>Asociar</Text>
+                    )}
+                  </Button>
+                </View>
+              </View>
+
+              <View style={s.footer}>
+                <Text style={s.contactoText}>
+                  Si aún no tienes código, contacta a tu asesor.
+                </Text>
+              </View>
             </View>
           </View>
-          <View style={s.asociarContainer}>
-            <Button
-              onPress={handleAsociar}
-              style={[s.btn_sesion, cargando && { opacity: 0.75 }]}
-              disabled={cargando}
-            >
-              {cargando ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <ActivityIndicator color={gb.gray50} />
-                  <Text style={s.btn_sesionText}>ASOCIANDO...</Text>
-                </View>
-              ) : (
-                <Text style={s.btn_sesionText}>ASOCIAR</Text>
-              )}
-            </Button>
-          </View>
-          <View style={s.contactoContainer}>
-            <Text style={s.contactoText}>
-              Contacta a nuestros asesores personales para recibir tu código de
-              sucursal
-            </Text>
-          </View>
-          <View style={s.containerButtons}>
-            <Button onPress={() => {}} style={s.btnAyuda} disabled={cargando}>
-              <Text style={s.btnAyudaText}>AYUDA</Text>
-            </Button>
-            <Button
-              onPress={() => {}}
-              style={s.btnContacto}
-              gradient={gb.gradient_blue}
-              disabled={cargando}
-            >
-              <Text style={s.btnContactoText}>CONTACTO</Text>
-            </Button>
-          </View>
-        </View>
+        </KeyboardAvoidingView>
+
         <QrScanner
           visible={showScanner}
           onClose={() => setShowScanner(false)}
@@ -167,4 +171,5 @@ function Login() {
     </>
   );
 }
+
 export default Login;

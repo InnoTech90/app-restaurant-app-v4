@@ -5,12 +5,13 @@ import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 export const s = StyleSheet.create({
     inputContainer: {
         width: "100%",
+        marginBottom: normalize(10),
     },
     inputWrapper: {
         flexDirection: "row",
         alignItems: "center",
         width: "100%",
-        marginBottom: normalize(10),
+        marginBottom: 0,
     },
     iconContainer: {
         position: "absolute",
