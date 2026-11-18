@@ -4,6 +4,7 @@ import { s } from "./style";
 export default function LoginLayout() {
     return <Stack>
             <Stack.Screen name="index" options={{
+                headerShown: false,
                 headerTitleAlign: "center",
                 headerTitle: () => (
                     < View style={s.header} >
