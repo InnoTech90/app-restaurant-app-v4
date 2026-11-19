@@ -76,10 +76,10 @@ const MesasNavButtons = ({
 
   const colorCliente =
     tabActiva === "cliente"
-      ? gb.gray50
+      ? "#4F5FE0"
       : tieneCliente
         ? gb.green500
-        : gb.blue550;
+        : "#8A93B2";
 
   return (
     <View style={s.containerButtons}>
@@ -98,8 +98,7 @@ const MesasNavButtons = ({
         </Text>
       </Button>
 
-      <View style={s.botonAccionDivider} />
-
+      
       <Button
         styleContainer={s.botonAccionContainer}
         style={[s.botonAccion, tabActiva === "menu" && s.botonAccionActivo]}
@@ -108,15 +107,15 @@ const MesasNavButtons = ({
         <Ionicons
           name="menu-outline"
           size={normalize(22)}
-          color={tabActiva === "menu" ? gb.gray50 : gb.purple550}
+          color={tabActiva === "menu" ? "#4F5FE0" : "#8A93B2"}
         />
         <Text
           style={[
             s.botonAccionTexto,
-            { color: tabActiva === "menu" ? gb.gray50 : gb.purple550 },
+            { color: tabActiva === "menu" ? "#4F5FE0" : "#8A93B2" },
           ]}
         >
-          Menu
+          Menú
         </Text>
       </Button>
 
@@ -128,20 +127,19 @@ const MesasNavButtons = ({
         <Ionicons
           name="receipt-outline"
           size={normalize(22)}
-          color={tabActiva === "comanda" ? gb.gray50 : gb.purple550}
+          color={tabActiva === "comanda" ? "#4F5FE0" : "#8A93B2"}
         />
         <Text
           style={[
             s.botonAccionTexto,
-            { color: tabActiva === "comanda" ? gb.gray50 : gb.purple550 },
+            { color: tabActiva === "comanda" ? "#4F5FE0" : "#8A93B2" },
           ]}
         >
           Comanda
         </Text>
       </Button>
 
-      <View style={s.botonAccionDivider} />
-
+      
       <Button
         styleContainer={s.botonAccionContainer}
         style={[s.botonAccion, tabActiva === "pagar" && s.botonAccionActivo]}
@@ -150,12 +148,12 @@ const MesasNavButtons = ({
         <Ionicons
           name="cash-outline"
           size={normalize(22)}
-          color={tabActiva === "pagar" ? gb.gray50 : gb.purple550}
+          color={tabActiva === "pagar" ? "#4F5FE0" : "#8A93B2"}
         />
         <Text
           style={[
             s.botonAccionTexto,
-            { color: tabActiva === "pagar" ? gb.gray50 : gb.purple550 },
+            { color: tabActiva === "pagar" ? "#4F5FE0" : "#8A93B2" },
           ]}
         >
           Pagar

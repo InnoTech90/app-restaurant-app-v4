@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -25,6 +26,7 @@ import PedidoEnLineaDatabase from "./database";
 import { integracionPedidosEnLinea } from "./integracion";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const FILTERS = [
   { key: "active", label: "Activos", status: null },
   { key: "pending", label: "Pendientes", status: "pending" },
@@ -241,19 +243,14 @@ export default function PedidoEnLinea() {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
-      <LinearGradient
-        colors={gb.gradient_blue}
-        style={s.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Pressable onPress={cargar} hitSlop={8}>
-          <Ionicons name="refresh" size={22} color="white" />
+          <Ionicons name="refresh" size={22} color="#4F5FE0" />
         </Pressable>
-      </LinearGradient>
+      </HeaderBar>
 
       <View style={s.body}>
         <View style={s.filters}>

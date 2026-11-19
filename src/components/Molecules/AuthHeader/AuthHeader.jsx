@@ -1,16 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
 import { usePathname } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   AppState,
   DeviceEventEmitter,
   Pressable,
+  StatusBar,
   Text,
   View,
 } from "react-native";
 import DrawerButton from "../../../components/atoms/DraweButton/DraweButton";
-import { gb } from "../../../screens/globalStyles";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { space } from "../../../utils/theme";
 import {
   AUTH_HEADER_REFRESH_EVENT,
   AUTH_HEADER_TITLE_KEY,
@@ -18,7 +19,10 @@ import {
 import { useDigitalOrdersBadge } from "../../../utils/digitalOrders/badgeStore";
 import ButtonMesas from "../../atoms/ButtonMesas/ButtonMesas";
 import { s } from "./styles";
+import { getDb } from "../../../utils/db";
 
+import { esOscuro } from "../../../utils/apariencia";
+import { color as tema } from "../../../utils/theme";
 const esListaMesas = (pathname = "") => {
   const p = pathname.toLowerCase();
   return (
@@ -29,7 +33,25 @@ const esListaMesas = (pathname = "") => {
   );
 };
 
+/** "MENU PRINCIPAL" → "Menu principal" (el título se guarda en mayúsculas). */
+const tituloLegible = (texto = "") => {
+  const t = String(texto).trim().toLowerCase();
+  const legible = t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+  return legible === "Menu" ? "Menú" : legible;
+};
+
 const AuthHeader = ({ navigation, route, options }) => {
+  const [sucursal, setSucursal] = useState("");
+  useEffect(() => {
+    let vivo = true;
+    getDb()
+      .then((db) => db.getFirstAsync(`SELECT NOMBRE FROM SUCURSAL LIMIT 1`))
+      .then((row) => vivo && setSucursal(row?.NOMBRE ?? ""))
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
   const pathname = usePathname();
   const pendingOrders = useDigitalOrdersBadge();
   const tituloBase = options?.title
@@ -37,6 +59,7 @@ const AuthHeader = ({ navigation, route, options }) => {
     : pathname.replace("/", "").toUpperCase() || "INICIO";
 
   const [titulo, setTitulo] = useState(tituloBase);
+  const insets = useSafeAreaInsets();
 
   const actualizarTitulo = useCallback(async () => {
     try {
@@ -84,18 +107,21 @@ const AuthHeader = ({ navigation, route, options }) => {
   }, [navigation, actualizarTitulo]);
 
   return (
-    <LinearGradient
-      colors={gb.gradient_blue}
-      style={s.header}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
-    >
+    <View style={[s.header, { paddingTop: insets.top + space.sm }]}>
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor={tema.surface} />
       <View style={s.containerHeader}>
         <DrawerButton onPress={() => navigation.openDrawer()} />
 
-        <Text style={s.title} numberOfLines={1}>
-          {titulo}
-        </Text>
+        <View style={s.titleBlock}>
+          <Text style={s.title} numberOfLines={1}>
+            {tituloLegible(titulo)}
+          </Text>
+          {sucursal ? (
+            <Text style={s.subtitle} numberOfLines={1}>
+              {sucursal}
+            </Text>
+          ) : null}
+        </View>
 
         <View style={s.rightActions}>
           {pendingOrders > 0 ? (
@@ -112,7 +138,7 @@ const AuthHeader = ({ navigation, route, options }) => {
           <ButtonMesas />
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 

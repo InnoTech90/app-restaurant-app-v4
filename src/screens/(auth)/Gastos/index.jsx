@@ -1,5 +1,7 @@
+import { SINCRONIZACION_AUTOMATICA_EVENT } from "../../../utils/http/sincronizarEnSegundoPlano";
 ﻿import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -30,8 +32,9 @@ import { GASTOS_REFRESH_EVENT } from "./events";
 import { integracionGastos } from "./integracion";
 import { s } from "./styles";
 
-const GRADIENTE_PENDIENTE = ["#F6C9A4", "#FBE6D4"];
-const COLOR_PENDIENTE = "#8A4E2A";
+import { color as tema } from "../../../utils/theme";
+const GRADIENTE_PENDIENTE = ["#F5D9A8", "#FFF4E0"];
+const COLOR_PENDIENTE = "#A15C00";
 
 const categoriaTienePendientes = (categoria) =>
   (categoria.conceptos ?? []).some(
@@ -165,14 +168,14 @@ const CategoriaAccordion = ({
       <Pressable onPress={onToggleCategoria}>
         <LinearGradient
           style={s.seccionHeader}
-          colors={tienePendientes ? GRADIENTE_PENDIENTE : gb.gradient_blue}
+          colors={tienePendientes ? [tema.warningSoft, tema.warningSoft] : ["#FFFFFF", "#FFFFFF"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
           <Ionicons
             name={expandida ? "chevron-down" : "chevron-forward"}
             size={normalize(18)}
-            color={tienePendientes ? COLOR_PENDIENTE : "white"}
+            color={tienePendientes ? COLOR_PENDIENTE : "#4F5FE0"}
           />
           <Text
             style={[
@@ -263,7 +266,13 @@ const Gastos = () => {
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener(GASTOS_REFRESH_EVENT, cargar);
-    return () => sub.remove();
+    const subAuto = DeviceEventEmitter.addListener(SINCRONIZACION_AUTOMATICA_EVENT, (e) => {
+      if (e?.modulo === "gastos") cargar();
+    });
+    return () => {
+      sub.remove();
+      subAuto.remove();
+    };
   }, [cargar]);
 
   const totalGeneral = categorias.reduce(
@@ -431,18 +440,13 @@ const Gastos = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>Gastos</Text>
         <View style={{ width: normalize(35) }} />
-      </LinearGradient>
+      </HeaderBar>
 
       <View style={s.body}>
         <View style={s.totalBanner}>
@@ -518,7 +522,7 @@ const Gastos = () => {
 
       <LinearGradient
         style={s.footer}
-        colors={gb.gradient_blue}
+        colors={[tema.surface, tema.surface]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
@@ -527,7 +531,7 @@ const Gastos = () => {
           onPress={actualizarCatalogo}
           disabled={actualizando || sincronizando}
         >
-          <Ionicons name="refresh-outline" size={normalize(20)} color="white" />
+          <Ionicons name="refresh-outline" size={normalize(20)} color="#4F5FE0" />
           <Text style={s.btnSyncText}>
             {actualizando ? "..." : "Actualizar"}
           </Text>
@@ -537,7 +541,7 @@ const Gastos = () => {
           onPress={sincronizarGastos}
           disabled={actualizando || sincronizando}
         >
-          <Ionicons name="sync-outline" size={normalize(20)} color="white" />
+          <Ionicons name="sync-outline" size={normalize(20)} color="#4F5FE0" />
           <Text style={s.btnSyncText}>
             {sincronizando ? "..." : "Sincronizar"}
           </Text>

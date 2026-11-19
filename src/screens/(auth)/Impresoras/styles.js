@@ -7,6 +7,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 const s = StyleSheet.create({
   // ── Header ──────────────────────────────────────────────────────────────
   header: {
@@ -20,7 +21,7 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerTitle: {
-    color: "white",
+    color: tema.text,
     fontSize: normalize(isTablet ? 20 : 18),
     fontWeight: "bold",
   },
@@ -55,7 +56,7 @@ const s = StyleSheet.create({
 
   // ── Card impresora ────────────────────────────────────────────────────────
   card: {
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderRadius: normalize(14),
     padding: normalize(isTablet ? 16 : 14),
     gap: normalize(12),

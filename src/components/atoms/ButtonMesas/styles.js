@@ -1,25 +1,23 @@
 import { StyleSheet } from "react-native";
-import { gb } from "../../../screens/globalStyles";
+import { color, font, radius, space } from "../../../utils/theme";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
 export const s = StyleSheet.create({
     buttonContainer: {
-        marginLeft: 'auto',
-        backgroundColor:`${gb.gray50}40`, // Agrega opacidad al color de fondo)`,
-        borderWidth: 1,
-        borderColor: `${gb.gray50}BF`, // Agrega opacidad al color del borde)`,
-        borderRadius: normalize(20),
+        marginLeft: "auto",
+        backgroundColor: color.primarySoft,
+        borderRadius: radius.pill,
     },
-    // poner opacidad al fondo del boton
     button: {
         flexDirection: "row",
-        gap:normalize(4),
-        paddingHorizontal: normalize(10),
-        paddingVertical: normalize(6),
+        gap: space.xs + 2,
+        paddingHorizontal: space.md,
+        minHeight: normalize(36),
         alignItems: "center",
     },
-    buttonText:{
-        fontSize: normalize(14),
-        color: gb.gray50,
-    }
+    buttonText: {
+        fontSize: font.sm,
+        fontWeight: font.semibold,
+        color: color.primaryDark,
+    },
 });

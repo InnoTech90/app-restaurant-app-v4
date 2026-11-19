@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../../components/atoms/FondoSolido/FondoSolido";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -148,12 +149,7 @@ const DetalleComplemento = () => {
 
   return (
     <SafeAreaView edges={["bottom"]} style={s.safeArea}>
-      <LinearGradient
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={s.header}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={s.headerNombre} numberOfLines={1}>
@@ -162,7 +158,7 @@ const DetalleComplemento = () => {
           <Text style={s.headerSubtitulo}>Selecciona complementos</Text>
         </View>
         <View style={{ width: normalize(40) }} />
-      </LinearGradient>
+      </HeaderBar>
 
       {cargando ? (
         <View

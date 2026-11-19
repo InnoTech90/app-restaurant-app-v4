@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../atoms/FondoSolido/FondoSolido";
 import { useEffect, useRef, useState } from "react";
 import {
   Modal,
@@ -18,6 +18,7 @@ import Select from "../../atoms/Select/Select";
 import ModalWarning from "../ModalWarning/ModalWarning";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const sameId = (a, b) =>
   a != null && b != null && Number(a) === Number(b);
 
@@ -51,7 +52,7 @@ const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
         ]}
       >
         {fila.pagado && (
-          <Ionicons name="checkmark" size={normalize(13)} color={gb.gray50} />
+          <Ionicons name="checkmark" size={normalize(13)} color="#FFFFFF" />
         )}
       </Pressable>
 
@@ -64,7 +65,7 @@ const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
           onChangeText={handleMonto}
           keyboardType="decimal-pad"
           placeholder="0.00"
-          placeholderTextColor={gb.gray300}
+          placeholderTextColor={gb.gray400}
           editable={!disabled}
           selectTextOnFocus
         />
@@ -264,16 +265,14 @@ const ModalDividirCuenta = ({
       <View style={s.overlay}>
         <View style={[s.sheet, { height: screenHeight * 0.88 }]}>
           <LinearGradient
-            colors={gb.gradient_blue}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            colors={[tema.surface, tema.surface]}
             style={s.header}
           >
             <Text style={s.headerTitulo}>
               {yaGuardado ? "Editar división" : "Dividir cuenta"}
             </Text>
             <Pressable onPress={onClose} style={s.headerClose}>
-              <Ionicons name="close" size={normalize(22)} color={gb.gray50} />
+              <Ionicons name="close" size={normalize(22)} color={tema.textSecondary} />
             </Pressable>
           </LinearGradient>
 
@@ -339,7 +338,7 @@ const ModalDividirCuenta = ({
                   <Ionicons
                     name="git-branch-outline"
                     size={normalize(16)}
-                    color={gb.gray50}
+                    color="#FFFFFF"
                   />
                   <Text style={s.btnDividirIgualTexto}>Dividir igual</Text>
                 </Button>
@@ -361,7 +360,7 @@ const ModalDividirCuenta = ({
                     <Ionicons
                       name="checkmark"
                       size={normalize(13)}
-                      color={gb.gray50}
+                      color="#FFFFFF"
                     />
                   )}
                 </View>
@@ -505,7 +504,7 @@ const ModalDividirCuenta = ({
                   <Ionicons
                     name="checkmark-circle-outline"
                     size={normalize(18)}
-                    color={gb.gray50}
+                    color="#FFFFFF"
                   />
                   <Text style={s.btnGuardarTexto}>
                     {guardando

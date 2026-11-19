@@ -1,8 +1,10 @@
+import { SINCRONIZACION_AUTOMATICA_EVENT } from "../../../utils/http/sincronizarEnSegundoPlano";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, DeviceEventEmitter, FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../../../components/atoms/Button/Button";
 import GeneralModal from "../../../components/atoms/GeneralModal/GeneralModal";
@@ -30,6 +32,7 @@ import { integracionVentas } from "./integracion";
 import { s } from "./styles";
 import { imprimirCorteGeneral, imprimirCorteResumen } from "./ticket";
 
+import { color as tema } from "../../../utils/theme";
 const ventaEstaSincronizada = (venta) => Number(venta?.SINCRONIZADO) === 1;
 
 const ventaEsLimpiable = (venta) => {
@@ -90,6 +93,8 @@ const esVentaDeHoy = (fechaStr) => {
   return fecha >= hoy && fecha < manana;
 };
 
+const PAGINA_ANTERIORES = 100;
+
 const Ventas = () => {
   const [filtroPeriodo, setFiltroPeriodo] = useState("Hoy");
   const [filtroSeleccionado, setFiltroSeleccionado] = useState("Todas");
@@ -106,6 +111,22 @@ const Ventas = () => {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(null);
   const [ventas, setVentas] = useState([]);
+  // Paginado de "Anteriores": Hoy se carga completo; el historial solo cuando
+  // se abre la pestaña y de PAGINA_ANTERIORES en PAGINA_ANTERIORES.
+  const [totalAnteriores, setTotalAnteriores] = useState(0);
+  const [resumenAnteriores, setResumenAnteriores] = useState({
+    total: 0,
+    efectivo: 0,
+  });
+  const [anterioresCargadas, setAnterioresCargadas] = useState(0);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [recarga, setRecarga] = useState(0);
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(SINCRONIZACION_AUTOMATICA_EVENT, (e) => {
+      if (e?.modulo === "ventas") setRecarga((n) => n + 1);
+    });
+    return () => sub.remove();
+  }, []);
   const [sincronizando, setSincronizando] = useState(false);
 
   useFocusEffect(
@@ -161,10 +182,19 @@ const Ventas = () => {
       const cargar = async () => {
         try {
           setCargando(true);
-          const data = await VentasDatabase.getVentas();
+          const [data, anteriores] = await Promise.all([
+            VentasDatabase.getVentas({ periodo: "hoy" }),
+            VentasDatabase.resumenVentasAnteriores(),
+          ]);
           if (activo) {
             // Agregar campo seleccionado para el checkbox de limpiar
             setVentas(data.map((v) => ({ ...v, seleccionado: false })));
+            setTotalAnteriores(anteriores.cantidad);
+            setResumenAnteriores({
+              total: anteriores.total,
+              efectivo: anteriores.efectivo,
+            });
+            setAnterioresCargadas(0);
           }
         } catch (e) {
           console.error("Error cargando ventas:", e);
@@ -177,8 +207,45 @@ const Ventas = () => {
       return () => {
         activo = false;
       };
-    }, [accesoPermitido]),
+    }, [accesoPermitido, recarga]),
   );
+
+  const cargarMasAnteriores = useCallback(async () => {
+    if (cargandoMas || anterioresCargadas >= totalAnteriores) return;
+    setCargandoMas(true);
+    try {
+      const pagina = await VentasDatabase.getVentas({
+        periodo: "anteriores",
+        limite: PAGINA_ANTERIORES,
+        desde: anterioresCargadas,
+      });
+      setVentas((prev) => {
+        const ids = new Set(prev.map((v) => Number(v.ID)));
+        const nuevas = pagina
+          .filter((v) => !ids.has(Number(v.ID)))
+          .map((v) => ({ ...v, seleccionado: false }));
+        return [...prev, ...nuevas];
+      });
+      setAnterioresCargadas((n) => n + pagina.length);
+    } catch (e) {
+      console.error("Error cargando ventas anteriores:", e);
+    } finally {
+      setCargandoMas(false);
+    }
+  }, [cargandoMas, anterioresCargadas, totalAnteriores]);
+
+  // Primera página al abrir la pestaña Anteriores.
+  useEffect(() => {
+    if (
+      filtroPeriodo === "Anteriores" &&
+      !cargando &&
+      anterioresCargadas === 0 &&
+      totalAnteriores > 0
+    ) {
+      cargarMasAnteriores();
+    }
+  }, [filtroPeriodo, cargando, anterioresCargadas, totalAnteriores, cargarMasAnteriores]);
+
   const ventasDelPeriodo = useMemo(() => {
     if (filtroPeriodo === "Anteriores") {
       return ventas.filter((v) => !esVentaDeHoy(v.FECHA));
@@ -215,10 +282,7 @@ const Ventas = () => {
     [ventasDelPeriodo],
   );
 
-  const cantidadAnteriores = useMemo(
-    () => ventas.filter((v) => !esVentaDeHoy(v.FECHA)).length,
-    [ventas],
-  );
+  const cantidadAnteriores = totalAnteriores;
 
   // ── Imprimir corte ─────────────────────────────────────────────────────
   const imprimirCorte = async (tipo) => {
@@ -312,6 +376,8 @@ const Ventas = () => {
       setVentas((prev) =>
         prev.filter((v) => !idsSet.has(Number(v.ID))),
       );
+      // Recalcular conteo y totales de Anteriores desde SQL.
+      setRecarga((n) => n + 1);
       idsALimpiarRef.current = [];
       setCantidadALimpiar(0);
     } catch (e) {
@@ -330,15 +396,10 @@ const Ventas = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       {/* ----------- header ----------- */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         {/* ----------- seleccionar todo ----------- */}
         {ventasFiltradasState.length > 0 && (
@@ -366,11 +427,11 @@ const Ventas = () => {
                 <Ionicons
                   name={todoSeleccionado ? "checkbox" : "square-outline"}
                   size={normalize(14)}
-                  color={todoSeleccionado ? gb.gray50 : gb.purple100}
+                  color={todoSeleccionado ? gb.gray50 : "#4F5FE0"}
                 />
                 <Text
                   style={{
-                    color: todoSeleccionado ? gb.gray50 : gb.gray50,
+                    color: todoSeleccionado ? gb.gray50 : "#4F5FE0",
                     fontSize: normalize(12),
                   }}
                 >
@@ -382,20 +443,13 @@ const Ventas = () => {
         )}
 
         <Button style={s.btnLimpiar} onPress={solicitarLimpiarVentas}>
-          <Ionicons name="trash" size={normalize(14)} color={gb.gray50} />
-          <Text style={s.btnLimpiarText}>Limpiar Ventas</Text>
+          <Ionicons name="trash-outline" size={normalize(14)} color="#E5484D" />
+          <Text style={s.btnLimpiarText}>Limpiar ventas</Text>
         </Button>
-      </LinearGradient>
+      </HeaderBar>
 
       {/* ----------- filtros ----------- */}
-      <View
-        style={{
-          shadowColor: "#000",
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-        }}
-      >
+      <View style={s.filtrosWrapper}>
         <View style={s.filtrosPeriodo}>
           {[
             { label: "Hoy", icono: "today-outline" },
@@ -409,17 +463,17 @@ const Ventas = () => {
             return (
               <Button
                 key={label}
-                style={[s.ButtonFiltro, activo && s.botonFiltroSeleccionado]}
-                styleContainer={s.buttonCOntainer}
+                style={[s.segmento, activo && s.segmentoActivo]}
+                styleContainer={s.segmentoContainer}
                 onPress={() => setFiltroPeriodo(label)}
               >
                 <View style={s.buttonContent}>
                   <Ionicons
                     name={icono}
                     size={normalize(14)}
-                    color={activo ? gb.gray50 : gb.purple550}
+                    color={activo ? "#4F5FE0" : "#8A93B2"}
                   />
-                  <Text style={{ color: activo ? gb.gray50 : gb.gray400 }}>
+                  <Text style={activo ? s.segmentoTextoActivo : s.segmentoTexto}>
                     {label}
                     {extra}
                   </Text>
@@ -439,18 +493,17 @@ const Ventas = () => {
             return (
               <Button
                 key={label}
-                style={[s.ButtonFiltro, activo && s.botonFiltroSeleccionado]}
-                styleText={activo ? { color: gb.gray50 } : {}}
-                styleContainer={s.buttonCOntainer}
+                style={[s.chip, activo && s.chipActivo]}
+                styleContainer={s.chipContainer}
                 onPress={() => setFiltroSeleccionado(label)}
               >
                 <View style={s.buttonContent}>
                   <Ionicons
                     name={icono}
-                    size={normalize(14)}
-                    color={activo ? gb.gray50 : gb.purple550}
+                    size={normalize(13)}
+                    color={activo ? "#FFFFFF" : "#5B6488"}
                   />
-                  <Text style={{ color: activo ? gb.gray50 : gb.gray400 }}>
+                  <Text style={activo ? s.chipTextoActivo : s.chipTexto}>
                     {label}
                   </Text>
                 </View>
@@ -460,63 +513,66 @@ const Ventas = () => {
         </View>
 
         <View style={s.totalesContainer}>
-          <LinearGradient
-            colors={["#2196F3", "#42A5F5"]}
-            style={s.totalFiltrado}
-          >
+          <View style={s.totalTarjeta}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Ionicons
-                name="cash"
-                size={normalize(18)}
-                color={gb.gray50}
+                name="cash-outline"
+                size={normalize(16)}
+                color="#18A058"
                 style={{ marginRight: normalize(5) }}
               />
-              <Text style={s.precio}>{formatTotal(totalFiltrado)}</Text>
+              <Text style={s.precio}>
+                {formatTotal(
+                  filtroPeriodo === "Anteriores"
+                    ? resumenAnteriores.efectivo
+                    : totalFiltrado,
+                )}
+              </Text>
             </View>
             <Text style={s.descripcion}>
               {filtroPeriodo === "Hoy"
                 ? "Efectivo de hoy"
                 : "Efectivo anteriores"}
             </Text>
-          </LinearGradient>
-          <LinearGradient
-            colors={["#FF9800", "#FFB74D"]}
-            style={s.totalFiltrado}
-          >
+          </View>
+          <View style={s.totalTarjeta}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Ionicons
                 name="trending-up"
-                size={normalize(18)}
-                color={gb.gray50}
+                size={normalize(16)}
+                color="#4F5FE0"
                 style={{ marginRight: normalize(5) }}
               />
-              <Text style={s.precio}>{formatTotal(totalGeneral)}</Text>
+              <Text style={s.precio}>
+                {formatTotal(
+                  filtroPeriodo === "Anteriores"
+                    ? resumenAnteriores.total
+                    : totalGeneral,
+                )}
+              </Text>
             </View>
             <Text style={s.descripcion}>
               {filtroPeriodo === "Hoy"
                 ? "Total de hoy"
                 : "Total anteriores"}
             </Text>
-          </LinearGradient>
+          </View>
         </View>
       </View>
 
       {/* ----------- lista de ventas ----------- */}
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, backgroundColor: gb.gray50 }}
-        style={s.scroll}
-      >
+      <View style={[s.scroll, { flex: 1, backgroundColor: gb.gray50 }]}>
         {ventasFiltradasState.length > 0 && (
           <View style={s.leyendaColores}>
             <View style={s.leyendaItem}>
               <View
-                style={[s.leyendaMuestra, { backgroundColor: "#C8E6C9" }]}
+                style={[s.leyendaMuestra, { backgroundColor: tema.successSoft }]}
               />
               <Text style={s.leyendaTexto}>Al día</Text>
             </View>
             <View style={s.leyendaItem}>
               <LinearGradient
-                colors={["#F6C9A4", "#FBE6D4"]}
+                colors={["#F5D9A8", "#FFF4E0"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={s.leyendaMuestra}
@@ -543,11 +599,11 @@ const Ventas = () => {
               <Ionicons
                 name="alert-circle-outline"
                 size={normalize(50)}
-                color="#F44336"
+                color="#E5484D"
               />
               <Text
                 style={{
-                  color: "#F44336",
+                  color: "#E5484D",
                   marginTop: normalize(12),
                   fontSize: normalize(12),
                   textAlign: "center",
@@ -582,14 +638,31 @@ const Ventas = () => {
               </Text>
             </View>
           ) : (
-            <ScrollView
-              style={s.ventasContainer}
+            <FlatList
+              style={[s.ventasContainer, { flex: 1 }]}
               contentContainerStyle={{
                 gap: normalize(10),
                 paddingBottom: normalize(20),
               }}
-            >
-              {ventasFiltradasState.map((venta) => {
+              data={ventasFiltradasState}
+              keyExtractor={(venta) => String(venta.ID)}
+              initialNumToRender={12}
+              maxToRenderPerBatch={12}
+              windowSize={7}
+              removeClippedSubviews
+              onEndReachedThreshold={0.5}
+              onEndReached={() => {
+                if (filtroPeriodo === "Anteriores") cargarMasAnteriores();
+              }}
+              ListFooterComponent={
+                cargandoMas ? (
+                  <ActivityIndicator
+                    color={gb.purple550}
+                    style={{ marginVertical: normalize(16) }}
+                  />
+                ) : null
+              }
+              renderItem={({ item: venta }) => {
                 const descuentoTotal =
                   (Number(venta.DESCUENTO_COMANDA) || 0) +
                   (Number(venta.DESCUENTO_ARTICULOS) || 0);
@@ -627,11 +700,11 @@ const Ventas = () => {
                     }}
                   />
                 );
-              })}
-            </ScrollView>
+              }}
+            />
           )}
         </View>
-      </ScrollView>
+      </View>
 
       {/* ----------- footer ----------- */}
       <SincronizadoFooter
@@ -663,11 +736,11 @@ const Ventas = () => {
 
           setSincronizando(true);
           try {
-            const { sincronizadas, ventas: ventasActualizadas } =
-              await integracionVentas.sincronizarVentas(idsSeleccionados);
-            setVentas(
-              ventasActualizadas.map((v) => ({ ...v, seleccionado: false })),
-            );
+            const { sincronizadas } =
+              await integracionVentas.sincronizarVentas(idsSeleccionados, {
+                devolverVentas: false,
+              });
+            setRecarga((n) => n + 1);
             if (sincronizadas === 0) {
               mostrarAviso({
                 type: "warning",
@@ -709,7 +782,7 @@ const Ventas = () => {
             style={s.modalIconContainer}
             colors={[gb.blue550, gb.blue400]}
           >
-            <Ionicons name="print" size={normalize(40)} color={gb.gray50} />
+            <Ionicons name="print" size={normalize(40)} color="#FFFFFF" />
           </LinearGradient>
           <Text style={s.modalTitle}>¿Qué desea imprimir?</Text>
           <View
@@ -724,7 +797,7 @@ const Ventas = () => {
               onPress={() => imprimirCorte("RESUMEN")}
               style={[s.modalButton, { flex: 1, backgroundColor: gb.blue550 }]}
             >
-              <Text style={[s.modalButtonText, { color: gb.gray50 }]}>
+              <Text style={[s.modalButtonText, { color: "#FFFFFF" }]}>
                 Resumen
               </Text>
             </Button>
@@ -735,7 +808,7 @@ const Ventas = () => {
                 { flex: 1, backgroundColor: gb.purple550 },
               ]}
             >
-              <Text style={[s.modalButtonText, { color: gb.gray50 }]}>
+              <Text style={[s.modalButtonText, { color: "#FFFFFF" }]}>
                 General
               </Text>
             </Button>
@@ -774,7 +847,7 @@ const Ventas = () => {
             style={s.modalIconContainer}
             colors={[gb.yellow500, gb.yellow300]}
           >
-            <Ionicons name="warning" size={normalize(40)} color={gb.gray50} />
+            <Ionicons name="warning" size={normalize(40)} color="#FFFFFF" />
           </LinearGradient>
           <Text style={s.modalTitle}>
             Solo se pueden limpiar ventas ya sincronizadas que estén pagadas o

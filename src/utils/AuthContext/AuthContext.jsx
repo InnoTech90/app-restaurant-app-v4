@@ -11,6 +11,17 @@ export const AuthContext = createContext({
 
 const dataAuthStorage = "authData";
 
+/**
+ * "0" mientras PantallaDeCarga descarga los datos; "1" cuando terminó todo.
+ * Si la app se cerró o el backend se cayó a media carga, al volver a abrir
+ * la base local está incompleta y todo salía vacío: con "0" se cierra sesión
+ * y se manda al login. Sin la clave (instalaciones anteriores) no se toca.
+ */
+export const CARGA_INICIAL_KEY = "cargaInicialCompleta";
+
+export const marcarCargaInicialCompleta = () =>
+  AsyncStorage.setItem(CARGA_INICIAL_KEY, "1");
+
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
@@ -33,7 +44,14 @@ export const AuthProvider = ({ children }) => {
         const value = await AsyncStorage.getItem(dataAuthStorage);
         if (value !== null) {
           const parsedValue = JSON.parse(value);
-          setAutenticado(parsedValue.autenticado === true);
+          const cargaInicial = await AsyncStorage.getItem(CARGA_INICIAL_KEY);
+          const cargaIncompleta = cargaInicial === "0";
+          if (parsedValue.autenticado === true && cargaIncompleta) {
+            await storageAuthState({ autenticado: false, data: [] });
+            setAutenticado(false);
+          } else {
+            setAutenticado(parsedValue.autenticado === true);
+          }
         }
         // Limpia sesión de gerente legacy si existía.
         await AsyncStorage.removeItem("gerenteSesion");
@@ -47,6 +65,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const autenticar = async () => {
+    await AsyncStorage.setItem(CARGA_INICIAL_KEY, "0");
     await storageAuthState({ autenticado: true, data: [] });
     setAutenticado(true);
     router.replace("/PantallaDeCarga");

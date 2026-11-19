@@ -24,6 +24,7 @@ import { gb } from "../../../globalStyles";
 import { Database } from "./database";
 import { s } from "./styles";
 
+import { color as tema } from "../../../../utils/theme";
 const Inicio = () => {
   const router = useRouter();
   const [mesas, setMesas] = useState([]);
@@ -142,7 +143,7 @@ const Inicio = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, backgroundColor: gb.gray50 }}

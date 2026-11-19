@@ -1,3 +1,4 @@
+import { enCola } from "../../../utils/http/sincronizarEnSegundoPlano";
 import {
   esErrorDeConexion,
   MENSAJE_NO_SE_PUDO_CONECTAR,
@@ -24,9 +25,9 @@ export class integracionClientes {
    *     omitido para los nuevos (creados localmente sin UUID).
    *  3. POST /devices/synchronize-diners.
    *  4. Marca como SINCRONIZADO = 1 los que tenían UUID.
-   *  5. Elimina localmente los recién creados (sin UUID) — el servidor los
-   *     devuelve con UUID asignado en el siguiente paso.
-   *  6. Llama actualizar() para traer los datos frescos del servidor.
+   *  5. Llama actualizar() para traer los datos frescos del servidor.
+   *  6. Reenlaza las comandas de los clientes nuevos al cliente descargado
+   *     y borra el registro local (ver Database.reenlazarClientesNuevos).
    *
    * @returns {{ sincronizados: number }}
    */
@@ -81,11 +82,12 @@ export class integracionClientes {
         .map((c) => c.UUID);
       await Database.marcarSincronizadosPorUUID(uuidsExistentes);
 
-      // Eliminar los creados localmente (sin UUID); el servidor los devolverá con UUID
-      await Database.eliminarClientesSinUUID();
-
-      // Traer datos frescos del servidor
+      // Traer datos frescos del servidor (los nuevos llegan con UUID) y
+      // después pasar las comandas del cliente local al descargado. Antes se
+      // borraban los locales primero y la comanda quedaba sin cliente.
+      const nuevosLocales = pendientes.filter((c) => !c.UUID);
       await integracionClientes.actualizar();
+      await Database.reenlazarClientesNuevos(nuevosLocales);
 
       return { sincronizados: pendientes.length };
     } catch (error) {
@@ -96,3 +98,6 @@ export class integracionClientes {
     }
   };
 }
+
+// Una sincronización a la vez por módulo (botón manual + subida automática).
+integracionClientes.sincronizar = enCola("clientes", integracionClientes.sincronizar);

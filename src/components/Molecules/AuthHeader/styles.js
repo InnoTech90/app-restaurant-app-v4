@@ -1,51 +1,55 @@
 import { StyleSheet } from "react-native";
+import { color, font, space } from "../../../utils/theme";
+import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
 export const s = StyleSheet.create({
-    header:{
-
+    header: {
+        backgroundColor: color.surface,
     },
     containerHeader: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: 16,
-        paddingTop: 40,
+        paddingHorizontal: isTablet ? space.xl : space.lg,
+        paddingBottom: space.md,
+        minHeight: normalize(isTablet ? 64 : 56),
+        gap: space.md,
     },
-    title:{
-        color: "white",
-        fontSize: 20,
-        fontWeight: "bold",
-        textAlign: "center",
+    titleBlock: {
         flex: 1,
+        minWidth: 0,
+    },
+    title: {
+        color: color.text,
+        fontSize: font.lg,
+        fontWeight: font.bold,
+    },
+    subtitle: {
+        marginTop: 1,
+        color: color.textMuted,
+        fontSize: font.xs,
     },
     rightActions: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        minWidth: 70,
+        gap: space.sm,
+        minWidth: normalize(isTablet ? 110 : 90),
         justifyContent: "flex-end",
     },
     ordersBadgeBtn: {
-        minWidth: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: "#DC2626",
+        minWidth: normalize(26),
+        height: normalize(26),
+        borderRadius: normalize(13),
+        backgroundColor: color.danger,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: 6,
-        borderWidth: 1.5,
-        borderColor: "#FFFFFF",
+        paddingHorizontal: space.xs,
+        borderWidth: 2,
+        borderColor: color.surface,
     },
     ordersBadgeText: {
-        color: "#FFFFFF",
-        fontSize: 11,
-        fontWeight: "700",
+        color: color.textOnPrimary,
+        fontSize: font.xs,
+        fontWeight: font.bold,
     },
-    buscadorContainer:{
-        
-    },
-    buscador:{
-
-    }
-
 });

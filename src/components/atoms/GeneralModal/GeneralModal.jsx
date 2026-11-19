@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../FondoSolido/FondoSolido";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import s from "./styles";
+import { color } from "../../../utils/theme";
 
 const GeneralModal = ({
   visible,
@@ -18,14 +19,21 @@ const GeneralModal = ({
   children,
   animationType = "slide",
   iconClose = true,
-  headerColor = "white",
+  headerColor = color.surface,
   headerColorGrandien = false,
-  iconCloseColor = "black",
+  iconCloseColor = color.textSecondary,
   headerTitle,
-  headerColorText = "black",
+  headerColorText = color.title,
   scrollable = true,
   showsVerticalScrollIndicator = false,
 }) => {
+  // Estilo moderno: el encabezado siempre usa el fondo, título y X del tema
+  // (claro u oscuro). Las pantallas viejas mandaban degradados y textos
+  // blancos o gb.gray50 que dejaban el título invisible en algún modo.
+  headerColorText = color.title;
+  iconCloseColor = color.textSecondary;
+  headerColorGrandien = false;
+
   const headerContent = (
     <>
       <Pressable onPress={onRequestClose} hitSlop={8}>

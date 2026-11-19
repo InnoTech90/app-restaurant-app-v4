@@ -4,6 +4,7 @@ import {
   isTablet,
   normalize,
 } from "../../../utils/funcionesMaquetado/responsiveWH";
+import { color, font, radius, shadow } from "../../../utils/theme";
 
 const MODAL_WIDTH = isTablet ? Math.min(CONTENT_MAX_WIDTH * 0.72, 560) : "90%";
 const SCROLL_MAX_HEIGHT = Dimensions.get("window").height * (isTablet ? 0.68 : 0.74);
@@ -13,34 +14,37 @@ const s = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: color.overlay,
     paddingHorizontal: isTablet ? normalize(24) : normalize(12),
   },
   sheet: {
     width: MODAL_WIDTH,
     maxWidth: isTablet ? 560 : undefined,
     maxHeight: isTablet ? "85%" : "92%",
-    borderRadius: normalize(12),
+    borderRadius: radius.lg,
     overflow: "hidden",
-    backgroundColor: "white",
+    backgroundColor: color.surface,
+    ...shadow.raised,
   },
   container: {
     width: "100%",
     flexShrink: 1,
-    backgroundColor: "white",
+    backgroundColor: color.surface,
   },
   content: {
     width: "100%",
     maxHeight: SCROLL_MAX_HEIGHT,
     flexShrink: 1,
-    backgroundColor: "white",
+    backgroundColor: color.surface,
   },
   contentContainer: {
     padding: isTablet ? normalize(16) : normalize(10),
   },
   header: {
     width: "100%",
-    backgroundColor: "white",
+    backgroundColor: color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: color.border,
     paddingHorizontal: isTablet ? normalize(20) : normalize(16),
     paddingVertical: isTablet ? normalize(16) : normalize(14),
     flexDirection: "row-reverse",
@@ -49,8 +53,9 @@ const s = StyleSheet.create({
   },
   headerTitleS: {
     flex: 1,
-    fontSize: normalize(isTablet ? 18 : 16),
-    fontWeight: "bold",
+    fontSize: font.lg,
+    fontWeight: font.bold,
+    color: color.title,
     marginRight: normalize(8),
   },
 });

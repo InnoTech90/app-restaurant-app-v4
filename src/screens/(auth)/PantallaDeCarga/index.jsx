@@ -4,7 +4,10 @@ import { Image, Text, View } from "react-native";
 import Button from "../../../components/atoms/Button/Button";
 import GeneralModal from "../../../components/atoms/GeneralModal/GeneralModal";
 import Loading from "../../../components/atoms/Loading/Loading";
-import { AuthContext } from "../../../utils/AuthContext/AuthContext";
+import {
+  AuthContext,
+  marcarCargaInicialCompleta,
+} from "../../../utils/AuthContext/AuthContext";
 import {
   MENSAJE_SIN_INTERNET,
   obtenerMensajeErrorRed,
@@ -162,7 +165,7 @@ const PantallaDeCarga = () => {
 
   useEffect(() => {
     if (Object.values(endpontsCargados).every((cargado) => cargado === true)) {
-      reouter.replace("/Inicio");
+      marcarCargaInicialCompleta().finally(() => reouter.replace("/Inicio"));
     }
   }, [endpontsCargados, reouter]);
 
@@ -207,7 +210,7 @@ const PantallaDeCarga = () => {
             authContext.desautenticar();
           }}
         >
-          <Text style={{ color: gb.gray50 }}>Aceptar</Text>
+          <Text style={{ color: "#FFFFFF" }}>Aceptar</Text>
         </Button>
       </GeneralModal>
     </View>

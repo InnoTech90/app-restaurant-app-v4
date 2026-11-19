@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../atoms/FondoSolido/FondoSolido";
 import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { s } from "./styles";
@@ -7,7 +7,7 @@ import { s } from "./styles";
 const GRADIENTES = {
   ok: [gb.green500, gb.green600 ?? "#388E3C"],
   cancelado: [gb.red500, gb.red600],
-  pendiente: ["#FF9800", "#F57C00"],
+  pendiente: ["#E58A00", "#F57C00"],
 };
 
 const InformacionOrden = ({

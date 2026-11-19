@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -517,12 +518,7 @@ const Ticket = () => {
         }}
       />
       {/* ── HEADER ── */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <View style={s.headerCenter}>
           <Text style={s.headerMesa}>{mesa?.NOMBRE ?? "Mesa"}</Text>
@@ -542,7 +538,7 @@ const Ticket = () => {
             color={soloLectura ? gb.gray300 : gb.gray50}
           />
         </Button>
-      </LinearGradient>
+      </HeaderBar>
 
       {/* ── CLIENTE CHIP (solo si hay) ── */}
       {cliente && (
@@ -563,7 +559,7 @@ const Ticket = () => {
       {bloqueada && (
         <View
           style={{
-            backgroundColor: gb.orange100 ?? "#FFF3CD",
+            backgroundColor: gb.orange100 ?? "#FFF4E0",
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: normalize(14),
@@ -574,12 +570,12 @@ const Ticket = () => {
           <Ionicons
             name="lock-closed-outline"
             size={normalize(16)}
-            color={gb.orange600 ?? "#856404"}
+            color={gb.orange600 ?? "#A15C00"}
           />
           <Text
             style={{
               fontSize: normalize(12),
-              color: gb.orange600 ?? "#856404",
+              color: gb.orange600 ?? "#A15C00",
               fontWeight: "600",
             }}
           >
@@ -712,7 +708,7 @@ const Ticket = () => {
                 <Ionicons
                   name="create-outline"
                   size={normalize(20)}
-                  color={gb.gray50}
+                  color="#FFFFFF"
                 />
                 <Text style={s.btnImprimirTexto}>Editar impresión</Text>
               </Button>

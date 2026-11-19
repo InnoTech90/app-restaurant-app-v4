@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
+import { color, font, radius, shadow, touch } from "../../../utils/theme";
 
 export const s = StyleSheet.create({
     contenedor: {
@@ -9,27 +10,27 @@ export const s = StyleSheet.create({
     label: {
         fontSize: normalize(13),
         fontWeight: "600",
-        color: gb.gray700,
+        color: color.title,
         marginBottom: normalize(4),
     },
     selector: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        height: normalize(40),
+        minHeight: touch,
         borderWidth: 1,
-        borderColor: gb.blue100,
-        borderRadius: normalize(5),
-        backgroundColor: gb.gray50,
-        paddingHorizontal: normalize(10),
+        borderColor: color.borderStrong,
+        borderRadius: radius.md,
+        backgroundColor: color.surface,
+        paddingHorizontal: normalize(12),
     },
     textoSelector: {
         flex: 1,
-        fontSize: normalize(14),
-        color: gb.gray800,
+        fontSize: font.md,
+        color: color.text,
     },
     placeholder: {
-        color: gb.gray300,
+        color: color.textMuted,
     },
     icono: {
         color: gb.gray400,
@@ -37,7 +38,7 @@ export const s = StyleSheet.create({
     },
     overlay: {
         flex: 1,
-        backgroundColor: "rgba(0,0,0,0.35)",
+        backgroundColor: color.overlay,
         justifyContent: "center",
         paddingHorizontal: normalize(24),
     },
@@ -45,9 +46,9 @@ export const s = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
     },
     dropdown: {
-        backgroundColor: gb.gray50,
-        borderRadius: normalize(10),
-        maxHeight: normalize(280),
+        backgroundColor: color.surface,
+        borderRadius: radius.lg,
+        maxHeight: normalize(360),
         overflow: "hidden",
         shadowColor: "#000",
         shadowOpacity: 0.15,
@@ -73,7 +74,7 @@ export const s = StyleSheet.create({
         borderColor: gb.gray200,
     },
     opcionActiva: {
-        backgroundColor: gb.blue100,
+        backgroundColor: color.primarySoft,
     },
     textoOpcion: {
         fontSize: normalize(14),

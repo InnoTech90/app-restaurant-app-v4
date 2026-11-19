@@ -1,5 +1,7 @@
+import { sincronizarSiHayInternet } from "../../../utils/http/sincronizarEnSegundoPlano";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -28,6 +30,7 @@ import InventariosDatabase from "./database";
 import { integracionInventarios } from "./integracion";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const Inventarios = () => {
   const {
     accesoPermitido,
@@ -174,22 +177,22 @@ const Inventarios = () => {
     const data = await InventariosDatabase.getMateriasPrimas();
     setItems(data);
     await cargarPendientes();
+    sincronizarSiHayInternet(() => integracionInventarios.sincronizar(), {
+      modulo: "inventario",
+      mensajeFallo:
+        "El ajuste se guardó en el dispositivo, pero no se pudo subir al servidor. Súbelo desde Inventarios con Sincronizar.",
+    });
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView edges={["bottom"]} style={s.root}>
       {/* Header */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>Inventario</Text>
         <View style={{ width: normalize(35) }} />
-      </LinearGradient>
+      </HeaderBar>
 
       {cargando ? (
         <View style={s.loadingContainer}>
@@ -266,7 +269,7 @@ const Inventarios = () => {
       {/* Footer */}
       <LinearGradient
         style={s.footer}
-        colors={gb.gradient_blue}
+        colors={[tema.surface, tema.surface]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
@@ -280,12 +283,12 @@ const Inventarios = () => {
           disabled={cargando || actualizando || sincronizando || pendientes > 0}
         >
           {actualizando ? (
-            <ActivityIndicator size="small" color={gb.gray50} />
+            <ActivityIndicator size="small" color="#4F5FE0" />
           ) : (
             <Ionicons
               name="refresh-outline"
               size={normalize(20)}
-              color={gb.gray50}
+              color="#4F5FE0"
             />
           )}
           <Text style={s.footerBtnText}>
@@ -305,7 +308,7 @@ const Inventarios = () => {
           onPress={sincronizar}
           disabled={cargando || actualizando || sincronizando}
         >
-          <Ionicons name="sync" size={normalize(20)} color={gb.gray50} />
+          <Ionicons name="sync" size={normalize(20)} color="#4F5FE0" />
           <Text style={s.footerBtnText}>
             {sincronizando ? "Sincronizando..." : "Sincronizar"}
           </Text>

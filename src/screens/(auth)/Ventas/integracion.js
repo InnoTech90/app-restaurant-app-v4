@@ -1,3 +1,4 @@
+import { enCola } from "../../../utils/http/sincronizarEnSegundoPlano";
 import {
   esErrorDeConexion,
   MENSAJE_NO_SE_PUDO_CONECTAR,
@@ -40,6 +41,9 @@ const mensajeErrorApi = (error) => {
   return null;
 };
 
+const LOTE_SINCRONIZACION = 50;
+const TIMEOUT_LOTE_MS = 30000;
+
 export class integracionVentas {
   /**
    * Sube al servidor las comandas finalizadas pendientes de sincronizar.
@@ -47,7 +51,16 @@ export class integracionVentas {
    *
    * @returns {{ sincronizadas: number, ventas: Array }}
    */
-  static sincronizarVentas = async (idsSeleccionados = []) => {
+  /**
+   * @param {Array} idsSeleccionados
+   * @param {{ devolverVentas?: boolean }} opciones  devolverVentas=false evita
+   *   releer TODO el historial al final (Pago no lo usa y, como la BD usa una
+   *   sola cola, esa lectura bloqueaba la app varios segundos tras cada cobro).
+   */
+  static sincronizarVentas = async (
+    idsSeleccionados = [],
+    { devolverVentas = true } = {},
+  ) => {
     const headers = await getDeviceAuthHeaders();
 
     const { businessId, branchId, deviceId } =
@@ -69,11 +82,11 @@ export class integracionVentas {
         : [];
 
     if (ventasSeleccionadas.length === 0) {
-      const ventas = await VentasDatabase.getVentas();
+      const ventas = devolverVentas ? await VentasDatabase.getVentas() : null;
       return { sincronizadas: 0, ventas };
     }
 
-    const sales = ventasSeleccionadas.map((v) => ({
+    const aVenta = (v) => ({
       businessId,
       branchId,
       tableId: v.MESA_UUID ?? null,
@@ -116,33 +129,47 @@ export class integracionVentas {
         paymentMethodId: p.ID_METODO_PAGO ?? null,
         amount: aNumero(p.CANTIDAD),
       })),
-    }));
+    });
 
-    try {
-      const response = await deviceApi.post(
-        "/devices/synchronize-sale",
-        sales,
-        { headers },
-      );
-
-      if (response.status < 200 || response.status >= 300) {
-        throw new Error(
-          `Error del servidor al sincronizar ventas (${response.status})`,
+    // Carga pesada: después de un día sin internet puede haber cientos de
+    // ventas pendientes. En un solo POST se pasaba del timeout (12 s) y nunca
+    // subían. Se mandan en lotes y cada lote se marca al confirmarse, así un
+    // corte de red a la mitad no obliga a reenviar lo que ya llegó.
+    const sincronizadasIds = [];
+    for (let i = 0; i < ventasSeleccionadas.length; i += LOTE_SINCRONIZACION) {
+      const lote = ventasSeleccionadas.slice(i, i + LOTE_SINCRONIZACION);
+      try {
+        const response = await deviceApi.post(
+          "/devices/synchronize-sale",
+          lote.map(aVenta),
+          { headers, timeout: TIMEOUT_LOTE_MS },
         );
+
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(
+            `Error del servidor al sincronizar ventas (${response.status})`,
+          );
+        }
+      } catch (error) {
+        // Los lotes anteriores ya quedaron marcados como sincronizados.
+        if (esErrorDeConexion(error)) {
+          throw new Error(obtenerMensajeErrorRed(error, MENSAJE_NO_SE_PUDO_CONECTAR));
+        }
+        const detalle = mensajeErrorApi(error);
+        if (detalle) throw new Error(detalle);
+        throw new Error(error?.message || MENSAJE_NO_SE_PUDO_CONECTAR);
       }
-    } catch (error) {
-      if (esErrorDeConexion(error)) {
-        throw new Error(obtenerMensajeErrorRed(error, MENSAJE_NO_SE_PUDO_CONECTAR));
-      }
-      const detalle = mensajeErrorApi(error);
-      if (detalle) throw new Error(detalle);
-      throw new Error(error?.message || MENSAJE_NO_SE_PUDO_CONECTAR);
+      const idsLote = lote.map((v) => v.ID);
+      await VentasDatabase.marcarComoSincronizadas(idsLote);
+      sincronizadasIds.push(...idsLote);
     }
 
-    const ids = ventasSeleccionadas.map((v) => v.ID);
-    await VentasDatabase.marcarComoSincronizadas(ids);
-
-    const ventasActualizadas = await VentasDatabase.getVentas();
-    return { sincronizadas: ids.length, ventas: ventasActualizadas };
+    const ventasActualizadas = devolverVentas
+      ? await VentasDatabase.getVentas()
+      : null;
+    return { sincronizadas: sincronizadasIds.length, ventas: ventasActualizadas };
   };
 }
+
+// Una sincronización a la vez por módulo (botón manual + subida automática).
+integracionVentas.sincronizarVentas = enCola("ventas", integracionVentas.sincronizarVentas);

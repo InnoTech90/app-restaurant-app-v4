@@ -30,7 +30,7 @@ const InputToggle = ({ value, esPct, onChangeValue, onToggle }) => (
             }}
             keyboardType="decimal-pad"
             placeholder="0"
-            placeholderTextColor={gb.gray300}
+            placeholderTextColor={gb.gray400}
             selectTextOnFocus
         />
         <Pressable style={[s.badge, esPct && s.badgeActive]} onPress={onToggle}>

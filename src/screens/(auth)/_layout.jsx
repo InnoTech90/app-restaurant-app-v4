@@ -7,8 +7,24 @@ import {
 import { Image } from "expo-image";
 import { Redirect, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { color as tc, font as tf, gradient, radius, space } from "../../utils/theme";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from "react-native";
+import {
+  AppState,
+  DeviceEventEmitter,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import {
+  DISPOSITIVO_DESACTIVADO_EVENT,
+  reiniciarAvisoDispositivo,
+  verificarSesionDispositivo,
+} from "../../utils/http/sesionDispositivo";
 import AuthHeader from "../../components/Molecules/AuthHeader/AuthHeader";
 import NipModal from "../../components/Molecules/NipModal/NipModal";
 import { dataBase } from "../../components/Molecules/NipModal/database";
@@ -35,7 +51,7 @@ import {
   exportarDatabaseSQLite,
   isExportDbDisponible,
 } from "../../utils/exportDatabase";
-import { normalize } from "../../utils/funcionesMaquetado/responsiveWH";
+import { isTablet, normalize } from "../../utils/funcionesMaquetado/responsiveWH";
 import { requiereNipAcceso, sesionPuedeEntrar } from "../../utils/gerentePermisos";
 import {
   autorizarSeccion,
@@ -50,6 +66,30 @@ import {
 } from "../../utils/pendientesSincronizacion";
 import { SUCURSAL_INFO_UPDATED_EVENT } from "./PantallaDeCarga/database";
 import { gb } from "../globalStyles";
+
+const INTERVALO_REVISION_DISPOSITIVO_MS = 60 * 1000;
+
+// Íconos del menú lateral (Ionicons, sin emojis).
+const DRAWER_ICONS = {
+  "(mesas)": "grid-outline",
+  "Ventas/index": "receipt-outline",
+  "Caja/index": "cash-outline",
+  "MiRestaurante/index": "storefront-outline",
+  "PedidoEnLinea/index": "bicycle-outline",
+  Clientes: "people-outline",
+  Gastos: "wallet-outline",
+  "Inventarios/index": "cube-outline",
+  "Impresoras/index": "print-outline",
+  "Configuraciones/index": "settings-outline",
+  "Plantillas/index": "document-text-outline",
+};
+
+const drawerIcon = (name) =>
+  DRAWER_ICONS[name]
+    ? ({ color: iconColor, size }) => (
+        <Ionicons name={DRAWER_ICONS[name]} size={size - 2} color={iconColor} />
+      )
+    : undefined;
 
 function PedidoEnLineaDrawerLabel({ color, label }) {
   const pendingCount = useDigitalOrdersBadge();
@@ -82,7 +122,7 @@ function PedidoEnLineaDrawerLabel({ color, label }) {
             minWidth: 20,
             height: 20,
             borderRadius: 10,
-            backgroundColor: "#DC2626",
+            backgroundColor: tc.danger,
             alignItems: "center",
             justifyContent: "center",
             paddingHorizontal: 5,
@@ -105,6 +145,7 @@ function CustomDrawerContent({
   ...props
 }) {
   const drawerStatus = useDrawerStatus();
+  const insets = useSafeAreaInsets();
   const [sucursal, setSucursal] = useState(null);
 
   const cargarSucursal = useCallback(async () => {
@@ -149,8 +190,19 @@ function CustomDrawerContent({
   const logoUri = typeof sucursal?.LOGO === "string" ? sucursal.LOGO.trim() : "";
 
   return (
-    <DrawerContentScrollView {...props}>
-      <View style={drawerStyles.header}>
+    <DrawerContentScrollView
+      {...props}
+      contentContainerStyle={[
+        drawerStyles.scroll,
+        { paddingTop: insets.top + space.sm },
+      ]}
+    >
+      <LinearGradient
+        colors={gradient.brand}
+        start={gradient.brandStart}
+        end={gradient.brandEnd}
+        style={drawerStyles.header}
+      >
         <Image
           key={logoUri || "fallback-logo"}
           source={
@@ -168,30 +220,62 @@ function CustomDrawerContent({
             {sucursal.NOMBRE}
           </Text>
         ) : null}
-      </View>
+      </LinearGradient>
       <DrawerItemList {...props} />
+      <View style={drawerStyles.separator} />
       {mostrarExportarDb ? (
         <DrawerItem
           label={exportandoDb ? "Exportando BD..." : "Exportar BD (temporal)"}
           onPress={onExportarDb}
           disabled={exportandoDb}
+          icon={({ color: c, size }) => (
+            <Ionicons name="download-outline" size={size - 2} color={c} />
+          )}
+          style={drawerStyles.item}
+          labelStyle={drawerStyles.label}
         />
       ) : null}
-      <DrawerItem label="Cerrar sesión" onPress={onCerrarSesion} />
+      <DrawerItem
+        label="Cerrar sesión"
+        onPress={onCerrarSesion}
+        icon={({ size }) => (
+          <Ionicons name="log-out-outline" size={size - 2} color={tc.danger} />
+        )}
+        style={drawerStyles.item}
+        labelStyle={[drawerStyles.label, { color: tc.danger }]}
+      />
     </DrawerContentScrollView>
   );
 }
 
 const drawerStyles = StyleSheet.create({
+  scroll: {
+    paddingTop: space.sm,
+    paddingBottom: space.xl,
+  },
   header: {
-    paddingHorizontal: normalize(16),
-    paddingTop: normalize(12),
-    paddingBottom: normalize(16),
-    marginBottom: normalize(8),
-    marginHorizontal: normalize(8),
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    paddingBottom: space.lg,
+    marginBottom: space.md,
+    marginHorizontal: space.md,
     alignItems: "center",
-    backgroundColor: gb.blue950,
-    borderRadius: normalize(12),
+    borderRadius: radius.lg,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: tc.border,
+    marginHorizontal: space.lg,
+    marginVertical: space.sm,
+  },
+  item: {
+    borderRadius: radius.md,
+    marginHorizontal: space.md,
+  },
+  label: {
+    fontSize: tf.md,
+    fontWeight: tf.medium,
+    color: tc.text,
   },
   logo: {
     width: normalize(120),
@@ -200,8 +284,8 @@ const drawerStyles = StyleSheet.create({
   nombre: {
     marginTop: normalize(10),
     fontSize: normalize(15),
-    fontWeight: "600",
-    color: "#fff",
+    fontWeight: tf.bold,
+    color: tc.textOnPrimary,
     textAlign: "center",
   },
 });
@@ -373,6 +457,43 @@ export default function AuthLayout() {
       });
     }
   };
+
+  // Dispositivo desactivado/eliminado en User → cerrar sesión cuanto antes.
+  // Los datos locales (ventas pendientes) NO se borran: desautenticar solo
+  // cierra la sesión, y el dispositivo ya no puede volver a entrar.
+  useEffect(() => {
+    if (!contextoAutenticacion?.autenticado) return undefined;
+    reiniciarAvisoDispositivo();
+
+    const sub = DeviceEventEmitter.addListener(
+      DISPOSITIVO_DESACTIVADO_EVENT,
+      () => {
+        revocarTodasLasSecciones();
+        contextoAutenticacion.desautenticar();
+        mostrarAviso({
+          type: "danger",
+          title: "Dispositivo desactivado",
+          message:
+            "Este dispositivo fue desactivado por el administrador del negocio y se cerró la sesión.",
+        });
+      },
+    );
+
+    verificarSesionDispositivo();
+    const intervalo = setInterval(
+      verificarSesionDispositivo,
+      INTERVALO_REVISION_DISPOSITIVO_MS,
+    );
+    const subApp = AppState.addEventListener("change", (estado) => {
+      if (estado === "active") verificarSesionDispositivo();
+    });
+
+    return () => {
+      sub.remove();
+      clearInterval(intervalo);
+      subApp.remove();
+    };
+  }, [contextoAutenticacion?.autenticado]);
 
   if (!contextoAutenticacion.isReady) {
     return null;
@@ -599,6 +720,16 @@ export default function AuthLayout() {
           />
         )}
         screenOptions={{
+          sceneStyle: { backgroundColor: tc.background },
+          drawerStyle: {
+            backgroundColor: tc.surface,
+            width: isTablet ? normalize(320) : "80%",
+          },
+          drawerActiveTintColor: tc.primaryDark,
+          drawerActiveBackgroundColor: tc.primarySoft,
+          drawerInactiveTintColor: tc.text,
+          drawerItemStyle: drawerStyles.item,
+          drawerLabelStyle: { fontSize: tf.md, fontWeight: tf.medium },
           ...(ocultarDrawer && {
             swipeEnabled: false,
             headerShown: false,
@@ -627,6 +758,7 @@ export default function AuthLayout() {
                     )
                   : screen.label,
               title: screen.title,
+              drawerIcon: drawerIcon(screen.name),
               ...(ocultarDrawer ||
               (screen.soloDesarrollo && !__DEV__) ||
               (screen.name === "PedidoEnLinea/index" && !recibePedidos)

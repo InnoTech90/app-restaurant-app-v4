@@ -5,6 +5,7 @@ import { Text, View } from "react-native";
 import { AuthContext } from "../utils/AuthContext/AuthContext";
 import { normalize } from "../utils/funcionesMaquetado/responsiveWH";
 
+import { color as tema } from "../utils/theme";
 export default function App() {
   const authContext = useContext(AuthContext);
 
@@ -15,7 +16,7 @@ export default function App() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "black",
+          backgroundColor: tema.background,
         }}
       >
         <Image

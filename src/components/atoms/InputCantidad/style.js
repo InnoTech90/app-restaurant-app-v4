@@ -25,7 +25,7 @@ export const s = StyleSheet.create({
     botonTexto: {
         fontSize: normalize(22),
         fontWeight: "700",
-        color: gb.gray50,
+        color: "#FFFFFF",
         lineHeight: normalize(26),
     },
     botonTextoDeshabilitado: {

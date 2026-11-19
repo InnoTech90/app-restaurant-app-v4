@@ -1,3 +1,4 @@
+import { enCola } from "../../../utils/http/sincronizarEnSegundoPlano";
 import {
   esErrorDeConexion,
   MENSAJE_NO_SE_PUDO_CONECTAR,
@@ -54,8 +55,8 @@ export class integracionInventarios {
 
     if (!tipoEntrada?.UUID || !tipoSalida?.UUID) {
       throw new Error(
-        "Tipos de movimiento IN-APP / OUT-APP no encontrados. " +
-          "Ve a Pantalla de Carga y sincroniza los datos generales primero.",
+        "Faltan datos del servidor para subir el inventario. El ajuste quedó guardado en el dispositivo: " +
+          "ve a Configuraciones → Sincronización → Sincronizar ahora y después súbelo desde Inventarios.",
       );
     }
 
@@ -92,3 +93,6 @@ export class integracionInventarios {
     return { sincronizados: uuids.length };
   };
 }
+
+// Una sincronización a la vez por módulo (botón manual + subida automática).
+integracionInventarios.sincronizar = enCola("inventario", integracionInventarios.sincronizar);

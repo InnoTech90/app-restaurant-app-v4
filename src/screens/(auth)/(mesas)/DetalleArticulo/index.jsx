@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -22,6 +23,7 @@ import { ComplementosStore } from "../complementosStore";
 import { Database } from "./database";
 import { s } from "./styles";
 
+import { color as tema } from "../../../../utils/theme";
 const DetalleArticulo = () => {
   const {
     articulo: articuloRaw,
@@ -381,7 +383,7 @@ const DetalleArticulo = () => {
     return (
       <SafeAreaView
         edges={["bottom"]}
-        style={{ flex: 1, backgroundColor: "black" }}
+        style={{ flex: 1, backgroundColor: tema.background }}
       >
         <Text>Sin artículo</Text>
       </SafeAreaView>
@@ -392,13 +394,8 @@ const DetalleArticulo = () => {
     tieneGruposComplementos || complementosSeleccionados.length > 0 || !!idArticulo;
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: "black" }}>
-      <LinearGradient
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={s.header}
-      >
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: tema.background }}>
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={s.headerNombre} numberOfLines={1}>
@@ -409,7 +406,7 @@ const DetalleArticulo = () => {
           </Text>
         </View>
         <View style={{ width: normalize(40) }} />
-      </LinearGradient>
+      </HeaderBar>
 
       <ScrollView
         style={s.scroll}

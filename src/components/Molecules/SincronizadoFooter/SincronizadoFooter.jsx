@@ -1,25 +1,21 @@
-import { Text } from "react-native";
+import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { s } from "./styles";
 import Button from "../../atoms/Button/Button";
-import { Ionicons } from "@expo/vector-icons";
-import { gb } from "../../../screens/globalStyles";
-import { LinearGradient } from "expo-linear-gradient";
 
-const SincronizadoFooter = ({ onSincronizar,onActualizar }) => {
+/** Barra inferior blanca: Sincronizar (secundario) + Imprimir corte (principal). */
+const SincronizadoFooter = ({ onSincronizar, onActualizar }) => {
     return (
-        <LinearGradient style={s.container} colors={gb.gradient_blue}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-        >
-            <Button onPress={onSincronizar} style={s.button} >
-                <Ionicons name="sync" size={24} color={gb.gray50} />
-                <Text style={s.buttonText}>Sincronizar</Text>
+        <View style={s.container}>
+            <Button onPress={onSincronizar} style={s.secundario} styleContainer={s.item}>
+                <Ionicons name="sync" size={20} color="#4F5FE0" />
+                <Text style={s.secundarioTexto}>Sincronizar</Text>
             </Button>
-            <Button onPress={onActualizar} style={s.button}>
-                <Ionicons name="print-outline" size={24} color={gb.gray50} />
-                <Text style={s.buttonText}>Imprimir Corte</Text>
+            <Button onPress={onActualizar} style={s.principal} styleContainer={s.item}>
+                <Ionicons name="print-outline" size={20} color="#FFFFFF" />
+                <Text style={s.principalTexto}>Imprimir corte</Text>
             </Button>
-        </LinearGradient>
-    )
-}
+        </View>
+    );
+};
 export default SincronizadoFooter;

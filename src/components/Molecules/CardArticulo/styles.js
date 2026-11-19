@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { gb } from "../../../screens/globalStyles";
+import { color, font, space, touch } from "../../../utils/theme";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
 export const s = StyleSheet.create({
@@ -7,34 +7,40 @@ export const s = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingHorizontal: normalize(16),
-        paddingVertical: normalize(13),
+        minHeight: touch + 10,
+        paddingHorizontal: space.lg,
+        paddingVertical: space.md,
         borderTopWidth: 1,
-        borderColor: gb.gray200,
-        backgroundColor: gb.gray50,
-        borderRadius: normalize(10),
-
+        borderColor: color.border,
+        backgroundColor: color.surface,
     },
     info: {
         flex: 1,
-        marginRight: normalize(12),
+        marginRight: space.md,
     },
     nombre: {
-        fontSize: normalize(14),
-        fontWeight: "bold",
-        color: gb.gray800,
+        fontSize: font.md,
+        fontWeight: font.semibold,
+        color: color.text,
     },
     nombreCorto: {
-        fontSize: normalize(11),
-        color: gb.gray400,
-        marginTop: normalize(2),
-    },
-    precioContainer: {
-        alignItems: "flex-end",
+        fontSize: font.xs,
+        color: color.textMuted,
+        marginTop: 2,
     },
     precio: {
-        fontSize: normalize(16),
-        fontWeight: "bold",
-        color: gb.green500,
+        fontSize: font.md,
+        fontWeight: font.bold,
+        color: color.primaryDark,
+        marginRight: space.sm,
     },
+    agregar: {
+        width: normalize(34),
+        height: normalize(34),
+        borderRadius: normalize(10),
+        backgroundColor: color.primary,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    presionado: { backgroundColor: color.primarySoft },
 });

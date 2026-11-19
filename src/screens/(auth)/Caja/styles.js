@@ -6,6 +6,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   header: {
     width: "100%",
@@ -28,6 +29,9 @@ export const s = StyleSheet.create({
     padding: normalize(20),
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: tema.surface,
+    borderWidth: 1,
+    borderColor: tema.border,
   },
   cajaTitle: {
     flexDirection: "row",
@@ -37,13 +41,13 @@ export const s = StyleSheet.create({
     alignItems: "center",
   },
   cajaText: {
-    color: gb.gray50,
-    fontSize: normalize(22),
+    color: tema.text,
+    fontSize: normalize(18),
     fontWeight: "bold",
   },
   containerCristal: {
     height: "fit-content",
-    backgroundColor: gb.gray50 + "40",
+    backgroundColor: tema.background,
     padding: normalize(10),
     borderRadius: normalize(10),
     width: "100%",
@@ -64,7 +68,7 @@ export const s = StyleSheet.create({
     width: "100%",
   },
   metodosTitulo: {
-    color: "rgba(255,255,255,0.8)",
+    color: tema.textMuted,
     fontSize: normalize(11),
     fontWeight: "700",
     textTransform: "uppercase",
@@ -78,18 +82,18 @@ export const s = StyleSheet.create({
     gap: normalize(8),
   },
   metodoNombre: {
-    color: gb.gray50,
+    color: tema.text,
     fontSize: normalize(13),
     fontWeight: "600",
     flex: 1,
   },
   metodoMonto: {
-    color: gb.gray50,
+    color: tema.text,
     fontSize: normalize(13),
     fontWeight: "700",
   },
   text: {
-    color: gb.gray50,
+    color: tema.text,
     fontSize: normalize(12),
     fontWeight: "bold",
   },
@@ -111,18 +115,16 @@ export const s = StyleSheet.create({
     paddingVertical: normalize(8),
   },
   accionDeposito: {
-    backgroundColor: "#F3FBF4",
+    backgroundColor: tema.successSoft,
   },
   accionRetiro: {
-    backgroundColor: "#FFF5F5",
+    backgroundColor: tema.dangerSoft,
   },
   accionCerrar: {
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
   },
   accionAbrir: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.55)",
+    backgroundColor: "#7284FD",
   },
   accionPressed: {
     opacity: 0.75,
@@ -160,7 +162,7 @@ export const s = StyleSheet.create({
     borderColor: gb.gray300,
     fontWeight: "bold",
     borderRadius: normalize(8),
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     textAlignVertical: "center",
   },
   montosRapidosContainer: {
@@ -182,7 +184,7 @@ export const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: gb.gray300,
     borderRadius: normalize(8),
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     paddingHorizontal: normalize(12),
     paddingVertical: normalize(10),
     fontSize: normalize(13),
@@ -259,15 +261,15 @@ export const s = StyleSheet.create({
     borderRadius: normalize(8),
     backgroundColor: "#C5303014",
     borderWidth: 1,
-    borderColor: "#C53030",
+    borderColor: "#E5484D",
   },
   historialEliminarTexto: {
-    color: "#C53030",
+    color: "#E5484D",
     fontWeight: "bold",
     fontSize: normalize(11),
   },
   historialItem: {
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderRadius: normalize(14),
     padding: normalize(14),
     marginBottom: normalize(12),

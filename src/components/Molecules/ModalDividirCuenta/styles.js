@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     // ── Overlay / Sheet ────────────────────────────────────────────────────
     overlay: {
@@ -22,11 +23,14 @@ export const s = StyleSheet.create({
         justifyContent: "space-between",
         paddingHorizontal: normalize(16),
         paddingVertical: normalize(14),
+        backgroundColor: tema.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: tema.border,
     },
     headerTitulo: {
-        fontSize: normalize(16),
+        fontSize: normalize(17),
         fontWeight: "700",
-        color: gb.gray50,
+        color: tema.title,
     },
     headerClose: {
         padding: normalize(4),
@@ -57,7 +61,7 @@ export const s = StyleSheet.create({
     totalValor: {
         fontSize: normalize(22),
         fontWeight: "800",
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
     // ── Card genérica ──────────────────────────────────────────────────────
     card: {
@@ -129,7 +133,7 @@ export const s = StyleSheet.create({
     btnDividirIgualTexto: {
         fontSize: normalize(13),
         fontWeight: "700",
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
     // ── Lista pagos ─────────────────────────────────────────────────────────
     listHeader: {
@@ -336,6 +340,6 @@ export const s = StyleSheet.create({
     btnGuardarTexto: {
         fontSize: normalize(14),
         fontWeight: "700",
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
 });

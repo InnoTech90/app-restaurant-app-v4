@@ -36,6 +36,6 @@ export const s = StyleSheet.create({
         color: gb.gray600,
     },
     badgeTextActive: {
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
 });

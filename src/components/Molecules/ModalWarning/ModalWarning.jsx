@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../atoms/FondoSolido/FondoSolido";
 import { Modal, Pressable, Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Text, TextInput, View } from "react-native";
-import { gb } from "../../../screens/globalStyles";
 import { s } from "./style";
+import { color } from "../../../utils/theme";
 
 function Input({
   label,
@@ -12,7 +12,7 @@ function Input({
   style,
   styleInput,
   icon,
-  iconColor = gb.gray300,
+  iconColor = color.textMuted,
   maxLength,
   keyboardType,
   onFocus,
@@ -37,7 +37,7 @@ function Input({
             value={value}
             onChangeText={onChange}
             secureTextEntry={!!secureTextEntry}
-            placeholderTextColor={gb.gray300}
+            placeholderTextColor={color.textMuted}
             maxLength={maxLength}
             keyboardType={keyboardType}
             onFocus={onFocus}

@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 import { CONTENT_MAX_WIDTH, isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
 
     header: {
@@ -12,7 +13,10 @@ export const s = StyleSheet.create({
         justifyContent: "space-between",
     },
     headerTitle: {
-        color: "white",
+        flex: 1,
+        textAlign: "center",
+        marginRight: normalize(44),
+        color: tema.title,
         fontSize: normalize(18),
         fontWeight: "bold",
     },
@@ -27,7 +31,7 @@ export const s = StyleSheet.create({
         width: "100%",
         padding: normalize(20),
         alignItems: "center",
-        backgroundColor: gb.blue950,
+        backgroundColor: "#EEF1FF",
         borderRadius: normalize(15),
         
     },
@@ -57,13 +61,13 @@ export const s = StyleSheet.create({
         alignItems: 'center',
         marginBottom: normalize(15),
         paddingVertical: normalize(10),
-        borderBottomWidth: normalize(1),
-        borderBottomColor: '#f0f0f0',
+        borderBottomWidth: 1,
+        borderBottomColor: tema.border,
     },
     iconContainer: {
         width: normalize(40),
         height: normalize(40),
-        backgroundColor: '#E8F4FD',
+        backgroundColor: tema.infoSoft,
         borderRadius: normalize(20),
         justifyContent: 'center',
         alignItems: 'center',
@@ -77,14 +81,14 @@ export const s = StyleSheet.create({
     },
     infoLabel: {
         fontSize: normalize(14),
-        color: '#666',
+        color: tema.textSecondary,
         fontWeight: '500',
         marginBottom: normalize(2),
     },
     infoValue: {
         fontSize: normalize(18),
         fontWeight: 'bold',
-        color: '#082644',
+        color: tema.title,
     },
 }
 )

@@ -1,3 +1,4 @@
+import { enCola } from "../../../utils/http/sincronizarEnSegundoPlano";
 import {
   esErrorDeConexion,
   MENSAJE_NO_SE_PUDO_CONECTAR,
@@ -119,3 +120,6 @@ export class integracionGastos {
     return Database.guardarCatalogo(catalogo);
   };
 }
+
+// Una sincronización a la vez por módulo (botón manual + subida automática).
+integracionGastos.sincronizarGastos = enCola("gastos", integracionGastos.sincronizarGastos);

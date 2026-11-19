@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { perfilTamanoTicket } from './cuenta';
 import { construirLineasPrueba } from './prueba';
 
+import { color as tema } from "../../../../../utils/theme";
 const alignStyle = {
     center: 'center',
     left: 'left',
@@ -53,7 +54,7 @@ const PruebaPreview = (props) => {
 const styles = StyleSheet.create({
     sombra: {
         alignSelf: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: tema.surface,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,

@@ -20,8 +20,8 @@ const ButtonMesas = ({ style }) => {
         }}
         style={[s.button, style]}
       >
-        <Ionicons name="grid" size={16} color="white" />
-        <Text style={s.buttonText}>mesas</Text>
+        <Ionicons name="grid-outline" size={16} color="#4F5FE0" />
+        <Text style={s.buttonText}>Mesas</Text>
       </Pressable>
     </View>
   );

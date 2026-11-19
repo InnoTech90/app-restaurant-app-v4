@@ -1,32 +1,52 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { s } from "./style";
 
-const Button = ({ children, onPress, style,  icon, gradient=false,styleContainer,disabled=false }) => {
+/**
+ * Botón base. Estilo moderno: color sólido. Si una pantalla manda `gradient`
+ * (p. ej. el degradado de marca), se usa su primer color como fondo sólido;
+ * así todos los botones principales quedan iguales sin tocar cada pantalla.
+ */
+const Button = ({
+    children,
+    onPress,
+    style,
+    icon,
+    gradient = false,
+    styleContainer,
+    disabled = false,
+}) => {
+    const fondoSolido =
+        Array.isArray(gradient) && gradient.length > 0
+            ? { backgroundColor: gradient[0] }
+            : null;
+
     return (
-        <>
-            {
-                gradient ?
-                    <LinearGradient 
-                    colors={gradient} 
-                    style={[s.buttonContainer, styleContainer]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    >
-                        <Pressable onPress={onPress} style={[s.buttonGRADIENT, style]} disabled={disabled}>
-                            {icon && <View style={s.iconContainer}><Image source={icon} /></View>}
-                            {children}
-                        </Pressable>
-                    </LinearGradient>
-                    :
-                    <View style={[s.buttonContainer, styleContainer]}>
-                        <Pressable onPress={onPress} style={[s.button, style]} disabled={disabled}>
-                            {icon && <View style={s.iconContainer}><Image source={icon} /></View>}
-                            {children}
-                        </Pressable>
+        <View
+            style={[
+                s.buttonContainer,
+                fondoSolido,
+                styleContainer,
+                disabled && s.disabled,
+            ]}
+        >
+            <Pressable
+                onPress={onPress}
+                style={({ pressed }) => [
+                    fondoSolido ? s.buttonGRADIENT : s.button,
+                    style,
+                    pressed && !disabled && s.pressed,
+                ]}
+                disabled={disabled}
+            >
+                {icon && (
+                    <View style={s.iconContainer}>
+                        <Image source={icon} />
                     </View>
-            }
-        </>
+                )}
+                {children}
+            </Pressable>
+        </View>
     );
-}
+};
+
 export default Button;

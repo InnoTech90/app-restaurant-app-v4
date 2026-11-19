@@ -7,6 +7,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   /* ── Header ─────────────────────────────── */
   header: {
@@ -20,7 +21,7 @@ export const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerTitle: {
-    color: "white",
+    color: tema.text,
     fontSize: normalize(isTablet ? 20 : 18),
     fontWeight: "bold",
   },
@@ -41,7 +42,7 @@ export const s = StyleSheet.create({
     borderRadius: normalize(15),
     backgroundColor: "#C5303040",
     borderWidth: normalize(1),
-    borderColor: "#FCA5A5",
+    borderColor: "#F5B5B7",
     alignItems: "center",
     justifyContent: "center",
     padding: 0,
@@ -52,7 +53,7 @@ export const s = StyleSheet.create({
     borderRadius: normalize(10),
     backgroundColor: "#C5303014",
     borderWidth: 1,
-    borderColor: "#C53030",
+    borderColor: "#E5484D",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: normalize(4),
@@ -70,7 +71,7 @@ export const s = StyleSheet.create({
     gap: normalize(14),
     paddingHorizontal: normalize(16),
     paddingVertical: normalize(8),
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderBottomWidth: 1,
     borderBottomColor: gb.gray200,
   },
@@ -118,7 +119,7 @@ export const s = StyleSheet.create({
 
   /* ── Card cliente ────────────────────────── */
   card: {
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderRadius: normalize(14),
     flexDirection: "row",
     overflow: "hidden",
@@ -133,11 +134,11 @@ export const s = StyleSheet.create({
   cardInactiva: {
     opacity: 0.92,
     borderWidth: 1,
-    borderColor: "#FCA5A5",
+    borderColor: "#F5B5B7",
   },
   cardPendiente: {
     borderWidth: 1,
-    borderColor: "#F6C9A4",
+    borderColor: "#F5D9A8",
   },
   cardBadges: {
     flexDirection: "row",
@@ -147,12 +148,12 @@ export const s = StyleSheet.create({
   },
   cardPendienteBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#FFF3E0",
+    backgroundColor: tema.warningSoft,
     borderRadius: normalize(8),
     paddingHorizontal: normalize(8),
     paddingVertical: normalize(3),
     borderWidth: 1,
-    borderColor: "#FF9800",
+    borderColor: "#E58A00",
   },
   cardPendienteBadgeText: {
     color: "#E65100",
@@ -167,7 +168,7 @@ export const s = StyleSheet.create({
     paddingVertical: normalize(3),
   },
   cardInactivoBadgeText: {
-    color: "#C53030",
+    color: "#E5484D",
     fontSize: normalize(11),
     fontWeight: "700",
   },
@@ -284,29 +285,32 @@ export const s = StyleSheet.create({
   btnSync: {
     flexDirection: "row",
     flex: 1,
-    borderWidth: normalize(1),
-    borderColor: gb.gray50,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: gb.gray50 + "20",
-    borderRadius: normalize(15),
     paddingHorizontal: normalize(10),
     paddingVertical: normalize(0),
+    backgroundColor: tema.surface,
+    borderWidth: 1,
+    borderColor: tema.borderStrong,
+    borderRadius: normalize(12),
   },
   btnSyncText: {
-    color: "white",
+    color: "#4F5FE0",
     fontWeight: "600",
     fontSize: normalize(14),
     marginLeft: normalize(6),
   },
   footer: {
     width: "100%",
-    height: normalize(50),
+    minHeight: normalize(64),
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: normalize(10),
     paddingVertical: normalize(8),
     gap: normalize(10),
     justifyContent: "space-around",
+    backgroundColor: tema.surface,
+    borderTopWidth: 1,
+    borderTopColor: tema.border,
   },
 });

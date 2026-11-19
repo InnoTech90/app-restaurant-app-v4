@@ -6,14 +6,15 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../screens/globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   containerButtons: {
     flexDirection: "row",
     alignItems: "stretch",
-    backgroundColor: gb.gray50,
+    backgroundColor: tema.surface,
     borderTopWidth: 1,
-    borderTopColor: gb.gray200,
-    paddingVertical: normalize(10),
+    borderTopColor: tema.border,
+    paddingVertical: normalize(6),
     paddingHorizontal: isTablet ? contentPaddingH + normalize(8) : normalize(8),
     gap: normalize(4),
   },
@@ -23,18 +24,18 @@ export const s = StyleSheet.create({
   botonAccion: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: normalize(isTablet ? 12 : 10),
-    borderRadius: normalize(10),
-    gap: normalize(4),
+    paddingVertical: normalize(isTablet ? 10 : 8),
+    borderRadius: normalize(12),
+    gap: normalize(2),
     backgroundColor: "transparent",
   },
   botonAccionActivo: {
-    backgroundColor: gb.purple550,
+    backgroundColor: tema.primarySoft,
   },
   botonAccionTexto: {
-    fontSize: normalize(12),
+    fontSize: normalize(11),
     fontWeight: "600",
-    color: gb.blue550,
+    color: tema.textMuted,
   },
   botonAccionDivider: {
     width: 1,

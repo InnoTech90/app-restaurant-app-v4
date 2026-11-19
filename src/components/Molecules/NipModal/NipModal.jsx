@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../atoms/FondoSolido/FondoSolido";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
@@ -138,7 +138,7 @@ const NipModal = ({
             <Ionicons
               name="shield-checkmark"
               size={normalize(isTablet ? 36 : 32)}
-              color={gb.gray50}
+              color="#FFFFFF"
             />
           </LinearGradient>
           <Text style={s.titleModal}>{titulo}</Text>

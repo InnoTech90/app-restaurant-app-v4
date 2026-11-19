@@ -53,7 +53,7 @@ const FilaAdicional = ({ label, valor, onCambiar, esPct, onTogglePct, sufijo, on
             }}
                     keyboardType="decimal-pad"
                     placeholder="0"
-                    placeholderTextColor={gb.gray300}
+                    placeholderTextColor={gb.gray400}
                     selectTextOnFocus
                 />
                 <Text style={s.inputSufijo}>{sufijo}</Text>
@@ -86,7 +86,7 @@ const PagoAdicionales = ({
         <Card
             title="ADICIONAL DE PAGO"
             linealGradient={gb.gradient_blue}
-            styleTitleHeader={{ color: gb.gray50 }}
+            styleTitleHeader={{ color: "#FFFFFF" }}
             styleHeader={{ width: "100%" }}
             styleBody={{ width: "100%", paddingHorizontal: 0, paddingVertical: 0 }}
         >
@@ -101,7 +101,7 @@ const PagoAdicionales = ({
                 <Pressable style={s.checkboxRow} onPress={disabled ? undefined : onToggleDesglosar}>
                     <View style={[s.checkbox, desglosarImpuestos && s.checkboxActivo]}>
                         {desglosarImpuestos && (
-                            <Ionicons name="checkmark" size={normalize(12)} color={gb.gray50} />
+                            <Ionicons name="checkmark" size={normalize(12)} color="#FFFFFF" />
                         )}
                     </View>
                     <Text style={s.checkboxLabel}>Desglosar impuestos en ticket</Text>

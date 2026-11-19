@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { CONTENT_MAX_WIDTH, isTablet, normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 
+import { color as tema } from "../../../../utils/theme";
 export const s = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -19,7 +20,7 @@ export const s = StyleSheet.create({
     headerNombre: {
         fontSize: normalize(20),
         fontWeight: "800",
-        color: gb.gray50,
+        color: tema.text,
         letterSpacing: 0.3,
     },
     headerSubtitulo: {
@@ -106,7 +107,7 @@ export const s = StyleSheet.create({
     botonAnadirTexto: {
         fontSize: normalize(16),
         fontWeight: "800",
-        color: gb.gray50,
+        color: "#FFFFFF",
         letterSpacing: 0.5,
         paddingVertical: normalize(14),
         textAlign: "center",

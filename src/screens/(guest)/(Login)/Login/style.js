@@ -8,6 +8,7 @@ import {
 } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 
+import { color as tema } from "../../../../utils/theme";
 const HOJA_ANCHO = isTablet ? Math.min(520, CONTENT_MAX_WIDTH) : "100%";
 
 export const s = StyleSheet.create({
@@ -63,7 +64,7 @@ export const s = StyleSheet.create({
     flexGrow: isTablet ? 0 : 1,
     marginTop: -normalize(28),
     marginBottom: isTablet ? normalize(32) : 0,
-    backgroundColor: "#fff",
+    backgroundColor: tema.surface,
     borderTopLeftRadius: normalize(28),
     borderTopRightRadius: normalize(28),
     borderBottomLeftRadius: isTablet ? normalize(28) : 0,
@@ -148,7 +149,7 @@ export const s = StyleSheet.create({
     height: normalize(52),
     borderRadius: normalize(14),
     borderColor: gb.purple200,
-    backgroundColor: "#fff",
+    backgroundColor: tema.surface,
     fontSize: normalize(16),
     letterSpacing: 0.5,
   },

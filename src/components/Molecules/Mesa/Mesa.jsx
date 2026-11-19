@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { gb } from "../../../screens/globalStyles";
 import { mostrarAviso } from "../../../utils/avisoModal";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
 import Tooltip from "../../atoms/Tooltip/Tooltip";
 import { s } from "./styles";
+import { color, gradient } from "../../../utils/theme";
 
 const Mesa = ({
   id,
@@ -34,8 +34,7 @@ const Mesa = ({
   }, [notaProp]);
 
   const ocupada = !!status;
-  const colorAcento = impresa ? gb.orange600 : gb.purple550;
-
+  
   // Solo mesas libres (sin comanda activa), excluyendo la actual
   const mesasDestino = useMemo(
     () =>
@@ -96,20 +95,12 @@ const Mesa = ({
           ocupada && impresa && s.mesaImpresa,
         ]}
       >
-        <View
-          style={[s.sillaLeft, ocupada && { backgroundColor: colorAcento }]}
-        />
-        <View
-          style={[s.sillaRight, ocupada && { backgroundColor: colorAcento }]}
-        />
-        <View
-          style={[s.sillaTop, ocupada && { backgroundColor: colorAcento }]}
-        />
-        <View
-          style={[s.sillaBottom, ocupada && { backgroundColor: colorAcento }]}
-        />
+        <View style={[s.sillaLeft, ocupada && s.sillaOcupada, impresa && ocupada && s.sillaImpresa]} />
+        <View style={[s.sillaRight, ocupada && s.sillaOcupada, impresa && ocupada && s.sillaImpresa]} />
+        <View style={[s.sillaTop, ocupada && s.sillaOcupada, impresa && ocupada && s.sillaImpresa]} />
+        <View style={[s.sillaBottom, ocupada && s.sillaOcupada, impresa && ocupada && s.sillaImpresa]} />
         <View style={s.contenido}>
-          <Text style={s.nombre} numberOfLines={1}>
+          <Text style={s.nombre} numberOfLines={2}>
             {nombre}
           </Text>
           {ocupada ? (
@@ -120,10 +111,11 @@ const Mesa = ({
               {impresa ? (
                 <Text style={s.estadoImpresa}>Cuenta impresa</Text>
               ) : null}
+              <View style={s.filaAcciones}>
               <TextInput
                 style={s.notaInput}
                 placeholder="Nota"
-                placeholderTextColor={gb.gray400}
+                placeholderTextColor={color.textMuted}
                 value={nota}
                 onChangeText={setNota}
                 onBlur={guardarNota}
@@ -133,7 +125,7 @@ const Mesa = ({
               <Pressable
                 style={[
                   s.cambiarMesa,
-                  impresa && { backgroundColor: gb.orange600 },
+                  impresa && { backgroundColor: color.warning },
                 ]}
                 onPress={(e) => {
                   e?.stopPropagation?.();
@@ -143,11 +135,11 @@ const Mesa = ({
               >
                 <Ionicons
                   name="swap-horizontal"
-                  size={normalize(12)}
-                  color={gb.gray50}
+                  size={normalize(14)}
+                  color={color.textOnPrimary}
                 />
-                <Text style={s.cambiarMesaTexto}>Cambiar</Text>
               </Pressable>
+              </View>
             </>
           ) : (
             <Text style={s.estadoLibre}>Libre</Text>
@@ -159,9 +151,9 @@ const Mesa = ({
       <GeneralModal
         visible={cambiarMesa}
         onRequestClose={() => setCambiarMesa(false)}
-        headerColorGrandien={[gb.purple750, gb.purple350]}
-        iconCloseColor={"white"}
-        headerColorText={gb.gray50}
+        headerColorGrandien={gradient.brand}
+        iconCloseColor={color.textOnPrimary}
+        headerColorText={color.textOnPrimary}
         headerTitle={"Cambiar mesa"}
       >
         <Text style={s.instrucciones}>
@@ -171,7 +163,7 @@ const Mesa = ({
           <Ionicons
             name="information-circle"
             size={normalize(16)}
-            color={gb.purple750}
+            color={color.primary}
             style={{ marginRight: normalize(5) }}
           />
           <Text style={s.mesaActualFolio}>
@@ -184,6 +176,7 @@ const Mesa = ({
               <Button
                 key={mesa.UUID ?? mesa.ID}
                 style={s.mesaItem}
+                styleContainer={s.mesaItemContenedor}
                 disabled={cambiando}
                 onPress={() => changeMesa(mesa.UUID)}
               >
@@ -195,7 +188,7 @@ const Mesa = ({
               <Ionicons
                 name="alert-circle"
                 size={normalize(40)}
-                color={gb.gray300}
+                color={color.textMuted}
                 style={{ marginBottom: normalize(10) }}
               />
               <Text style={s.textoMesa}>No hay mesas libres</Text>
@@ -206,7 +199,7 @@ const Mesa = ({
                 onPress={() => setCambiarMesa(false)}
                 style={s.cerrarButton}
               >
-                <Text style={{ color: gb.gray400 }}>Cerrar</Text>
+                <Text style={s.textoMesa}>Cerrar</Text>
               </Button>
             </View>
           )}

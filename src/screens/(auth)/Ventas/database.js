@@ -1,12 +1,46 @@
 import { withDb } from "../../../utils/db";
 
+/**
+ * Límites del día LOCAL del dispositivo expresados en UTC con el mismo
+ * formato que guarda SQLite ("YYYY-MM-DD HH:MM:SS"), para filtrar en SQL.
+ */
+const aSqliteUtc = (fecha) => fecha.toISOString().slice(0, 19).replace("T", " ");
+const rangoHoyUtc = () => {
+  const inicio = new Date();
+  inicio.setHours(0, 0, 0, 0);
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + 1);
+  return { inicioUtc: aSqliteUtc(inicio), finUtc: aSqliteUtc(fin) };
+};
+
 export default class VentasDatabase {
   /**
    * Trae todas las comandas finalizadas (ESTATUS > 0, ACTIVO = 0).
    * Incluye nombre de mesa y cliente.
    * ESTATUS 1 = Pagado, 2 = Cancelado, 3 = Pendiente
    */
-  static async getVentas() {
+  /**
+   * @param {{ periodo?: "hoy"|"anteriores", limite?: number, desde?: number }} opciones
+   *   Sin opciones trae todo (compatibilidad). "hoy" = día local del
+   *   dispositivo; "anteriores" se pagina (con miles de ventas traer todo a
+   *   JS tardaba ~19 s).
+   */
+  static async getVentas({ periodo, limite, desde = 0 } = {}) {
+    const { inicioUtc, finUtc } = rangoHoyUtc();
+    let filtroPeriodo = "";
+    const params = [];
+    if (periodo === "hoy") {
+      filtroPeriodo = "AND c.FECHA >= ? AND c.FECHA < ?";
+      params.push(inicioUtc, finUtc);
+    } else if (periodo === "anteriores") {
+      filtroPeriodo = "AND (c.FECHA < ? OR c.FECHA >= ? OR c.FECHA IS NULL)";
+      params.push(inicioUtc, finUtc);
+    }
+    const paginado =
+      Number.isFinite(limite) && limite > 0
+        ? `LIMIT ${Math.floor(limite)} OFFSET ${Math.max(0, Math.floor(desde))}`
+        : "";
+
     return withDb("Ventas.getVentas", async (db) => {
       const rows = await db.getAllAsync(
         `SELECT
@@ -58,9 +92,40 @@ export default class VentasDatabase {
             LEFT JOIN MESA m ON c.ID_MESA = m.UUID
             LEFT JOIN CLIENTES cl ON c.ID_CLIENTE = cl.ID
             WHERE c.ACTIVO = 0 AND c.ESTATUS > 0
-            ORDER BY c.ID DESC`,
+            ${filtroPeriodo}
+            ORDER BY c.ID DESC
+            ${paginado}`,
+        params,
       );
       return rows;
+    });
+  }
+
+  /**
+   * Resumen de las ventas que no son de hoy, calculado en SQL sobre TODO el
+   * historial (la lista de Anteriores se pagina y no sirve para sumar).
+   * @returns {{ cantidad: number, total: number, efectivo: number }}
+   */
+  static async resumenVentasAnteriores() {
+    const { inicioUtc, finUtc } = rangoHoyUtc();
+    return withDb("Ventas.resumenVentasAnteriores", async (db) => {
+      const row = await db.getFirstAsync(
+        `SELECT
+            COUNT(*) AS CANTIDAD,
+            COALESCE(SUM(CASE WHEN c.ESTATUS = 1 THEN c.TOTAL END), 0) AS TOTAL,
+            COALESCE(SUM(CASE WHEN c.ESTATUS = 1
+                              AND LOWER(COALESCE(c.FORMATO_PAGO, '')) LIKE '%efectivo%'
+                         THEN c.TOTAL END), 0) AS EFECTIVO
+         FROM COMANDA c
+         WHERE c.ACTIVO = 0 AND c.ESTATUS > 0
+           AND (c.FECHA < ? OR c.FECHA >= ? OR c.FECHA IS NULL)`,
+        [inicioUtc, finUtc],
+      );
+      return {
+        cantidad: Number(row?.CANTIDAD) || 0,
+        total: Number(row?.TOTAL) || 0,
+        efectivo: Number(row?.EFECTIVO) || 0,
+      };
     });
   }
 

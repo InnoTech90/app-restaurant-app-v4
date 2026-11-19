@@ -1,5 +1,8 @@
+import { sincronizarSiHayInternet } from "../../../utils/http/sincronizarEnSegundoPlano";
+import { integracionClientes } from "./integracion";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -19,6 +22,7 @@ import { gb } from "../../globalStyles";
 import { Database } from "./Database";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const Agregar = () => {
   const router = useRouter();
   const scrollRef = useRef(null);
@@ -49,6 +53,10 @@ const Agregar = () => {
         direccion,
         descripcion,
       });
+      sincronizarSiHayInternet(() => integracionClientes.sincronizar(), {
+        modulo: "clientes",
+        mensajeFallo: "El cliente se guardó en el dispositivo, pero no se pudo subir al servidor. Súbelo desde Clientes con Sincronizar.",
+      });
       setGuardando(false);
       router.back();
     } catch (e) {
@@ -65,19 +73,14 @@ const Agregar = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       {/* Header */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>Nuevo cliente</Text>
         <View style={{ width: normalize(35) }} />
-      </LinearGradient>
+      </HeaderBar>
 
       <KeyboardAvoidingView
         style={s.formBody}

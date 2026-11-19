@@ -114,6 +114,7 @@ export async function resetLocalData() {
 
 export function withDb(name = "", operation) {
   const currentOperation = ++operationId;
+  const encolada = Date.now();
 
   queue = queue
     .catch(() => {})
@@ -124,6 +125,17 @@ export function withDb(name = "", operation) {
         const database = await getDb();
 
         const result = await operation(database);
+
+        // Diagnóstico (solo desarrollo): operaciones lentas o que esperaron
+        // mucho en la cola global. Ayuda a ubicar cuellos de botella con
+        // cargas pesadas.
+        if (__DEV__) {
+          const dura = Date.now() - start;
+          const espera = start - encolada;
+          if (dura > 500 || espera > 1500) {
+            console.warn(`[DB lenta] ${name} | ${dura}ms ejecutando | ${espera}ms en cola`);
+          }
+        }
 
         return result;
       } catch (error) {

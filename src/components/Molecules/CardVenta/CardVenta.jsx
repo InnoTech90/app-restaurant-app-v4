@@ -1,20 +1,29 @@
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { gb } from '../../../screens/globalStyles';
-import EstatusSincronizado from '../../atoms/EstatusSincronizado/EstatusSincronizado';
-import { s } from './styles';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { memo } from "react";
+import { Pressable, Text, View } from "react-native";
+import { color } from "../../../utils/theme";
+import { s } from "./styles";
 
-const GRADIENTE_PENDIENTE_SYNC = ["#F6C9A4", "#FBE6D4"];
+const ESTATUS = {
+    Pagado: { fondo: color.successSoft, texto: "#117040", icono: "checkmark-circle" },
+    Terminado: { fondo: color.successSoft, texto: "#117040", icono: "checkmark-circle" },
+    Pendiente: { fondo: color.warningSoft, texto: "#A15C00", icono: "time" },
+};
+const ESTATUS_OTRO = { fondo: color.dangerSoft, texto: "#C93A3F", icono: "alert-circle" };
 
+/**
+ * Renglón compacto de venta (estilo moderno). Toda la tarjeta abre el
+ * detalle; la casilla de la izquierda selecciona para limpiar/sincronizar.
+ * `memo`: con listas de miles de ventas evita repintar renglones sin cambios.
+ */
 const CardVenta = ({
-    ficha = '34GGGDFDD',
-    mesa = 'Mesa 2',
-    total = '$1,000.00',
-    productos = 4,
-    fecha = '06/03/2026 15:45',
-    status = 'Pagado',
+    ficha = "",
+    mesa = "Mesa",
+    total = "$0.00",
+    productos = 0,
+    fecha = "",
+    status = "Pagado",
     sincronizado = true,
     seleccionado = false,
     onSeleccionar,
@@ -24,141 +33,71 @@ const CardVenta = ({
     esPedidoEnLinea = false,
 }) => {
     const router = useRouter();
-
-    const toggleCheck = () => {
-        onSeleccionar?.(!seleccionado);
-    };
-    const onVer = () => {
-        router.push(`Ventas/DetalleVentas?id=${idComanda ?? ficha}`);
-    };
-
-    const coloresHeader = !sincronizado
-        ? GRADIENTE_PENDIENTE_SYNC
-        : status === 'Terminado' || status === 'Pagado'
-            ? ['#E8F5E8', '#F1F8E9']
-            : status === 'Pendiente'
-                ? ['#FFF3E0', '#FFECB3']
-                : ['#FFEBEE', '#FFCDD2'];
+    const est = ESTATUS[status] ?? ESTATUS_OTRO;
+    const hora = String(fecha).split(" ")[1] ?? fecha;
+    const dia = String(fecha).split(" ")[0] ?? "";
 
     return (
-        <View style={[s.shadow, !sincronizado && s.shadowPendiente]}>
-            <View style={s.container}>
-                {/* HEADER */}
-                <LinearGradient style={s.header} colors={coloresHeader}>
-                    <View style={s.fichaContainer}>
+        <Pressable
+            onPress={() => router.push(`Ventas/DetalleVentas?id=${idComanda ?? ficha}`)}
+            style={({ pressed }) => [
+                s.card,
+                !sincronizado && s.cardPendiente,
+                seleccionado && s.cardSeleccionada,
+                pressed && s.cardPresionada,
+            ]}
+        >
+            <Pressable
+                onPress={() => onSeleccionar?.(!seleccionado)}
+                hitSlop={10}
+                style={s.checkbox}
+                accessibilityLabel="Seleccionar venta"
+            >
+                <Ionicons
+                    name={seleccionado ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={seleccionado ? color.primary : color.textMuted}
+                />
+            </Pressable>
 
-                        {/* Checkbox */}
-                        <Pressable onPress={toggleCheck} style={s.checkbox}>
-                            <Ionicons
-                                name={seleccionado ? "checkbox" : "square-outline"}
-                                size={22}
-                                color={seleccionado ? gb.purple550 : gb.gray400}
-                            />
-                        </Pressable>
-
-                        {/* Ficha */}
-                        <View style={s.ficha}>
-                            <Text style={s.fichaText}>Ficha</Text>
-                            <Text style={s.fichaNumber} numberOfLines={1}>{ficha}</Text>
-                        </View>
-
-                        {/* Estatus sincronización */}
-                        <EstatusSincronizado sincronizado={sincronizado} />
-
-                        {!sincronizado ? (
-                            <View style={[s.status, { backgroundColor: '#E65100' }]}>
-                                <Ionicons name="cloud-upload-outline" size={14} color="white" />
-                                <Text style={s.statusText}>Por sincronizar</Text>
-                            </View>
-                        ) : status === 'Terminado' || status === 'Pagado' ? (
-                            <View style={[s.status, { backgroundColor: '#4CAF50' }]}>
-                                <Ionicons name="checkmark-circle" size={14} color="white" />
-                                <Text style={s.statusText}>{status}</Text>
-                            </View>
-                        ) : status === 'Pendiente' ? (
-                            <View style={[s.status, { backgroundColor: '#FF9800' }]}>
-                                <Ionicons name="time" size={14} color="white" />
-                                <Text style={s.statusText}>{status}</Text>
-                            </View>
-                        ) : (
-                            <View style={[s.status, { backgroundColor: '#F44336' }]}>
-                                <Ionicons name="alert-circle" size={14} color="white" />
-                                <Text style={s.statusText}>{status}</Text>
-                            </View>
-                        )}
-
-                    </View>
-                </LinearGradient>
-
-                {/* BODY */}
-                <View style={s.body}>
-
-                    {/* Mesa y Total */}
-                    <View style={s.rowSpaceBetween}>
-                        <View style={s.mesaContainer}>
-                            <Ionicons name="grid" size={14} color={gb.purple550} style={{ marginRight: 4 }} />
-                            <Text style={s.mesa}>{mesa}</Text>
-                        </View>
-                        <Text style={s.total}>{total}</Text>
-                    </View>
-
-                    <View style={s.lineaSeparadora} />
-
-                    <View style={s.rowSpaceBetween}>
-                        <View style={s.infoChip}>
-                            <Ionicons name="fast-food" size={13} color={gb.gray400} />
-                            <Text style={s.infoText}>{productos} productos</Text>
-                        </View>
-                        <View style={s.infoChip}>
-                            <Ionicons name="time" size={13} color={gb.gray400} />
-                            <Text style={s.infoText}>{fecha}</Text>
-                        </View>
-                    </View>
-
-                    {(Number(descuento) > 0 || cuentaDividida || esPedidoEnLinea) && (
-                        <>
-                            <View style={s.lineaSeparadora} />
-                            <View style={s.badgesRow}>
-                                {esPedidoEnLinea && (
-                                    <View style={s.badgeOnline}>
-                                        <Ionicons name="phone-portrait-outline" size={12} color="#7C2D12" />
-                                        <Text style={s.badgeOnlineText}>Pedido en línea</Text>
-                                    </View>
-                                )}
-                                {Number(descuento) > 0 && (
-                                    <View style={s.badgeDescuento}>
-                                        <Ionicons name="pricetag-outline" size={12} color="#C62828" />
-                                        <Text style={s.badgeDescuentoText}>
-                                            Desc. -${Number(descuento).toLocaleString("es-MX", {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                            })}
-                                        </Text>
-                                    </View>
-                                )}
-                                {cuentaDividida && (
-                                    <View style={s.badgeDividida}>
-                                        <Ionicons name="people-outline" size={12} color={gb.blue550} />
-                                        <Text style={s.badgeDivididaText}>Cuenta dividida</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </>
-                    )}
-
-                    <View style={s.lineaSeparadora} />
-
-                    <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-                        <Pressable onPress={onVer} style={s.btnVer}>
-                            <Ionicons name="eye-outline" size={15} color={gb.purple550} />
-                            <Text style={s.btnVerText}>Ver detalle</Text>
-                        </Pressable>
-                    </View>
-
-                </View>
+            <View style={[s.ficha, !sincronizado && s.fichaPendiente]}>
+                <Text style={[s.fichaTexto, !sincronizado && s.fichaTextoPendiente]} numberOfLines={1}>
+                    #{ficha}
+                </Text>
             </View>
-        </View>
+
+            <View style={s.info}>
+                <Text style={s.mesa} numberOfLines={1}>
+                    {mesa}
+                </Text>
+                <Text style={[s.meta, !sincronizado && s.metaPendiente]} numberOfLines={1}>
+                    {!sincronizado
+                        ? "Por sincronizar"
+                        : `${productos} ${Number(productos) === 1 ? "producto" : "productos"} · ${hora}`}
+                </Text>
+                {(Number(descuento) > 0 || cuentaDividida || esPedidoEnLinea) && (
+                    <View style={s.badges}>
+                        {esPedidoEnLinea && <Text style={s.badge}>En línea</Text>}
+                        {Number(descuento) > 0 && (
+                            <Text style={s.badge}>
+                                Desc. -${Number(descuento).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                            </Text>
+                        )}
+                        {cuentaDividida && <Text style={s.badge}>Dividida</Text>}
+                    </View>
+                )}
+            </View>
+
+            <View style={s.derecha}>
+                <Text style={s.total}>{total}</Text>
+                <View style={[s.estatus, { backgroundColor: est.fondo }]}>
+                    <Ionicons name={est.icono} size={11} color={est.texto} />
+                    <Text style={[s.estatusTexto, { color: est.texto }]}>{status}</Text>
+                </View>
+                {dia ? <Text style={s.dia}>{dia}</Text> : null}
+            </View>
+        </Pressable>
     );
 };
 
-export default CardVenta;
+export default memo(CardVenta);

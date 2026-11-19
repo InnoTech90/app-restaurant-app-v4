@@ -6,10 +6,11 @@ import {
 } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 
+import { color as tema } from "../../../../utils/theme";
 export const s = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: gb.gray50,
+    backgroundColor: gb.gray100,
   },
   centrado: {
     flex: 1,
@@ -31,11 +32,11 @@ export const s = StyleSheet.create({
   headerMesa: {
     fontSize: normalize(16),
     fontWeight: "800",
-    color: gb.gray50,
+    color: tema.text,
   },
   headerSub: {
     fontSize: normalize(11),
-    color: gb.blue100,
+    color: tema.textMuted,
     marginTop: normalize(2),
   },
   headerSpacer: {
@@ -66,17 +67,33 @@ export const s = StyleSheet.create({
     paddingHorizontal: isTablet
       ? contentPaddingH + normalize(16)
       : normalize(16),
-    paddingTop: normalize(14),
-    paddingBottom: normalize(8),
-    backgroundColor: gb.gray50,
+    paddingTop: normalize(12),
+    paddingBottom: 0,
+    backgroundColor: gb.gray100,
   },
   filtroContainer: {
     paddingHorizontal: isTablet
       ? contentPaddingH + normalize(16)
       : normalize(16),
     paddingVertical: normalize(10),
-    backgroundColor: gb.gray50,
+    backgroundColor: gb.gray100,
   },
+  chipsGrupos: {
+    gap: normalize(8),
+    paddingHorizontal: isTablet ? contentPaddingH + normalize(16) : normalize(16),
+    paddingVertical: normalize(10),
+  },
+  chipGrupo: {
+    backgroundColor: tema.surface,
+    borderWidth: 1,
+    borderColor: tema.borderStrong,
+    borderRadius: 999,
+    paddingHorizontal: normalize(14),
+    paddingVertical: normalize(7),
+  },
+  chipGrupoActivo: { backgroundColor: "#273568", borderColor: "#273568" },
+  chipGrupoTexto: { color: tema.textSecondary, fontSize: normalize(13) },
+  chipGrupoTextoActivo: { color: "#FFFFFF", fontWeight: "600" },
   listaContainer: {
     flexGrow: 1,
     paddingHorizontal: isTablet
@@ -86,11 +103,11 @@ export const s = StyleSheet.create({
     gap: normalize(16),
     paddingBottom: normalize(30),
     width: "100%",
-    backgroundColor: gb.gray50,
+    backgroundColor: gb.gray100,
   },
   listaScroll: {
     flex: 1,
-    backgroundColor: gb.gray50,
+    backgroundColor: gb.gray100,
   },
   grupoWrapper: {
     width: "100%",

@@ -134,6 +134,42 @@ export class Database {
   }
 
   /** Elimina clientes locales sin UUID (recién creados, ya enviados al servidor) */
+  /**
+   * Tras subir clientes nuevos y descargar los del servidor: pasa cada
+   * comanda que apuntaba al cliente local (sin UUID) al mismo cliente ya
+   * descargado (mismo nombre, teléfono y correo) y borra el registro local.
+   * Si no se encuentra pareja, el local se conserva marcado como
+   * sincronizado para no reenviarlo ni perder el nombre en la comanda.
+   */
+  static async reenlazarClientesNuevos(locales) {
+    if (!locales?.length) return;
+    return withDb("Clientes.reenlazarClientesNuevos", async (db) => {
+      for (const c of locales) {
+        const par = await db.getFirstAsync(
+          `SELECT ID FROM CLIENTES
+            WHERE UUID IS NOT NULL
+              AND TRIM(NOMBRE) = TRIM(?)
+              AND IFNULL(TRIM(TELEFONO), '') = IFNULL(TRIM(?), '')
+              AND IFNULL(TRIM(CORREO), '') = IFNULL(TRIM(?), '')
+            ORDER BY ID DESC LIMIT 1`,
+          [c.NOMBRE ?? "", c.TELEFONO ?? "", c.CORREO ?? ""],
+        );
+        if (par?.ID) {
+          await db.runAsync(
+            `UPDATE COMANDA SET ID_CLIENTE = ? WHERE ID_CLIENTE = ?`,
+            [par.ID, c.ID],
+          );
+          await db.runAsync(`DELETE FROM CLIENTES WHERE ID = ? AND UUID IS NULL`, [c.ID]);
+        } else {
+          await db.runAsync(
+            `UPDATE CLIENTES SET SINCRONIZADO = 1 WHERE ID = ? AND UUID IS NULL`,
+            [c.ID],
+          );
+        }
+      }
+    });
+  }
+
   static async eliminarClientesSinUUID() {
     return withDb("Clientes.eliminarClientesSinUUID", (db) =>
       db.runAsync(`DELETE FROM CLIENTES WHERE UUID IS NULL`),

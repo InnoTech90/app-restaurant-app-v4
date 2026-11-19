@@ -34,7 +34,7 @@ export const s = StyleSheet.create({
        },
        titulo:{
                 fontSize: normalize(24),
-                color: gb.gray50,
+                color: "#FFFFFF",
                 marginBottom: normalize(20),
                 fontWeight: "bold",
        },

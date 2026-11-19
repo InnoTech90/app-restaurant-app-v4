@@ -1,33 +1,34 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { Text, View } from "react-native";
 import { s } from "./styles";
-const Card = ({ title, children, styleBody, styleHeader, linealGradient, styleTitleHeader }) => {
-    return (
-        <>
-            {
-                linealGradient ?
-                    <>
-                        <LinearGradient
-                            colors={linealGradient}
-                            style={[s.header, styleHeader]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        >
-                            {title && <Text style={[s.title, styleTitleHeader]}>{title}</Text>}
-                        </LinearGradient>
-                        <View style={[s.container, styleBody]}>
-                            {children}
-                        </View>
-                    </> :
-                    <View style={[s.container, styleBody]}>
-                        <View style={[s.header, styleHeader]}>
-                            {title && <Text style={[s.title, styleTitleHeader]}>{title}</Text>}
-                        </View>
-                        {children}
-                    </View>
 
-            }
-        </>
+/**
+ * Tarjeta con título. Estilo moderno: el título va como etiqueta pequeña
+ * dentro de la tarjeta blanca (ya no hay franja con degradado). `linealGradient`
+ * se acepta por compatibilidad con las pantallas existentes y se ignora; el
+ * color del título que mandaban (blanco, para ir sobre el degradado) también.
+ */
+/** "MÉTODO DE PAGO" → "Método de pago" (solo si viene todo en mayúsculas). */
+const tituloOracion = (t) => {
+    const txt = String(t ?? "");
+    if (txt !== txt.toUpperCase()) return txt;
+    const min = txt.toLowerCase();
+    return min.charAt(0).toUpperCase() + min.slice(1);
+};
+
+// eslint-disable-next-line no-unused-vars
+const Card = ({ title, children, styleBody, styleHeader, linealGradient, styleTitleHeader }) => {
+    const { color: _ignorado, ...tituloSinColor } = styleTitleHeader ?? {};
+    return (
+        <View style={[s.container, styleBody, s.containerModerno]}>
+            {title ? (
+                <View style={[s.header, styleHeader, s.headerModerno]}>
+                    <Text style={[s.title, tituloSinColor, s.titleModerno]}>
+                        {tituloOracion(title)}
+                    </Text>
+                </View>
+            ) : null}
+            {children}
+        </View>
     );
-}
+};
 export default Card;

@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     backdrop: {
         flex: 1,
@@ -11,7 +12,7 @@ export const s = StyleSheet.create({
     },
     card: {
         width: "82%",
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(18),
         overflow: "hidden",
         alignItems: "center",

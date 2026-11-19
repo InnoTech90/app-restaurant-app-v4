@@ -2,6 +2,7 @@
 import { gb } from "../../../screens/_globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     body: {
         alignItems: "center",
@@ -13,7 +14,7 @@ export const s = StyleSheet.create({
         width: normalize(68),
         height: normalize(68),
         borderRadius: normalize(34),
-        backgroundColor: "#FFF3E0",
+        backgroundColor: tema.warningSoft,
         justifyContent: "center",
         alignItems: "center",
     },

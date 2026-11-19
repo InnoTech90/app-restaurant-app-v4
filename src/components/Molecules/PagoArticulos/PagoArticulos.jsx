@@ -153,7 +153,7 @@ const PagoArticulos = ({
     <Card
       title="ARTÍCULOS"
       linealGradient={gb.gradient_blue}
-      styleTitleHeader={{ color: gb.gray50 }}
+      styleTitleHeader={{ color: "#FFFFFF" }}
       styleHeader={{ width: "100%" }}
       styleBody={{ width: "100%", paddingHorizontal: 0, paddingVertical: 0 }}
     >

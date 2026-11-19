@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../atoms/FondoSolido/FondoSolido";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import EstatusSincronizado from "../../atoms/EstatusSincronizado/EstatusSincronizado";
 
+import { color as tema } from "../../../utils/theme";
 const fmtStock = (val) =>
     val !== null && val !== undefined ? String(parseFloat(val)) : "0";
 
@@ -20,12 +21,6 @@ const MateriaPrimaCard = ({ item, onPress }) => {
             style={({ pressed }) => [s.card, { opacity: pressed ? 0.85 : 1 }]}
             onPress={onPress}
         >
-            <LinearGradient
-                style={s.cardAccent}
-                colors={bajo ? [gb.yellow400, gb.yellow600] : gb.gradient_blue}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-            />
             <View style={s.cardBody}>
                 <View style={s.cardRow}>
                     <Text style={s.cardNombre} numberOfLines={1}>
@@ -51,7 +46,10 @@ const MateriaPrimaCard = ({ item, onPress }) => {
                         <Text style={s.cardUnidad}>{item.UNIDAD_ABREVIACION}</Text>
                     ) : null}
                     {bajo && (
-                        <Text style={s.cardStockMinTag}>⚠ Stock bajo</Text>
+                        <View style={s.cardStockMinTagRow}>
+                            <Ionicons name="alert-circle-outline" size={13} color={gb.yellow500} />
+                            <Text style={s.cardStockMinTag}>Stock bajo</Text>
+                        </View>
                     )}
                 </View>
             </View>
@@ -61,7 +59,7 @@ const MateriaPrimaCard = ({ item, onPress }) => {
 
 const s = StyleSheet.create({
     card: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(14),
         flexDirection: "row",
         overflow: "hidden",
@@ -113,14 +111,19 @@ const s = StyleSheet.create({
         paddingVertical: normalize(2),
         borderRadius: normalize(6),
     },
+    cardStockMinTagRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: normalize(4),
+        backgroundColor: tema.warningSoft,
+        paddingHorizontal: normalize(8),
+        paddingVertical: normalize(2),
+        borderRadius: 999,
+    },
     cardStockMinTag: {
         fontSize: normalize(11),
-        color: gb.yellow600,
-        backgroundColor: gb.yellow50,
-        paddingHorizontal: normalize(6),
-        paddingVertical: normalize(2),
-        borderRadius: normalize(6),
-        overflow: "hidden",
+        fontWeight: "600",
+        color: tema.warning,
     },
 });
 

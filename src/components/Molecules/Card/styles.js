@@ -1,44 +1,44 @@
 import { StyleSheet } from "react-native";
+import { color, font, radius, space } from "../../../utils/theme";
 
 export const s = StyleSheet.create({
     container: {
-        height: 'fit-content',
-        width: '90%',
-        padding: 16,
-        backgroundColor: "#fff",
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        borderBottomLeftRadius: 10,
-        borderBottomRightRadius: 10,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        width: "90%",
+        padding: space.lg,
+        backgroundColor: color.surface,
+    },
+    // Se aplican al final para que el estilo moderno gane sobre los que mandan
+    // las pantallas (radios de "tapa" de la versión con degradado).
+    containerModerno: {
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: color.border,
+        overflow: "hidden",
     },
     header: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        width: "90%",
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-
+        width: "100%",
+    },
+    headerModerno: {
+        backgroundColor: "transparent",
+        paddingHorizontal: space.lg,
+        paddingTop: space.md,
+        paddingBottom: space.sm,
     },
     title: {
-        fontSize: 18,
-        fontWeight: "bold",
-        marginBottom: 8,
+        fontSize: font.sm,
+    },
+    titleModerno: {
+        fontSize: font.sm,
+        fontWeight: font.semibold,
+        color: color.textMuted,
+        letterSpacing: 0.2,
+        textTransform: "none",
     },
     description: {
-        fontSize: 14,
-        color: "#666",
+        fontSize: font.sm,
+        color: color.textSecondary,
     },
 });

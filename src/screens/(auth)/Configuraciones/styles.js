@@ -7,6 +7,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   // ── Raíz ─────────────────────────────────────────────────────────────────
   root: {
@@ -24,7 +25,7 @@ export const s = StyleSheet.create({
   headerTitulo: {
     fontSize: normalize(18),
     fontWeight: "800",
-    color: gb.gray50,
+    color: tema.text,
   },
   // ── Scroll ───────────────────────────────────────────────────────────────
   scroll: {
@@ -50,6 +51,20 @@ export const s = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
   },
+  seccionHeaderModerno: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 0,
+  },
+  seccionIcono: {
+    width: normalize(28),
+    height: normalize(28),
+    borderRadius: normalize(8),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  seccionTituloModerno: {
+    color: tema.text,
+  },
   seccionHeader: {
     paddingHorizontal: normalize(16),
     paddingVertical: normalize(10),
@@ -60,7 +75,7 @@ export const s = StyleSheet.create({
   seccionTitulo: {
     fontSize: normalize(13),
     fontWeight: "700",
-    color: gb.gray50,
+    color: "#FFFFFF",
   },
   // ── Select inline ─────────────────────────────────────────────────────────
   selectInline: {
@@ -102,7 +117,7 @@ export const s = StyleSheet.create({
     backgroundColor: gb.gray300,
   },
   syncButtonText: {
-    color: gb.gray50,
+    color: "#FFFFFF",
     fontSize: normalize(13),
     fontWeight: "700",
   },
@@ -135,5 +150,43 @@ export const s = StyleSheet.create({
     color: gb.gray500,
     textAlign: "center",
     lineHeight: normalize(18),
+  },
+  // ── Apariencia ───────────────────────────────────────────────────────────
+  aparienciaCuerpo: {
+    paddingHorizontal: normalize(16),
+    paddingBottom: normalize(16),
+    gap: normalize(12),
+  },
+  aparienciaAyuda: {
+    fontSize: normalize(13),
+    color: tema.textSecondary,
+  },
+  aparienciaFila: {
+    flexDirection: "row",
+    gap: normalize(8),
+  },
+  aparienciaOpcion: {
+    flex: 1,
+    minHeight: normalize(44),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: normalize(6),
+    borderRadius: normalize(12),
+    borderWidth: 1,
+    borderColor: tema.borderStrong,
+    backgroundColor: tema.surface,
+  },
+  aparienciaOpcionActiva: {
+    backgroundColor: tema.primary,
+    borderColor: tema.primary,
+  },
+  aparienciaTexto: {
+    fontSize: normalize(14),
+    fontWeight: "600",
+    color: tema.text,
+  },
+  aparienciaTextoActiva: {
+    color: tema.textOnPrimary,
   },
 });

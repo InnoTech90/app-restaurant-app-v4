@@ -81,34 +81,47 @@ export class ApiLogin {
               });
             }
 
-            if (status === 403) {
-              if (
-                /device limit reached|l[ií]mite de dispositivos/i.test(message)
-              ) {
-                return fallo(
-                  "Se alcanzó el límite de dispositivos permitidos para este plan. Desvincula un dispositivo existente o contacta a soporte.",
-                );
-              }
-
-              if (message) {
-                return fallo(message);
-              }
-
+            // Nunca se muestra el texto técnico del servidor: solo mensajes
+            // en español que cualquier persona entienda.
+            const limite = message.match(/plan allows (\d+)/i);
+            if (/device limit reached|l[ií]mite de dispositivos/i.test(message)) {
               return fallo(
-                "No tienes permisos para asociar este dispositivo. Verifica el código de sucursal, el plan y que el dispositivo no esté bloqueado en el servidor.",
+                limite
+                  ? `El plan de este negocio permite ${limite[1]} dispositivos y ya están todos en uso. Pide al dueño que desactive uno o mejore su plan.`
+                  : "El plan de este negocio ya no tiene lugar para otro dispositivo. Pide al dueño que desactive uno o mejore su plan.",
               );
             }
 
-            if (status === 401 || status === 404) {
+            if (/device is (not active|inactive)/i.test(message)) {
               return fallo(
-                message ||
-                  "El código de sucursal no es válido o no está disponible.",
+                "Este dispositivo fue desactivado por el dueño del negocio. Pídele que lo vuelva a activar.",
+              );
+            }
+
+            if (/business or plan not found/i.test(message)) {
+              return fallo(
+                "Este negocio no tiene un plan activo. Pide al dueño que revise su membresía.",
+              );
+            }
+
+            if (
+              status === 401 ||
+              status === 404 ||
+              /invalid api key|branch not found|api key is required/i.test(message)
+            ) {
+              return fallo(
+                "El código de la sucursal no es correcto. Escanea de nuevo el QR o revisa el código.",
+              );
+            }
+
+            if (status >= 500) {
+              return fallo(
+                "El servidor no está disponible en este momento. Intenta de nuevo en unos minutos.",
               );
             }
 
             return fallo(
-              message ||
-                "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+              "No se pudo conectar el dispositivo. Intenta de nuevo y, si sigue pasando, contacta a soporte.",
             );
           }
 
@@ -122,7 +135,7 @@ export class ApiLogin {
 
           if (!isNetworkError) {
             return fallo(
-              "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+              "No se pudo conectar el dispositivo. Intenta de nuevo y, si sigue pasando, contacta a soporte.",
             );
           }
 
@@ -137,7 +150,7 @@ export class ApiLogin {
       }
 
       return fallo(
-        "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+        "No se pudo conectar el dispositivo. Intenta de nuevo y, si sigue pasando, contacta a soporte.",
       );
     } catch (error) {
       const msg = String(error?.message ?? "").toLowerCase();
@@ -154,7 +167,7 @@ export class ApiLogin {
       }
 
       return fallo(
-        "No se pudo asociar el dispositivo. Intenta de nuevo o contacta a soporte.",
+        "No se pudo conectar el dispositivo. Intenta de nuevo y, si sigue pasando, contacta a soporte.",
       );
     }
   }

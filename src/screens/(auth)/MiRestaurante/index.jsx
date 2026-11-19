@@ -1,5 +1,7 @@
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,6 +12,7 @@ import { gb } from "../../globalStyles";
 import { Database } from "./database";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const MiRestaurante = () => {
   const [data, setData] = useState();
   useEffect(() => {
@@ -26,18 +29,13 @@ const MiRestaurante = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       {/* Header */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>Mi Restaurante</Text>
-      </LinearGradient>
+      </HeaderBar>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -60,7 +58,7 @@ const MiRestaurante = () => {
         >
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>🏢</Text>
+              <Ionicons name="business-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Nombre del Negocio</Text>
@@ -72,7 +70,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>🏛️</Text>
+              <Ionicons name="library-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Razón Social</Text>
@@ -84,7 +82,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>🆔</Text>
+              <Ionicons name="id-card-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>RFC</Text>
@@ -96,7 +94,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>📞</Text>
+              <Ionicons name="call-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Teléfono</Text>
@@ -108,7 +106,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>📍</Text>
+              <Ionicons name="location-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Dirección</Text>
@@ -120,7 +118,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>📮</Text>
+              <Ionicons name="mail-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Código Postal</Text>
@@ -137,7 +135,7 @@ const MiRestaurante = () => {
         >
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>🏪</Text>
+              <Ionicons name="storefront-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Sucursal</Text>
@@ -149,7 +147,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>📝</Text>
+              <Ionicons name="document-text-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Descripción</Text>
@@ -161,7 +159,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>📍</Text>
+              <Ionicons name="location-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Dirección</Text>
@@ -173,7 +171,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>📞</Text>
+              <Ionicons name="call-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>Teléfono</Text>
@@ -185,7 +183,7 @@ const MiRestaurante = () => {
 
           <View style={s.infoRow}>
             <View style={s.iconContainer}>
-              <Text style={s.iconText}>💬</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={normalize(19)} color={tema.primary} />
             </View>
             <View style={s.infoDetails}>
               <Text style={s.infoLabel}>WhatsApp</Text>
@@ -197,7 +195,7 @@ const MiRestaurante = () => {
           {data?.sucursal[0]?.FACEBOK && (
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>📘</Text>
+                <Ionicons name="logo-facebook" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Facebook</Text>
@@ -210,7 +208,7 @@ const MiRestaurante = () => {
           {data?.sucursal[0]?.INSTAGRAM && (
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>📸</Text>
+                <Ionicons name="logo-instagram" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Instagram</Text>
@@ -231,7 +229,7 @@ const MiRestaurante = () => {
 
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>📱</Text>
+                <Ionicons name="phone-portrait-outline" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Nombre</Text>
@@ -243,7 +241,7 @@ const MiRestaurante = () => {
 
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>🔑</Text>
+                <Ionicons name="key-outline" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Clave de Dispositivo</Text>
@@ -255,9 +253,17 @@ const MiRestaurante = () => {
 
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>
-                  {data?.device[0]?.ESTATUS === "activo" ? "✅" : "❌"}
-                </Text>
+                <Ionicons
+                  name={
+                    data?.device[0]?.ESTATUS === "activo"
+                      ? "checkmark-circle"
+                      : "close-circle"
+                  }
+                  size={22}
+                  color={
+                    data?.device[0]?.ESTATUS === "activo" ? "#18A058" : "#E5484D"
+                  }
+                />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Estado</Text>
@@ -278,7 +284,7 @@ const MiRestaurante = () => {
 
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>💳</Text>
+                <Ionicons name="card-outline" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Plan</Text>
@@ -290,7 +296,7 @@ const MiRestaurante = () => {
 
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>💰</Text>
+                <Ionicons name="cash-outline" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Costo</Text>
@@ -302,7 +308,7 @@ const MiRestaurante = () => {
 
             <View style={s.infoRow}>
               <View style={s.iconContainer}>
-                <Text style={s.iconText}>📱</Text>
+                <Ionicons name="phone-portrait-outline" size={normalize(19)} color={tema.primary} />
               </View>
               <View style={s.infoDetails}>
                 <Text style={s.infoLabel}>Dispositivos Permitidos</Text>

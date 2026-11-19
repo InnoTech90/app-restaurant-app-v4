@@ -241,5 +241,48 @@ export async function runDatabaseMigrations(db) {
     console.warn("  ⚠️  idx_comanda_pedido_digital:", e?.message ?? e);
   }
 
+  await ensurePerformanceIndexes(db);
+
   console.log("✅ Migraciones de columnas verificadas");
+}
+
+/**
+ * Índices para que la app aguante cargas pesadas (miles de ventas y artículos).
+ * Sin ellos, Ventas hacía subconsultas por cada comanda recorriendo toda
+ * COMANDA_ARTICULO: con 20,000 ventas la consulta pasaba de 10 minutos;
+ * con índices tarda ~0.2 s. `IF NOT EXISTS` = seguro en bases con datos.
+ */
+const PERFORMANCE_INDEXES = [
+  ["idx_comanda_articulo_comanda", "COMANDA_ARTICULO(ID_COMANDA)"],
+  ["idx_comanda_complemento_ca", "COMANDA_COMPLEMENTO(ID_COMANDA_ARTICULO)"],
+  ["idx_comanda_pagos_comanda", "COMANDA_PAGOS(ID_COMANDA)"],
+  ["idx_cuenta_dividida_comanda", "COMANDA_PAGO_CUENTA_DIVIDIDA(ID_COMANDA)"],
+  ["idx_comanda_movimientos_comanda", "COMANDA_MOVIMIENTOS(ID_COMANDA)"],
+  ["idx_comanda_activo_estatus", "COMANDA(ACTIVO, ESTATUS)"],
+  ["idx_comanda_mesa_activo", "COMANDA(ID_MESA, ACTIVO)"],
+  ["idx_comanda_sincronizado", "COMANDA(SINCRONIZADO)"],
+  ["idx_comanda_fecha", "COMANDA(FECHA)"],
+  ["idx_caja_venta_caja", "CAJA_VENTA(ID_CAJA)"],
+  ["idx_caja_venta_comanda", "CAJA_VENTA(ID_COMANDA)"],
+  ["idx_movimiento_caja_caja", "MOVIMIENTO_CAJA(ID_CAJA)"],
+  ["idx_articulo_grupo", "ARTICULO(ID_GRUPO)"],
+  ["idx_articulo_uuid", "ARTICULO(UUID)"],
+  ["idx_grupo_articulos_menu", "GRUPO_ARTICULOS(ID_MENU)"],
+  ["idx_grupo_complementos_articulo", "GRUPO_COMPLEMENTOS(ID_ARTICULO)"],
+  ["idx_complemento_grupo", "COMPLEMENTO(ID_GRUPO_COMP)"],
+  ["idx_mesa_uuid", "MESA(UUID)"],
+  ["idx_clientes_nombre", "CLIENTES(NOMBRE)"],
+  ["idx_mp_sucursal_mp", "MATERIA_PRIMA_SUCURSAL(ID_MATERIA_PRIMA)"],
+  ["idx_registro_gasto_fecha", "REGISTRO_GASTO(FECHA)"],
+];
+
+async function ensurePerformanceIndexes(db) {
+  for (const [nombre, definicion] of PERFORMANCE_INDEXES) {
+    try {
+      await db.runAsync(`CREATE INDEX IF NOT EXISTS ${nombre} ON ${definicion}`);
+    } catch (e) {
+      // Tabla/columna ausente en una base vieja: no bloquear el arranque.
+      console.warn(`  Índice ${nombre} omitido:`, e?.message ?? e);
+    }
+  }
 }

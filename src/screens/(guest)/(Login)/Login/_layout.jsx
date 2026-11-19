@@ -1,8 +1,9 @@
 import { Stack } from "expo-router";
+import { color as tema } from "../../../../utils/theme";
 import {Text, View } from "react-native";
 import { s } from "./style";
 export default function LoginLayout() {
-    return <Stack>
+    return <Stack screenOptions={{ contentStyle: { backgroundColor: tema.background } }}>
             <Stack.Screen name="index" options={{
                 headerShown: false,
                 headerTitleAlign: "center",

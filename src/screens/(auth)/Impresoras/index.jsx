@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -33,6 +34,7 @@ import {
 import s from "./styles";
 import { imprimirTicketPrueba } from "./templates/TicketDePrueba";
 
+import { color as tema } from "../../../utils/theme";
 // Caché de dispositivos emparejados — no guardar listas vacías para permitir reintentos.
 let _pairedDevicesCache = null;
 
@@ -489,15 +491,10 @@ const Impresoras = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>Impresoras</Text>
         <Pressable
@@ -509,9 +506,9 @@ const Impresoras = () => {
             justifyContent: "center",
           }}
         >
-          <Ionicons name="refresh" size={normalize(20)} color="white" />
+          <Ionicons name="refresh" size={normalize(20)} color="#4F5FE0" />
         </Pressable>
-      </LinearGradient>
+      </HeaderBar>
 
       {/* ── Lista de puntos de impresión ─────────────────────────────── */}
       {cargando ? (

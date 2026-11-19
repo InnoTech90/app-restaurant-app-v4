@@ -1,9 +1,10 @@
 import { StyleSheet } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     constenerdorProducto: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         paddingHorizontal: normalize(20),
         paddingVertical: normalize(10),
         borderRadius: normalize(12),
@@ -52,17 +53,17 @@ export const s = StyleSheet.create({
         marginTop: normalize(6),
         paddingVertical: normalize(4),
         paddingHorizontal: normalize(8),
-        backgroundColor: "#FFEBEE",
+        backgroundColor: tema.dangerSoft,
         borderRadius: normalize(6),
     },
     descuentoLabel: {
         fontSize: normalize(12),
-        color: "#C62828",
+        color: "#C93A3F",
         fontWeight: "600",
     },
     descuentoValor: {
         fontSize: normalize(13),
-        color: "#C62828",
+        color: "#C93A3F",
         fontWeight: "700",
     },
 })

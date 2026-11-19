@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { CONTENT_MAX_WIDTH, isTablet, normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 
+import { color as tema } from "../../../../utils/theme";
 export const s = StyleSheet.create({
     safeArea: {
         // flex: 1,
@@ -19,12 +20,12 @@ export const s = StyleSheet.create({
     headerNombre: {
         fontSize: normalize(22),
         fontWeight: "800",
-        color: gb.gray50,
+        color: tema.text,
         letterSpacing: 0.3,
     },
     headerPrecioBase: {
         fontSize: normalize(14),
-        color: gb.blue200,
+        color: tema.textMuted,
         marginTop: normalize(2),
     },
     // ── Scroll contenido ────────────────────────────────────
@@ -222,7 +223,7 @@ export const s = StyleSheet.create({
     botonAgregarTexto: {
         fontSize: normalize(16),
         fontWeight: "800",
-        color: gb.gray50,
+        color: "#FFFFFF",
         letterSpacing: 0.5,
     },
 });

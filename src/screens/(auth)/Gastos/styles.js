@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { CONTENT_MAX_WIDTH, isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     /* ── Header ─────────────────────────────── */
     header: {
@@ -13,7 +14,7 @@ export const s = StyleSheet.create({
         justifyContent: "space-between",
     },
     headerTitle: {
-        color: "white",
+        color: tema.text,
         fontSize: normalize(18),
         fontWeight: "bold",
     },
@@ -58,7 +59,7 @@ export const s = StyleSheet.create({
 
     /* ── Card gasto ──────────────────────────── */
     card: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(14),
         flexDirection: "row",
         overflow: "hidden",
@@ -168,7 +169,7 @@ export const s = StyleSheet.create({
         backgroundColor: gb.gray100,
     },
     detalleCard: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(14),
         padding: normalize(16),
         gap: normalize(8),
@@ -199,7 +200,7 @@ export const s = StyleSheet.create({
         gap: normalize(8),
     },
     conceptoItem: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(12),
         flexDirection: "row",
         overflow: "hidden",
@@ -248,7 +249,7 @@ export const s = StyleSheet.create({
         justifyContent: "space-between",
         paddingHorizontal: normalize(16),
         paddingVertical: normalize(10),
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderBottomWidth: 1,
         borderBottomColor: gb.gray200,
     },
@@ -271,7 +272,7 @@ export const s = StyleSheet.create({
         gap: normalize(14),
         paddingHorizontal: normalize(16),
         paddingVertical: normalize(8),
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderBottomWidth: 1,
         borderBottomColor: gb.gray200,
     },
@@ -293,7 +294,7 @@ export const s = StyleSheet.create({
     /* ── Sección de categoría ────────────────── */
     seccion: {
         width: "100%",
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(12),
         overflow: "hidden",
         shadowColor: "#000",
@@ -308,9 +309,11 @@ export const s = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: normalize(8),
+        borderWidth: 1,
+        borderColor: tema.border,
     },
     seccionNombre: {
-        color: "white",
+        color: tema.text,
         fontWeight: "700",
         fontSize: normalize(13),
         textTransform: "uppercase",
@@ -320,19 +323,19 @@ export const s = StyleSheet.create({
         minWidth: 0,
     },
     seccionHeaderTotal: {
-        color: "white",
+        color: "#4F5FE0",
         fontWeight: "800",
         fontSize: normalize(14),
         flexShrink: 0,
     },
     seccionNombrePendiente: {
-        color: "#8A4E2A",
+        color: tema.warning,
     },
     seccionHeaderTotalPendiente: {
-        color: "#8A4E2A",
+        color: tema.warning,
     },
     conceptosWrap: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
     },
     conceptoAccordion: {
         borderBottomWidth: 1,
@@ -359,7 +362,7 @@ export const s = StyleSheet.create({
     gastoRow: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(8),
         borderWidth: 1,
         borderColor: gb.gray200,
@@ -435,7 +438,7 @@ export const s = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: normalize(8),
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(10),
         paddingHorizontal: normalize(12),
         paddingVertical: normalize(10),
@@ -449,7 +452,7 @@ export const s = StyleSheet.create({
         fontSize: normalize(13),
     },
     infoBlock: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(12),
         borderWidth: 1,
         borderColor: gb.gray200,
@@ -490,7 +493,7 @@ export const s = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: normalize(10),
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(10),
         borderWidth: 1,
         borderColor: gb.gray200,
@@ -548,7 +551,7 @@ export const s = StyleSheet.create({
         paddingHorizontal: normalize(12),
         paddingVertical: normalize(12),
         gap: normalize(8),
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
     },
     conceptoRowInfo: {
         flex: 1,
@@ -610,7 +613,7 @@ export const s = StyleSheet.create({
     modalCard: {
         width: "85%",
         maxWidth: 360,
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(16),
         overflow: "hidden",
         paddingBottom: normalize(18),
@@ -751,28 +754,31 @@ export const s = StyleSheet.create({
     /* ── Footer ──────────────────────────────── */
     footer: {
         width: "100%",
-        height: normalize(50),
+        minHeight: normalize(64),
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: normalize(10),
         paddingVertical: normalize(8),
         gap: normalize(10),
         justifyContent: "space-around",
+    backgroundColor: tema.surface,
+    borderTopWidth: 1,
+    borderTopColor: tema.border,
     },
     btnSync: {
         flexDirection: "row",
         flex: 1,
-        borderWidth: normalize(1),
-        borderColor: gb.gray50,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: gb.gray50 + "20",
-        borderRadius: normalize(15),
         paddingHorizontal: normalize(10),
         paddingVertical: normalize(0),
+    backgroundColor: tema.surface,
+    borderWidth: 1,
+    borderColor: tema.borderStrong,
+    borderRadius: normalize(12),
     },
     btnSyncText: {
-        color: "white",
+        color: "#4F5FE0",
         fontWeight: "600",
         fontSize: normalize(14),
         marginLeft: normalize(6),

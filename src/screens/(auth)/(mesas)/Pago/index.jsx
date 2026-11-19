@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import HeaderBar from "../../../../components/atoms/HeaderBar/HeaderBar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -34,7 +35,7 @@ import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { useEdicionTicket } from "../../../../utils/useEdicionTicket";
 import { sesionPuedeEntrar } from "../../../../utils/gerentePermisos";
 import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
-import { sincronizarEnSegundoPlano } from "../../../../utils/http/sincronizarEnSegundoPlano";
+import { sincronizarSiHayInternet } from "../../../../utils/http/sincronizarEnSegundoPlano";
 import { autorizarSeccion } from "../../../../utils/sectionAccess";
 import { mostrarAviso } from "../../../../utils/avisoModal";
 import { gb } from "../../../globalStyles";
@@ -421,17 +422,20 @@ const Pago = () => {
       ]);
       EdicionTicketStore.clear();
 
-      const hayInternet = await verificarConexionInternet();
-      if (hayInternet) {
-        sincronizarEnSegundoPlano(
-          () => integracionVentas.sincronizarVentas([comandaId]),
-          {
-            titulo: "Sincronización",
-            mensajeFallo:
-              "La venta se guardó, pero no se pudo conectar con el servidor. Inténtalo más tarde desde Ventas.",
-          },
-        );
-      }
+      // Con internet se sube en segundo plano; sin internet queda pendiente
+      // hasta que el encargado sincronice desde Ventas.
+      sincronizarSiHayInternet(
+        () =>
+          integracionVentas.sincronizarVentas([comandaId], {
+            devolverVentas: false,
+          }),
+        {
+          modulo: "ventas",
+          titulo: "Sincronización",
+          mensajeFallo:
+            "La venta se guardó, pero no se pudo conectar con el servidor. Súbela desde Ventas con Sincronizar.",
+        },
+      );
 
       router.replace("/Inicio");
     } catch (e) {
@@ -622,8 +626,9 @@ const Pago = () => {
     }
 
     const partes = {};
+    // Hora del dispositivo (igual que Menú y Comanda): no forzar CDMX,
+    // las sucursales pueden estar en otra zona (Tijuana, Cancún…).
     for (const parte of new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
       year: "2-digit",
       month: "2-digit",
       day: "2-digit",
@@ -645,12 +650,7 @@ const Pago = () => {
   return (
     <SafeAreaView edges={["bottom"]} style={s.root}>
       {/* ── HEADER ────────────────────────────────────────── */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <View style={s.headerCenter}>
           <Text style={s.headerMesa}>{mesa?.NOMBRE ?? "Mesa"}</Text>
@@ -667,10 +667,10 @@ const Pago = () => {
           <Ionicons
             name="trash-outline"
             size={normalize(15)}
-            color={gb.gray50}
+            color="#4F5FE0"
           />
         </Button>
-      </LinearGradient>
+      </HeaderBar>
 
       {!cuentaImpresa && requiereNipEdicion && !puedeEditar && (
         <View
@@ -857,7 +857,7 @@ const Pago = () => {
           <Card
             title="NOTA DE LA COMANDA"
             linealGradient={gb.gradient_blue}
-            styleTitleHeader={{ color: gb.gray50 }}
+            styleTitleHeader={{ color: "#FFFFFF" }}
             styleHeader={{ width: "100%" }}
             styleBody={{ width: "100%", paddingHorizontal: normalize(12), paddingVertical: normalize(12) }}
           >
@@ -950,14 +950,14 @@ const Pago = () => {
                 opacity: finalizando ? 0.6 : 1,
               }}
               style={s.btnImprimir}
-              gradient={["#388E3C", "#4CAF50"]}
+              gradient={["#388E3C", "#18A058"]}
               onPress={solicitarFinalizarVenta}
               disabled={finalizando}
             >
               <Ionicons
                 name="checkmark-circle-outline"
                 size={normalize(18)}
-                color={gb.gray50}
+                color="#FFFFFF"
               />
               <Text style={s.btnImprimirTexto}>
                 {finalizando ? "Finalizando..." : "Finalizar venta"}
@@ -978,7 +978,7 @@ const Pago = () => {
             <Ionicons
               name="print-outline"
               size={normalize(20)}
-              color={gb.gray50}
+              color="#FFFFFF"
             />
             <Text style={s.btnImprimirTexto}>
               {imprimiendo ? "Imprimiendo..." : "Imprimir cuenta"}

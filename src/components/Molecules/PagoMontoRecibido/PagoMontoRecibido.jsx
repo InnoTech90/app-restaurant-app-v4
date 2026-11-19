@@ -8,7 +8,7 @@ const PagoMontoRecibido = ({ total, montoRecibido, cambio, onChangeMonto, onFocu
         <Card
             title="MONTO RECIBIDO"
             linealGradient={gb.gradient_blue}
-            styleTitleHeader={{ color: gb.gray50 }}
+            styleTitleHeader={{ color: "#FFFFFF" }}
             styleHeader={{ width: "100%" }}
             styleBody={{ width: "100%", paddingHorizontal: 0, paddingVertical: 0 }}
         >
@@ -23,7 +23,7 @@ const PagoMontoRecibido = ({ total, montoRecibido, cambio, onChangeMonto, onFocu
                         onBlur={onBlur}
                         keyboardType="decimal-pad"
                         placeholder={total.toFixed(2)}
-                        placeholderTextColor={gb.gray300}
+                        placeholderTextColor={gb.gray400}
                         selectTextOnFocus
                         editable={!disabled}
                     />

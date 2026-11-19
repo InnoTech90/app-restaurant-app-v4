@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { CONTENT_MAX_WIDTH, isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     scroll: {
     },
@@ -11,40 +12,62 @@ export const s = StyleSheet.create({
         padding: normalize(20),
         ...(isTablet && { alignSelf: "center", width: CONTENT_MAX_WIDTH }),
     },
+    filtrosWrapper: {
+        backgroundColor: tema.background,
+        paddingHorizontal: normalize(16),
+        paddingTop: normalize(12),
+        gap: normalize(10),
+        ...(isTablet && { alignSelf: "center", width: CONTENT_MAX_WIDTH }),
+    },
+    // Pestañas tipo interruptor (Hoy / Anteriores)
     filtrosPeriodo: {
-        backgroundColor: "white",
-        width: "100%",
-        height: normalize(48),
-        paddingHorizontal: normalize(10),
-        paddingTop: normalize(8),
         flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "center",
-        gap: normalize(10),
-        borderBottomWidth: 1,
-        borderBottomColor: gb.gray100,
+        backgroundColor: tema.surfaceAlt,
+        borderRadius: normalize(12),
+        padding: normalize(3),
     },
+    segmentoContainer: { flex: 1, borderRadius: normalize(10) },
+    segmento: {
+        backgroundColor: "transparent",
+        borderRadius: normalize(10),
+        paddingVertical: normalize(8),
+    },
+    segmentoActivo: {
+        backgroundColor: tema.surface,
+        shadowColor: "#2A3A8C",
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        elevation: 2,
+    },
+    segmentoTexto: { color: tema.textSecondary, fontSize: normalize(13) },
+    segmentoTextoActivo: { color: tema.text, fontSize: normalize(13), fontWeight: "600" },
+    // Filtros de estatus en píldora
     filtros: {
-        backgroundColor: "white",
-        width: "100%",
-        height: normalize(50),
-        paddingHorizontal: normalize(10),
         flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "center",
-        gap: normalize(10),
+        gap: normalize(8),
     },
+    chipContainer: { borderRadius: 999 },
+    chip: {
+        backgroundColor: tema.surface,
+        borderWidth: 1,
+        borderColor: tema.borderStrong,
+        borderRadius: 999,
+        paddingVertical: normalize(6),
+        paddingHorizontal: normalize(12),
+    },
+    chipActivo: { backgroundColor: "#273568", borderColor: "#273568" },
+    chipTexto: { color: tema.textSecondary, fontSize: normalize(12) },
+    chipTextoActivo: { color: "#FFFFFF", fontSize: normalize(12), fontWeight: "600" },
     leyendaColores: {
         flexDirection: "row",
         alignItems: "center",
         flexWrap: "wrap",
         gap: normalize(14),
         paddingHorizontal: normalize(16),
-        paddingVertical: normalize(8),
-        backgroundColor: "white",
-        borderBottomWidth: 1,
-        borderBottomColor: gb.gray200,
+        paddingTop: normalize(10),
         width: "100%",
+        ...(isTablet && { alignSelf: "center", width: CONTENT_MAX_WIDTH }),
     },
     leyendaItem: {
         flexDirection: "row",
@@ -106,7 +129,7 @@ export const s = StyleSheet.create({
     btnLimpiar: {
         backgroundColor: 'transparent', // Agrega opacidad al color de fondo
         borderWidth: 1,
-        borderColor: gb.gray50, // Agrega opacidad al color del borde
+        borderColor: "#F5B5B7",
         paddingHorizontal: normalize(10),
         paddingVertical: normalize(5),
         height: normalize(35),
@@ -115,7 +138,7 @@ export const s = StyleSheet.create({
     },
     btnLimpiarText:
     {
-        color: gb.gray50,
+        color: "#E5484D",
         fontSize: normalize(14),
         marginLeft: normalize(5),
 
@@ -124,11 +147,18 @@ export const s = StyleSheet.create({
         width: "100%",
         flexDirection: "row",
         gap: normalize(10),
-        backgroundColor: "white",
-        paddingBottom: normalize(10),
-        justifyContent: "space-around",
-        alignItems: "center",
-
+        paddingBottom: normalize(4),
+    },
+    totalTarjeta: {
+        flex: 1,
+        backgroundColor: tema.surface,
+        borderRadius: normalize(14),
+        borderWidth: 1,
+        borderColor: tema.border,
+        paddingVertical: normalize(10),
+        paddingHorizontal: normalize(12),
+        flexDirection: "column-reverse",
+        gap: normalize(2),
     },
     totalFiltrado: {
         width: '40%',
@@ -149,13 +179,13 @@ export const s = StyleSheet.create({
         justifyContent: "center",
     },
     precio: {
-        color: gb.gray50,
+        color: tema.text,
         fontSize: normalize(18),
-        fontWeight: "bold",
+        fontWeight: "700",
     },
     descripcion: {
-        color: gb.gray50,
-        fontSize: normalize(10),
+        color: tema.textMuted,
+        fontSize: normalize(12),
     },
     ventasContainer: {
         width: "100%",
@@ -163,11 +193,11 @@ export const s = StyleSheet.create({
     },
     titleDetalleVenta: {
         fontSize: normalize(12),
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
     venta: {
         fontSize: normalize(16),
-        color: gb.gray50,
+        color: "#FFFFFF",
         fontWeight: "bold"
     },
     scrollDetalle: {
@@ -196,7 +226,7 @@ export const s = StyleSheet.create({
         paddingHorizontal: normalize(4),
     },
     bloqueInfo: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(12),
         paddingHorizontal: normalize(12),
         paddingVertical: normalize(12),
@@ -265,7 +295,7 @@ export const s = StyleSheet.create({
         fontSize: normalize(15),
     },
     filaDesgloseResta: {
-        color: "#F44336",
+        color: "#E5484D",
     },
     totalSeparador: {
         borderTopWidth: 1,
@@ -274,7 +304,7 @@ export const s = StyleSheet.create({
         marginTop: normalize(2),
     },
     cuentaDivididaBox: {
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(12),
         padding: normalize(12),
         gap: normalize(10),
@@ -384,7 +414,7 @@ export const s = StyleSheet.create({
     btnReimprimirTexto: {
         fontSize: normalize(15),
         fontWeight: "700",
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
     modalContainer: {
         justifyContent: "center",

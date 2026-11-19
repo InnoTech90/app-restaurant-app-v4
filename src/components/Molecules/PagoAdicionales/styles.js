@@ -65,7 +65,7 @@ export const s = StyleSheet.create({
         color: gb.gray600,
     },
     toggleBtnTextoActivo: {
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
     checkboxRow: {
         flexDirection: "row",

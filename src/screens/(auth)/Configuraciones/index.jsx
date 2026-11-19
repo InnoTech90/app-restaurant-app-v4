@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Pressable,
   ScrollView,
   Switch,
   Text,
@@ -40,6 +42,8 @@ import { gb } from "../../globalStyles";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
 import Database from "./database";
 import { s } from "./styles";
+import { cambiarApariencia, preferenciaApariencia } from "../../../utils/apariencia";
+import { color as tema } from "../../../utils/theme";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Encabezado de sección con degradado
@@ -48,17 +52,48 @@ const SectionHeader = ({ titulo, iconName, color }) => {
   const gradientColor = color || gb.blue550;
 
   return (
-    <LinearGradient
-      colors={[gradientColor, gradientColor + "CC"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
-      style={s.seccionHeader}
-    >
-      <Ionicons name={iconName} size={normalize(15)} color={gb.gray50} />
-      <Text style={s.seccionTitulo}>{titulo}</Text>
-    </LinearGradient>
+    <View style={[s.seccionHeader, s.seccionHeaderModerno]}>
+      <View style={[s.seccionIcono, { backgroundColor: gradientColor + "1A" }]}>
+        <Ionicons name={iconName} size={normalize(15)} color={gradientColor} />
+      </View>
+      <Text style={[s.seccionTitulo, s.seccionTituloModerno]}>{titulo}</Text>
+    </View>
   );
 };
+
+// Selector de apariencia (Sistema / Claro / Oscuro). Cambiarlo reinicia la
+// interfaz porque los estilos se calculan al arrancar.
+const OPCIONES_APARIENCIA = [
+  { valor: "sistema", texto: "Sistema", icono: "phone-portrait-outline" },
+  { valor: "claro", texto: "Claro", icono: "sunny-outline" },
+  { valor: "oscuro", texto: "Oscuro", icono: "moon-outline" },
+];
+
+const SelectorApariencia = () => (
+  <View style={s.aparienciaFila}>
+    {OPCIONES_APARIENCIA.map((op) => {
+      const activa = preferenciaApariencia === op.valor;
+      return (
+        <Pressable
+          key={op.valor}
+          onPress={() => !activa && cambiarApariencia(op.valor)}
+          style={[s.aparienciaOpcion, activa && s.aparienciaOpcionActiva]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: activa }}
+        >
+          <Ionicons
+            name={op.icono}
+            size={normalize(16)}
+            color={activa ? tema.textOnPrimary : tema.textSecondary}
+          />
+          <Text style={[s.aparienciaTexto, activa && s.aparienciaTextoActiva]}>
+            {op.texto}
+          </Text>
+        </Pressable>
+      );
+    })}
+  </View>
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Pantalla principal
@@ -287,14 +322,9 @@ export default function Configuraciones() {
   if (cargando || !config) {
     return (
       <SafeAreaView style={s.root}>
-        <LinearGradient
-          colors={gb.gradient_blue}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={s.header}
-        >
+        <HeaderBar style={s.header}>
           <Text style={s.headerTitulo}>Configuraciones</Text>
-        </LinearGradient>
+        </HeaderBar>
       </SafeAreaView>
     );
   }
@@ -302,14 +332,9 @@ export default function Configuraciones() {
   return (
     <SafeAreaView style={s.root} edges={["bottom"]}>
       {/* Header */}
-      <LinearGradient
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={s.header}
-      >
-        <Text style={s.headerTitulo}>Configuraciones</Text>
-      </LinearGradient>
+      <HeaderBar style={s.header}>
+        <Text style={s.headerTitulo}>Ajustes del dispositivo</Text>
+      </HeaderBar>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
         {/* ── General ───────────────────────────────────────────────── */}
@@ -342,9 +367,25 @@ export default function Configuraciones() {
               value={Number(config.ABIERTO_PEDIDOS) === 1}
               disabled
               trackColor={{ false: gb.gray200, true: gb.blue550 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
+        </View>
+
+        {/* ── Apariencia ────────────────────────────────────────────── */}
+        <View style={s.seccion}>
+          <SectionHeader
+            titulo="Apariencia"
+            iconName="contrast-outline"
+            color={gb.blue550}
+          />
+          <View style={s.aparienciaCuerpo}>
+            <Text style={s.aparienciaAyuda}>
+              Elige el modo de color. "Sistema" usa el del dispositivo. Al
+              cambiarlo la app se reinicia unos segundos.
+            </Text>
+            <SelectorApariencia />
+          </View>
         </View>
 
         {/* ── Impresión ─────────────────────────────────────────────── */}
@@ -365,7 +406,7 @@ export default function Configuraciones() {
               value={!!config.IMPRIMIR_FICHA}
               onValueChange={(v) => guardar("IMPRIMIR_FICHA", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.purple550 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
 
@@ -379,7 +420,7 @@ export default function Configuraciones() {
               value={!!config.SOLO_PRODUCTOS_NUEVOS}
               onValueChange={(v) => guardar("SOLO_PRODUCTOS_NUEVOS", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.purple550 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
 
@@ -511,7 +552,7 @@ export default function Configuraciones() {
               value={!!config.PROTEGER_VENTAS}
               onValueChange={(v) => guardar("PROTEGER_VENTAS", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.red600 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
 
@@ -525,7 +566,7 @@ export default function Configuraciones() {
               value={Number(config.NIP_FINALIZAR_TICKET ?? 1) === 1}
               onValueChange={(v) => guardar("NIP_FINALIZAR_TICKET", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.red600 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
 
@@ -544,7 +585,7 @@ export default function Configuraciones() {
                 guardar("HABILITAR_EDICION_TICKET", v ? 0 : 1)
               }
               trackColor={{ false: gb.gray200, true: gb.red600 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
 
@@ -559,7 +600,7 @@ export default function Configuraciones() {
               value={!!config.MODO_RESTRICTIVO}
               onValueChange={(v) => guardar("MODO_RESTRICTIVO", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.red600 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
         </View>
@@ -582,7 +623,7 @@ export default function Configuraciones() {
               value={Number(config.BIENVENIDA_INICIO_DIA ?? 1) === 1}
               onValueChange={(v) => guardar("BIENVENIDA_INICIO_DIA", v ? 1 : 0)}
               trackColor={{ false: gb.gray200, true: gb.yellow500 }}
-              thumbColor={gb.gray50}
+              thumbColor="#FFFFFF"
             />
           </ConfigItem>
         </View>

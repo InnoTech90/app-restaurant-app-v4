@@ -2,6 +2,7 @@
 import { CONTENT_MAX_WIDTH, contentPaddingH, isTablet, normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 
+import { color as tema } from "../../../../utils/theme";
 export const s = StyleSheet.create({
     // -- Root
     root: {
@@ -24,11 +25,11 @@ export const s = StyleSheet.create({
     headerMesa: {
         fontSize: normalize(16),
         fontWeight: "800",
-        color: gb.gray50,
+        color: tema.text,
     },
     headerSub: {
         fontSize: normalize(11),
-        color: gb.blue100,
+        color: tema.textMuted,
         marginTop: normalize(2),
     },
     btnCancelarContainer: {
@@ -98,7 +99,7 @@ export const s = StyleSheet.create({
     btnImprimirTexto: {
         fontSize: normalize(15),
         fontWeight: "700",
-        color: gb.gray50,
+        color: "#FFFFFF",
     },
     // ── Modal de clientes ───────────────────────────────────────────────────
     modalBuscador: {
@@ -195,7 +196,7 @@ export const s = StyleSheet.create({
         minHeight: normalize(48),
     },
     modalCajaCerradaBtnAbrirTexto: {
-        color: gb.gray50,
+        color: "#FFFFFF",
         fontWeight: "700",
         fontSize: normalize(14),
         textAlign: "center",

@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../atoms/FondoSolido/FondoSolido";
 import { useEffect, useState } from "react";
 import {
   Pressable,
@@ -14,6 +14,7 @@ import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import Button from "../../atoms/Button/Button";
 import GeneralModal from "../../atoms/GeneralModal/GeneralModal";
 
+import { color as tema } from "../../../utils/theme";
 const fmtStock = (val) =>
   val !== null && val !== undefined ? String(parseFloat(val)) : "0";
 
@@ -201,7 +202,7 @@ const ModalAjustarInventario = ({ seleccionado, onClose, onGuardar }) => {
               style={s.inputCantidad}
               value={cantidad}
               placeholder="0"
-              placeholderTextColor={gb.gray300}
+              placeholderTextColor={gb.gray400}
               onChangeText={(v) => {
                 if (/^\d*\.?\d*$/.test(v)) setCantidad(v);
               }}
@@ -364,7 +365,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     gap: normalize(6),
     paddingHorizontal: normalize(8),
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
   },
   btnEntradaActivo: {
     backgroundColor: gb.green600,
@@ -404,7 +405,7 @@ const s = StyleSheet.create({
     borderColor: gb.gray300,
     borderRadius: normalize(8),
     overflow: "hidden",
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
   },
   inputCantidad: {
     flex: 1,

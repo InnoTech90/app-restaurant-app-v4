@@ -1,6 +1,9 @@
+import { sincronizarSiHayInternet } from "../../../utils/http/sincronizarEnSegundoPlano";
+import { integracionGastos } from "./integracion";
 import { Ionicons } from "@expo/vector-icons";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -23,6 +26,7 @@ import { Database } from "./database";
 import { GASTOS_REFRESH_EVENT } from "./events";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const paramStr = (value) => {
   if (Array.isArray(value)) return value[0] ? String(value[0]) : "";
   return value != null ? String(value) : "";
@@ -155,6 +159,11 @@ const AsignarGasto = () => {
         });
       }
       DeviceEventEmitter.emit(GASTOS_REFRESH_EVENT);
+      sincronizarSiHayInternet(() => integracionGastos.sincronizarGastos(), {
+        modulo: "gastos",
+        mensajeFallo:
+          "El gasto se guardó en el dispositivo, pero no se pudo subir al servidor. Súbelo desde Gastos con Sincronizar.",
+      });
       router.back();
     } catch (e) {
       console.error("Error al guardar gasto:", e);
@@ -171,20 +180,15 @@ const AsignarGasto = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>
           {esEdicion ? "Editar gasto" : "Nuevo gasto"}
         </Text>
         <View style={{ width: normalize(35) }} />
-      </LinearGradient>
+      </HeaderBar>
 
       <View style={s.body}>
         {cargando ? (

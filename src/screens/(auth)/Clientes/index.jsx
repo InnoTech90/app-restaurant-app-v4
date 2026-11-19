@@ -1,8 +1,11 @@
+import { SINCRONIZACION_AUTOMATICA_EVENT } from "../../../utils/http/sincronizarEnSegundoPlano";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  DeviceEventEmitter,
   FlatList,
   Pressable,
   RefreshControl,
@@ -31,6 +34,7 @@ import { Database } from "./Database";
 import { integracionClientes } from "./integracion";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const COLUMN_GAP = normalize(12);
 const LIST_PADDING_H = normalize(14);
 const COLUMN_WIDTH =
@@ -41,7 +45,7 @@ const COLUMN_WIDTH =
       listColumns
     : undefined;
 
-const GRADIENTE_PENDIENTE = ["#F6C9A4", "#FBE6D4"];
+const GRADIENTE_PENDIENTE = ["#F5D9A8", "#FFF4E0"];
 
 /* ─── Card de un cliente ───────────────────────────────────────── */
 const ClienteCard = ({ cliente, onPress, onInactivar }) => {
@@ -54,7 +58,7 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
   const inactivo = Number(cliente.ACTIVO ?? 1) === 0;
   const pendienteSync = !cliente.SINCRONIZADO;
   const coloresAccent = inactivo
-    ? ["#C53030", "#E53E3E"]
+    ? ["#E5484D", "#E5484D"]
     : pendienteSync
       ? GRADIENTE_PENDIENTE
       : gb.gradient_blue;
@@ -69,14 +73,6 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
       ]}
       onPress={onPress}
     >
-      {/* Barra lateral con degradado */}
-      <LinearGradient
-        style={s.cardAccent}
-        colors={coloresAccent}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      />
-
       <View style={s.cardBody}>
         {/* Nombre + avatar */}
         <View style={s.cardNameRow}>
@@ -89,7 +85,7 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
             <Text
               style={[
                 s.cardAvatarText,
-                pendienteSync && !inactivo && { color: "#8A4E2A" },
+                pendienteSync && !inactivo && { color: tema.warning },
               ]}
             >
               {iniciales}
@@ -129,7 +125,7 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
               <Ionicons
                 name="person-remove-outline"
                 size={normalize(15)}
-                color="#C53030"
+                color="#E5484D"
               />
             </Pressable>
           )}
@@ -203,6 +199,14 @@ const Clientes = () => {
       cargar();
     }, []),
   );
+
+  // Refrescar el estado "por sincronizar" cuando termina una subida automática.
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(SINCRONIZACION_AUTOMATICA_EVENT, (e) => {
+      if (e?.modulo === "clientes") cargar();
+    });
+    return () => sub.remove();
+  }, []);
 
   const onRefresh = async () => {
     setRefrescando(true);
@@ -308,21 +312,16 @@ const Clientes = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       {/* Header */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <Text style={s.headerTitle}>Clientes</Text>
         <Button style={s.btnAdd} onPress={irAAgregar}>
-          <Ionicons name="add" size={normalize(20)} color="white" />
+          <Ionicons name="add" size={normalize(20)} color="#4F5FE0" />
         </Button>
-      </LinearGradient>
+      </HeaderBar>
 
       {/* Lista */}
       <View style={s.body}>
@@ -415,7 +414,7 @@ const Clientes = () => {
 
       <LinearGradient
         style={s.footer}
-        colors={gb.gradient_blue}
+        colors={[tema.surface, tema.surface]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
@@ -424,7 +423,7 @@ const Clientes = () => {
           onPress={handleActualizar}
           disabled={actualizando || sincronizando}
         >
-          <Ionicons name="refresh-outline" size={normalize(20)} color="white" />
+          <Ionicons name="refresh-outline" size={normalize(20)} color="#4F5FE0" />
           <Text style={s.btnSyncText}>
             {actualizando ? "Actualizando..." : "Actualizar"}
           </Text>
@@ -434,7 +433,7 @@ const Clientes = () => {
           onPress={handleSincronizar}
           disabled={actualizando || sincronizando}
         >
-          <Ionicons name="sync-outline" size={normalize(20)} color="white" />
+          <Ionicons name="sync-outline" size={normalize(20)} color="#4F5FE0" />
           <Text style={s.btnSyncText}>
             {sincronizando ? "Sincronizando..." : "Sincronizar"}
           </Text>

@@ -1,16 +1,17 @@
 import { StyleSheet } from "react-native";
 import { gb } from "../../../screens/globalStyles";
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
     syncBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF3E0',
+        backgroundColor: tema.warningSoft,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
         gap: 4,
         borderWidth: 1,
-        borderColor: '#FF9800',
+        borderColor: '#E58A00',
     },
     syncBadgeSync: {
         flexDirection: 'row',

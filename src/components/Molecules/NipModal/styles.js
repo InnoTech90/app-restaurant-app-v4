@@ -2,10 +2,11 @@ import { StyleSheet } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   container: {
     padding: normalize(isTablet ? 24 : 20),
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderRadius: normalize(10),
     alignItems: "center",
     width: "100%",

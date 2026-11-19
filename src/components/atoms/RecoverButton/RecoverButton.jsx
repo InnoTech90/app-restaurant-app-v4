@@ -4,6 +4,7 @@ import { gb } from '../../../screens/globalStyles';
 import { normalize } from '../../../utils/funcionesMaquetado/responsiveWH';
 import Button from '../Button/Button';
 
+import { color as tema } from "../../../utils/theme";
 const RecoverButton = ({ href=null }) => {
     const router = useRouter();
     const recover = () => {
@@ -20,14 +21,17 @@ const RecoverButton = ({ href=null }) => {
             style={{
                 width: normalize(40),
                 height: normalize(40),
-                backgroundColor: gb.gray200+"40", // Agrega opacidad al color de fondo
-
+                minHeight: normalize(40),
+                paddingHorizontal: 0,
+                paddingVertical: 0,
+                borderRadius: normalize(12),
+                backgroundColor: tema.primarySoft,
             }}
             styleContainer={{
-                borderRadius: normalize(20),
+                borderRadius: normalize(12),
                 overflow: 'hidden',
             }}>
-            <Ionicons name="arrow-back" size={normalize(20)} color={gb.gray50} />
+            <Ionicons name="arrow-back" size={normalize(20)} color="#4F5FE0" />
         </Button>
     );
 }

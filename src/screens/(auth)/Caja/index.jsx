@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -334,23 +335,18 @@ const Caja = () => {
   };
 
   const coloresCaja = cajaAbierta
-    ? [gb.green600, gb.green500]
-    : ["#C53030", "#E53E3E"];
+    ? ["#FFFFFF", "#FFFFFF"]
+    : ["#FFFFFF", "#FFFFFF"];
 
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: gb.gray100 }}
     >
       {/* Header */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
-      </LinearGradient>
+      </HeaderBar>
 
       <ScrollView
         style={s.historialScroll}
@@ -377,10 +373,10 @@ const Caja = () => {
             <Ionicons
               name={cajaAbierta ? "checkmark-circle" : "close-circle"}
               size={normalize(22)}
-              color={gb.gray50}
+              color={cajaAbierta ? "#18A058" : "#8A93B2"}
             />
             <Text style={s.cajaText}>
-              {cajaAbierta ? "CAJA ABIERTA" : "CAJA CERRADA"}
+              {cajaAbierta ? "Caja abierta" : "Caja cerrada"}
             </Text>
           </View>
           <View style={s.containerCristal}>
@@ -432,9 +428,9 @@ const Caja = () => {
                     <Ionicons
                       name="remove-circle-outline"
                       size={normalize(18)}
-                      color="#C53030"
+                      color="#E5484D"
                     />
-                    <Text style={[s.accionTexto, { color: "#C53030" }]}>
+                    <Text style={[s.accionTexto, { color: "#E5484D" }]}>
                       Retiro
                     </Text>
                   </Pressable>
@@ -495,7 +491,7 @@ const Caja = () => {
                 <Ionicons
                   name="trash-outline"
                   size={normalize(14)}
-                  color="#C53030"
+                  color="#E5484D"
                 />
                 <Text style={s.historialEliminarTexto}>Eliminar</Text>
               </Pressable>
@@ -512,7 +508,7 @@ const Caja = () => {
                       <Text
                         style={[
                           s.historialEstatusText,
-                          { color: abierta ? gb.green700 : "#C53030" },
+                          { color: abierta ? gb.green700 : "#E5484D" },
                         ]}
                       >
                         {abierta ? "Abierta" : "Cerrada"}
@@ -591,7 +587,7 @@ const Caja = () => {
                                 style={[
                                   s.movimientoTipo,
                                   {
-                                    color: esDeposito ? gb.green700 : "#C53030",
+                                    color: esDeposito ? gb.green700 : "#E5484D",
                                   },
                                 ]}
                               >
@@ -610,7 +606,7 @@ const Caja = () => {
                               style={[
                                 s.movimientoMonto,
                                 {
-                                  color: esDeposito ? gb.green700 : "#C53030",
+                                  color: esDeposito ? gb.green700 : "#E5484D",
                                 },
                               ]}
                             >
@@ -725,7 +721,7 @@ const Caja = () => {
             >
               <Text
                 style={{
-                  color: gb.gray50,
+                  color: "#FFFFFF",
                   fontWeight: "bold",
                   fontSize: normalize(12),
                 }}
@@ -740,7 +736,7 @@ const Caja = () => {
       <GeneralModal
         visible={modalCierre}
         onRequestClose={cerrarModalCierre}
-        headerColorGrandien={["#C53030", "#E53E3E"]}
+        headerColorGrandien={["#E5484D", "#E5484D"]}
         iconCloseColor={gb.gray50}
         headerColorText={gb.gray50}
         headerTitle={"Cierre de caja"}
@@ -803,7 +799,7 @@ const Caja = () => {
             <Button
               style={[
                 s.buttonModalAccept,
-                { backgroundColor: "#C53030" },
+                { backgroundColor: "#E5484D" },
                 !fondoCierreValido && { opacity: 0.45 },
               ]}
               styleContainer={s.buttonModalAcceptContainer}
@@ -812,7 +808,7 @@ const Caja = () => {
             >
               <Text
                 style={{
-                  color: gb.gray50,
+                  color: "#FFFFFF",
                   fontWeight: "bold",
                   fontSize: normalize(12),
                 }}
@@ -829,7 +825,7 @@ const Caja = () => {
         onRequestClose={cerrarModalMovimiento}
         headerColorGrandien={
           tipoMovimiento === "retiro"
-            ? ["#C53030", "#E53E3E"]
+            ? ["#E5484D", "#E5484D"]
             : [gb.green700, gb.green500]
         }
         iconCloseColor={gb.gray50}
@@ -907,7 +903,7 @@ const Caja = () => {
             <Button
               style={[
                 s.buttonModalAccept,
-                tipoMovimiento === "retiro" && { backgroundColor: "#C53030" },
+                tipoMovimiento === "retiro" && { backgroundColor: "#E5484D" },
                 !conceptoValido && { opacity: 0.45 },
               ]}
               styleContainer={s.buttonModalAcceptContainer}
@@ -916,7 +912,7 @@ const Caja = () => {
             >
               <Text
                 style={{
-                  color: gb.gray50,
+                  color: "#FFFFFF",
                   fontWeight: "bold",
                   fontSize: normalize(12),
                 }}

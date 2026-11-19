@@ -1,3 +1,4 @@
+import { enCola } from "../../../utils/http/sincronizarEnSegundoPlano";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   esErrorDeConexion,
@@ -115,6 +116,11 @@ export class integracionCaja {
     });
     if (local && local.ok === false) return local;
 
+    // Sin internet: queda en local sin esperar el tiempo límite de la API.
+    if (!(await verificarConexionInternet())) {
+      return { ok: true, id: local.id, offline: true };
+    }
+
     try {
       const headers = await getDeviceAuthHeaders();
       const response = await deviceApi.post(
@@ -170,7 +176,7 @@ export class integracionCaja {
     });
     if (local && local.ok === false) return local;
 
-    if (!local.uuidCaja) {
+    if (!local.uuidCaja || !(await verificarConexionInternet())) {
       return { ok: true, id: local.id, offline: true };
     }
 
@@ -210,7 +216,7 @@ export class integracionCaja {
     const local = await Database.cerrarCaja(id, fondo);
     if (local && local.ok === false) return local;
 
-    if (!local.uuidCaja) {
+    if (!local.uuidCaja || !(await verificarConexionInternet())) {
       return { ok: true, offline: true };
     }
 
@@ -341,3 +347,6 @@ const extraerSaldo = (error) => {
   const saldo = Number(match[1]);
   return Number.isFinite(saldo) ? saldo : null;
 };
+
+// Una sincronización a la vez por módulo (botón manual + subida automática).
+integracionCaja.sincronizarPendientes = enCola("caja", integracionCaja.sincronizarPendientes);

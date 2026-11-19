@@ -12,7 +12,7 @@ const EstatusSincronizado = ({ sincronizado }) => {
                     <Ionicons name="cloud-done-outline" size={14} color={gb.blue550} />
                 </View> :
                 <View style={s.syncBadge}>
-                    <Ionicons name="cloud-upload-outline" size={14} color="#FF9800" />
+                    <Ionicons name="cloud-upload-outline" size={14} color="#E58A00" />
                 </View>
             }
         </>

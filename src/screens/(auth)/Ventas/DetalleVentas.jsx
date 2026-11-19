@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useLocalSearchParams } from "expo-router/build/hooks";
 import { useCallback, useMemo, useState } from "react";
@@ -18,6 +19,7 @@ import { imprimirCuenta } from "../(mesas)/Pago/ticket";
 import VentasDatabase from "./database";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 const estatusTexto = (estatus) => {
   if (estatus === 1) return "Pagado";
   if (estatus === 2) return "Cancelado";
@@ -26,9 +28,9 @@ const estatusTexto = (estatus) => {
 };
 
 const estatusColor = (estatus) => {
-  if (estatus === 1) return "#4CAF50";
-  if (estatus === 3) return "#FF9800";
-  return "#F44336";
+  if (estatus === 1) return "#18A058";
+  if (estatus === 3) return "#E58A00";
+  return "#E5484D";
 };
 
 const parseFechaLocal = (fechaStr) => {
@@ -228,15 +230,10 @@ const DetalleVentas = () => {
   return (
     <SafeAreaView
       edges={["bottom"]}
-      style={{ flex: 1, backgroundColor: "black" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
     >
       {/* header */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton href="/Ventas" />
         <View style={{ alignItems: "center" }}>
           <Text style={s.titleDetalleVenta}>Venta</Text>
@@ -253,7 +250,7 @@ const DetalleVentas = () => {
           >
             <Text
               style={{
-                color: "white",
+                color: tema.text,
                 fontSize: normalize(11),
                 fontWeight: "600",
               }}
@@ -262,7 +259,7 @@ const DetalleVentas = () => {
             </Text>
           </View>
         )}
-      </LinearGradient>
+      </HeaderBar>
 
       {cargando ? (
         <View
@@ -483,7 +480,7 @@ const DetalleVentas = () => {
                 <Ionicons
                   name="print-outline"
                   size={normalize(20)}
-                  color={gb.gray50}
+                  color="#FFFFFF"
                 />
                 <Text style={s.btnReimprimirTexto}>
                   {imprimiendo ? "Imprimiendo..." : "Reimprimir ticket"}

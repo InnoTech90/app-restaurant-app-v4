@@ -6,6 +6,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   header: {
     width: "100%",
@@ -18,7 +19,7 @@ export const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerTitle: {
-    color: "white",
+    color: tema.text,
     fontSize: normalize(isTablet ? 20 : 18),
     fontWeight: "bold",
   },
@@ -32,7 +33,7 @@ export const s = StyleSheet.create({
     gap: normalize(8),
     paddingHorizontal: normalize(14),
     paddingVertical: normalize(10),
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderBottomWidth: 1,
     borderBottomColor: gb.gray200,
   },
@@ -62,7 +63,7 @@ export const s = StyleSheet.create({
     paddingBottom: normalize(40),
   },
   card: {
-    backgroundColor: "white",
+    backgroundColor: tema.surface,
     borderRadius: normalize(14),
     padding: normalize(14),
     borderWidth: 1,

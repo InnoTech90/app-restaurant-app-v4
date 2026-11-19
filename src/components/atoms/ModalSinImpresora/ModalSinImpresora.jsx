@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
+import { color as tema } from "../../../utils/theme";
 /**
  * Modal que se muestra cuando se intenta imprimir pero ningún punto
  * de impresión tiene impresora vinculada.
@@ -65,7 +66,7 @@ const s = StyleSheet.create({
     },
     card: {
         width: "82%",
-        backgroundColor: "white",
+        backgroundColor: tema.surface,
         borderRadius: normalize(14),
         padding: normalize(24),
         alignItems: "center",

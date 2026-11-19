@@ -1,5 +1,8 @@
+import { sincronizarSiHayInternet } from "../../../../utils/http/sincronizarEnSegundoPlano";
+import { integracionClientes } from "../../Clientes/integracion";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import HeaderBar from "../../../../components/atoms/HeaderBar/HeaderBar";
+import { LinearGradient } from "../../../../components/atoms/FondoSolido/FondoSolido";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -268,6 +271,10 @@ const MenuPrincipal = () => {
           clienteEditando.ID,
           payload,
         );
+        sincronizarSiHayInternet(() => integracionClientes.sincronizar(), {
+          modulo: "clientes",
+          mensajeFallo: "El cliente se guardó en el dispositivo, pero no se pudo subir al servidor. Súbelo desde Clientes con Sincronizar.",
+        });
         const lista = await Database.getClientes();
         setClientes(lista ?? []);
 
@@ -292,6 +299,12 @@ const MenuPrincipal = () => {
         setClientes(lista ?? []);
         if (creado) {
           await asignarClienteAComanda(creado);
+          // Subir después de asignarlo, para que el reenlace de la
+          // sincronización encuentre la comanda ya apuntando a este cliente.
+          sincronizarSiHayInternet(() => integracionClientes.sincronizar(), {
+            modulo: "clientes",
+            mensajeFallo: "El cliente se guardó en el dispositivo, pero no se pudo subir al servidor. Súbelo desde Clientes con Sincronizar.",
+          });
           setModalCliente(false);
           setVistaCliente("lista");
           resetFormCliente();
@@ -349,12 +362,7 @@ const MenuPrincipal = () => {
   return (
     <SafeAreaView edges={["bottom"]} style={s.pantalla}>
       {/* Header — mismo patrón que Ticket */}
-      <LinearGradient
-        style={s.header}
-        colors={gb.gradient_blue}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
+      <HeaderBar style={s.header}>
         <RecoverButton />
         <View style={s.headerCenter}>
           <Text style={s.headerMesa}>{mesa?.NOMBRE ?? "Mesa"}</Text>
@@ -364,12 +372,12 @@ const MenuPrincipal = () => {
           </Text>
         </View>
         <View style={s.headerSpacer} />
-      </LinearGradient>
+      </HeaderBar>
 
       {comandaActiva?.comanda?.ESTATUS === 4 && (
         <View
           style={{
-            backgroundColor: gb.orange100 ?? "#FFF3CD",
+            backgroundColor: gb.orange100 ?? "#FFF4E0",
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: normalize(14),
@@ -380,12 +388,12 @@ const MenuPrincipal = () => {
           <Ionicons
             name="lock-closed-outline"
             size={normalize(16)}
-            color={gb.orange600 ?? "#856404"}
+            color={gb.orange600 ?? "#A15C00"}
           />
           <Text
             style={{
               fontSize: normalize(12),
-              color: gb.orange600 ?? "#856404",
+              color: gb.orange600 ?? "#A15C00",
               fontWeight: "600",
             }}
           >
@@ -410,7 +418,7 @@ const MenuPrincipal = () => {
         </View>
       )}
 
-      <View style={{ backgroundColor: gb.gray50 }}>
+      <View style={{ backgroundColor: gb.gray100 }}>
         {/* Buscador */}
         <View style={s.buscadorWrapper}>
           <Buscador
@@ -421,33 +429,54 @@ const MenuPrincipal = () => {
         </View>
 
         {/* Filtro por grupo */}
-        <View style={s.filtroContainer}>
-          <Select
-            placeholder="Todos los grupos"
-            options={[
-              { label: "Todos los grupos", value: null },
-              ...grupos.map((g) => ({ label: g.NOMBRE, value: g.UUID })),
-            ]}
-            value={grupoSeleccionado}
-            onChange={(val) => setGrupoSeleccionado(val)}
-          />
-        </View>
+        {/* Grupos como píldoras deslizables (mismo filtro que el selector anterior) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.chipsGrupos}
+          keyboardShouldPersistTaps="handled"
+        >
+          {[{ UUID: null, NOMBRE: "Todo" }, ...grupos].map((g) => {
+            const activo = (grupoSeleccionado ?? null) === g.UUID;
+            return (
+              <Pressable
+                key={g.UUID ?? "todo"}
+                onPress={() => setGrupoSeleccionado(g.UUID)}
+                style={[s.chipGrupo, activo && s.chipGrupoActivo]}
+              >
+                <Text
+                  style={[s.chipGrupoTexto, activo && s.chipGrupoTextoActivo]}
+                  numberOfLines={1}
+                >
+                  {g.NOMBRE}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Lista de grupos con artículos */}
-      <ScrollView
+      {/* FlatList: con menús grandes (miles de artículos) solo se dibujan
+          los grupos visibles en pantalla. */}
+      <FlatList
         style={s.listaScroll}
         contentContainerStyle={s.listaContainer}
-      >
-        {datosFiltrados.length === 0 ? (
+        data={datosFiltrados}
+        keyExtractor={(grupo) => grupo.UUID}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
           <Text style={s.textoVacio}>No se encontraron artículos</Text>
-        ) : (
-          datosFiltrados.map((grupo) => (
-            <View key={grupo.UUID} style={s.grupoWrapper}>
+        }
+        renderItem={({ item: grupo }) => (
+            <View style={s.grupoWrapper}>
               <Card
                 title={grupo.NOMBRE.toUpperCase()}
                 linealGradient={gb.gradient_blue}
-                styleTitleHeader={{ color: gb.gray50 }}
+                styleTitleHeader={{ color: "#FFFFFF" }}
                 styleHeader={{ width: "100%" }}
                 styleBody={{
                   width: "100%",
@@ -465,9 +494,8 @@ const MenuPrincipal = () => {
                 ))}
               </Card>
             </View>
-          ))
         )}
-      </ScrollView>
+      />
       {comandaActiva && (
         <MesasNavButtons
           tabActiva={tabActiva}

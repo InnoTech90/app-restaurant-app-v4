@@ -1,14 +1,15 @@
 import { StyleSheet } from "react-native";
-import { isTablet, normalize, wp } from "../../../../utils/funcionesMaquetado/responsiveWH";
+import { CONTENT_MAX_WIDTH, isTablet, normalize, wp } from "../../../../utils/funcionesMaquetado/responsiveWH";
 
 export const s = StyleSheet.create({
     mesasContainer: {
         flexDirection: 'row',
-        width: wp(100),
+        width: Math.min(wp(100), CONTENT_MAX_WIDTH),
         flexWrap: 'wrap',
-        justifyContent: isTablet ? 'flex-start' : 'space-around',
-        gap: normalize(isTablet ? 16 : 10),
-        padding: isTablet ? 24 : 20,
+        justifyContent: 'flex-start',
+        alignSelf: 'center',
+        gap: normalize(isTablet ? 14 : 10),
+        padding: normalize(isTablet ? 24 : 16),
         paddingBottom: isTablet ? 40 : 30,
     }
 });

@@ -5,6 +5,7 @@ import PreparacionPreview from "../(mesas)/Ticket/Plantillas/PreparacionPreview"
 import PruebaPreview from "../(mesas)/Ticket/Plantillas/PruebaPreview";
 import { withDb } from "../../../utils/db";
 
+import { color as tema } from "../../../utils/theme";
 const BASE = {
   negocio: { NOMBRE_NEGOCIO: "Antojos a la Mexicana" },
   sucursal: {
@@ -105,7 +106,7 @@ const Plantillas = () => {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#f4f6f8" }}
+      style={{ flex: 1, backgroundColor: tema.background }}
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
     >
       {PLANTILLAS.map((plantilla) => {
@@ -114,7 +115,7 @@ const Plantillas = () => {
           <View
             key={plantilla.id}
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: tema.surface,
               borderRadius: 12,
               marginBottom: 12,
               overflow: "hidden",
@@ -163,7 +164,7 @@ const Plantillas = () => {
                     flexDirection: "row",
                     marginHorizontal: 16,
                     marginBottom: 14,
-                    backgroundColor: "#fff",
+                    backgroundColor: tema.surface,
                     borderRadius: 10,
                     overflow: "hidden",
                   }}

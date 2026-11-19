@@ -6,6 +6,7 @@ import {
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 
+import { color as tema } from "../../../utils/theme";
 export const s = StyleSheet.create({
   /* ── Contenedor raíz ─────────────────────── */
   root: {
@@ -29,7 +30,7 @@ export const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerTitle: {
-    color: "white",
+    color: tema.text,
     fontSize: normalize(18),
     fontWeight: "bold",
   },
@@ -99,6 +100,10 @@ export const s = StyleSheet.create({
     justifyContent: "space-around",
     paddingHorizontal: normalize(10),
     paddingVertical: normalize(10),
+    gap: normalize(10),
+    backgroundColor: tema.surface,
+    borderTopWidth: 1,
+    borderTopColor: tema.border,
   },
   footerBtn: {
     flexDirection: "row",
@@ -106,14 +111,19 @@ export const s = StyleSheet.create({
     gap: normalize(8),
     paddingHorizontal: normalize(20),
     paddingVertical: normalize(10),
-    borderRadius: normalize(20),
-    backgroundColor: gb.gray50 + "40",
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: tema.surface,
+    borderWidth: 1,
+    borderColor: tema.borderStrong,
+    borderRadius: normalize(12),
   },
   footerBtnDisabled: {
-    backgroundColor: "rgba(0, 0, 0, 0.22)",
+    backgroundColor: tema.background,
+    borderColor: tema.border,
   },
   footerBtnText: {
-    color: gb.gray50,
+    color: "#4F5FE0",
     fontSize: normalize(14),
     fontWeight: "bold",
   },
