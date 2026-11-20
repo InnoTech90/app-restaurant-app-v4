@@ -22,7 +22,14 @@ import { color as tema } from "../../../utils/theme";
 const sameId = (a, b) =>
   a != null && b != null && Number(a) === Number(b);
 
-const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
+/** Cambio que se le da a un cliente: lo que entregó menos lo que le toca. */
+export const cambioDe = (recibido, monto) => {
+  const r = parseFloat(recibido);
+  if (!Number.isFinite(r) || r <= 0) return 0;
+  return Math.max(0, Math.round((r - (parseFloat(monto) || 0)) * 100) / 100);
+};
+
+const FilaPago = ({ index, fila, sugerido, formatosPago, onChange, disabled }) => {
   const inputRef = useRef(null);
 
   const handleMonto = (texto) => {
@@ -30,11 +37,24 @@ const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
     onChange({ ...fila, monto: limpio });
   };
 
-  const esValida =
-    fila.monto !== "" && parseFloat(fila.monto) > 0 && fila.formaPago != null;
+  // Si el campo está vacío se usa lo que le toca (se ve en el placeholder).
+  const montoEfectivo = fila.monto !== "" ? fila.monto : sugerido;
+  const esValida = parseFloat(montoEfectivo) > 0 && fila.formaPago != null;
+
+  // "Paga con": lo que entrega el cliente; si es más que su parte, cambio.
+  const handleRecibido = (texto) => {
+    const limpio = texto.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+    onChange({ ...fila, recibido: limpio });
+  };
+  const cambio = cambioDe(fila.recibido, montoEfectivo);
+  const faltante =
+    fila.recibido !== "" && fila.recibido != null &&
+    parseFloat(fila.recibido) > 0 &&
+    parseFloat(fila.recibido) < (parseFloat(montoEfectivo) || 0);
 
   return (
-    <View style={[s.fila, fila.pagado && s.filaPagada]}>
+    <View style={[s.filaBloque, fila.pagado && s.filaPagada]}>
+    <View style={s.fila}>
       <View style={s.filaNum}>
         <Text style={s.filaNumTexto}>{index + 1}</Text>
       </View>
@@ -43,7 +63,11 @@ const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
         onPress={() => {
           if (disabled) return;
           if (!esValida && !fila.pagado) return;
-          onChange({ ...fila, pagado: !fila.pagado });
+          onChange({
+            ...fila,
+            monto: fila.monto !== "" ? fila.monto : sugerido,
+            pagado: !fila.pagado,
+          });
         }}
         style={[
           s.check,
@@ -64,7 +88,7 @@ const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
           value={fila.monto}
           onChangeText={handleMonto}
           keyboardType="decimal-pad"
-          placeholder="0.00"
+          placeholder={sugerido || "0.00"}
           placeholderTextColor={gb.gray400}
           editable={!disabled}
           selectTextOnFocus
@@ -83,6 +107,30 @@ const FilaPago = ({ index, fila, formatosPago, onChange, disabled }) => {
           style={s.selectInline}
         />
       </View>
+    </View>
+    <View style={s.filaRecibido}>
+      <Text style={s.recibidoLabel}>Paga con</Text>
+      <View style={s.recibidoWrap}>
+        <Text style={s.montoSimbolo}>$</Text>
+        <TextInput
+          style={s.recibidoInput}
+          value={fila.recibido ?? ""}
+          onChangeText={handleRecibido}
+          keyboardType="decimal-pad"
+          placeholder={montoEfectivo || "0.00"}
+          placeholderTextColor={gb.gray400}
+          editable={!disabled}
+          selectTextOnFocus
+        />
+      </View>
+      {cambio > 0 ? (
+        <Text style={s.cambioTexto}>Cambio ${cambio.toFixed(2)}</Text>
+      ) : faltante ? (
+        <Text style={s.faltaTexto}>Falta dinero</Text>
+      ) : (
+        <Text style={s.recibidoAyuda}>Sin cambio</Text>
+      )}
+    </View>
     </View>
   );
 };
@@ -122,6 +170,7 @@ const ModalDividirCuenta = ({
     return Array.from({ length: n }, (_, i) => ({
       id: i,
       monto: montoBase,
+      recibido: "",
       formaPago: fpDefault,
       pagado: false,
     }));
@@ -131,6 +180,7 @@ const ModalDividirCuenta = ({
     guardadas.map((f, i) => ({
       id: i,
       monto: Number(f.TOTAL ?? 0).toFixed(2),
+      recibido: "",
       formaPago:
         f.FORMA_PAGO != null ? Number(f.FORMA_PAGO) : formatoPagoDefault,
       pagado: true,
@@ -173,23 +223,37 @@ const ModalDividirCuenta = ({
     setFilas((prev) => prev.map((f, i) => (i === index ? nuevaFila : f)));
   };
 
-  const todasPagadas = filas.length > 0 && filas.every((f) => f.pagado);
-  const todasValidas = filas.every(
-    (f) => f.monto !== "" && parseFloat(f.monto) > 0 && f.formaPago != null,
+  // Lo que le toca a cada quien: lo que falta por capturar repartido entre
+  // las filas sin monto. Va como placeholder y se usa si dejan el campo vacío.
+  const capturadoManual = filas.reduce(
+    (sum, f) => sum + (f.monto !== "" ? parseFloat(f.monto) || 0 : 0),
+    0,
   );
+  const filasVacias = filas.filter((f) => f.monto === "").length;
+  const sugerido =
+    filasVacias > 0 && total - capturadoManual > 0
+      ? ((total - capturadoManual) / filasVacias).toFixed(2)
+      : "";
+  const montoDe = (f) => parseFloat(f.monto !== "" ? f.monto : sugerido) || 0;
+
+  const todasPagadas = filas.length > 0 && filas.every((f) => f.pagado);
+  const todasValidas = filas.every((f) => montoDe(f) > 0 && f.formaPago != null);
 
   const toggleTodas = () => {
     if (disabled) return;
     if (!todasValidas && !todasPagadas) return;
-    setFilas((prev) => prev.map((f) => ({ ...f, pagado: !todasPagadas })));
+    setFilas((prev) =>
+      prev.map((f) => ({
+        ...f,
+        monto: f.monto !== "" ? f.monto : sugerido,
+        pagado: !todasPagadas,
+      })),
+    );
   };
 
-  const totalCapturado = filas.reduce(
-    (sum, f) => sum + (parseFloat(f.monto) || 0),
-    0,
-  );
+  const totalCapturado = filas.reduce((sum, f) => sum + montoDe(f), 0);
   const totalPagado = filas.reduce(
-    (sum, f) => sum + (f.pagado ? parseFloat(f.monto) || 0 : 0),
+    (sum, f) => sum + (f.pagado ? montoDe(f) : 0),
     0,
   );
   const totalPendiente = Math.max(0, total - totalPagado);
@@ -226,7 +290,7 @@ const ModalDividirCuenta = ({
       await onGuardar(
         filas.map((f) => ({
           cantidad: 1,
-          total: parseFloat(f.monto) || 0,
+          total: montoDe(f),
           formaPago: f.formaPago,
         })),
       );
@@ -382,6 +446,7 @@ const ModalDividirCuenta = ({
                   key={fila.id}
                   index={index}
                   fila={fila}
+                  sugerido={sugerido}
                   formatosPago={opcionesPago}
                   onChange={(nueva) => handleChangeFila(index, nueva)}
                   disabled={disabled}
@@ -419,11 +484,16 @@ const ModalDividirCuenta = ({
                   </View>
                   <View style={s.resumenFilaRight}>
                     <Text style={s.resumenMonto}>
-                      ${(parseFloat(fila.monto) || 0).toFixed(2)}
+                      ${montoDe(fila).toFixed(2)}
                     </Text>
                     <Text style={s.resumenMetodo}>
                       {nombreMetodo(fila.formaPago)}
                     </Text>
+                    {cambioDe(fila.recibido, montoDe(fila)) > 0 ? (
+                      <Text style={s.resumenCambio}>
+                        Cambio ${cambioDe(fila.recibido, montoDe(fila)).toFixed(2)}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               ))}

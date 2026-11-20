@@ -1,6 +1,13 @@
 import { Dimensions, PixelRatio } from "react-native";
 
-const { width, height } = Dimensions.get("window");
+// La app está fija en vertical (app.json → orientation: portrait). Si se
+// abre con la tablet en horizontal, Dimensions puede reportar el ancho
+// horizontal antes de que Android gire la pantalla, y todo queda más ancho
+// que la pantalla real (botones cortados a la derecha). Por eso el ancho es
+// siempre el lado corto y el alto el lado largo.
+const ventana = Dimensions.get("window");
+const width = Math.min(ventana.width, ventana.height);
+const height = Math.max(ventana.width, ventana.height);
 const BASE_WIDTH = 390; // iPhone 14 como base
 
 // Dispositivo tablet cuando el ancho es >= 600 dp

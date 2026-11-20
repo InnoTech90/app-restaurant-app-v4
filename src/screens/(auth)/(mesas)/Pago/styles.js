@@ -32,14 +32,18 @@ export const s = StyleSheet.create({
         color: tema.textMuted,
         marginTop: normalize(2),
     },
+    // Mismo tamaño y forma que el botón de regresar, en rojo suave.
     btnCancelarContainer: {
-        borderRadius: normalize(20),
+        borderRadius: normalize(12),
         overflow: "hidden",
     },
     btnCancelar: {
         width: normalize(40),
         height: normalize(40),
-        backgroundColor: gb.red600 + "CC",
+        borderRadius: normalize(12),
+        backgroundColor: tema.dangerSoft,
+        borderWidth: 1,
+        borderColor: tema.danger + "33",
         alignItems: "center",
         justifyContent: "center",
     },

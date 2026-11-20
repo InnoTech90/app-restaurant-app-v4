@@ -124,7 +124,7 @@ const Editar = () => {
 
       <KeyboardAvoidingView
         style={s.formBody}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           ref={scrollRef}

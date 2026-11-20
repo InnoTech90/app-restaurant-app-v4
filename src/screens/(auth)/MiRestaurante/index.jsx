@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { esOscuro } from "../../../utils/apariencia";
 import HeaderBar from "../../../components/atoms/HeaderBar/HeaderBar";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "../../../components/atoms/FondoSolido/FondoSolido";
@@ -49,6 +50,7 @@ const MiRestaurante = () => {
             source={require(`../../../assets/img/logo_app_rest_blanco.png`)}
             style={s.img}
             contentFit="contain"
+            tintColor={esOscuro ? "#FFFFFF" : undefined}
           />
         </View>
         <Card

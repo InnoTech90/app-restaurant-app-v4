@@ -1,11 +1,37 @@
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Text, View } from "react-native";
+import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
+import { gradient } from "../../../utils/theme";
 import { s } from "./styles";
 
+// Ícono del encabezado según el título (se puede forzar con la prop `icon`).
+const ICONOS = {
+    "información": "information-circle-outline",
+    "informacion": "information-circle-outline",
+    "artículos": "fast-food-outline",
+    "método de pago": "card-outline",
+    "adicional de pago": "add-circle-outline",
+    "desglose de cuenta": "receipt-outline",
+    "monto recibido": "cash-outline",
+    "nota de la comanda": "create-outline",
+    "informacion del negocio": "business-outline",
+    "información del negocio": "business-outline",
+};
+const iconoPara = (t) => {
+    const k = String(t ?? "").trim().toLowerCase();
+    if (ICONOS[k]) return ICONOS[k];
+    if (k.includes("sucursal")) return "storefront-outline";
+    if (k.includes("redes") || k.includes("contacto")) return "chatbubbles-outline";
+    if (k.includes("pago") || k.includes("factur")) return "wallet-outline";
+    return "restaurant-outline";
+};
+
 /**
- * Tarjeta con título. Estilo moderno: el título va como etiqueta pequeña
- * dentro de la tarjeta blanca (ya no hay franja con degradado). `linealGradient`
- * se acepta por compatibilidad con las pantallas existentes y se ignora; el
- * color del título que mandaban (blanco, para ir sobre el degradado) también.
+ * Tarjeta con título. El encabezado lleva el degradado de marca con título
+ * e ícono en blanco (a pedido del usuario, como el diseño anterior). Las
+ * props `linealGradient` y el color del título se ignoran: siempre es el
+ * degradado de marca.
  */
 /** "MÉTODO DE PAGO" → "Método de pago" (solo si viene todo en mayúsculas). */
 const tituloOracion = (t) => {
@@ -16,16 +42,28 @@ const tituloOracion = (t) => {
 };
 
 // eslint-disable-next-line no-unused-vars
-const Card = ({ title, children, styleBody, styleHeader, linealGradient, styleTitleHeader }) => {
+const Card = ({ title, children, styleBody, styleHeader, linealGradient, styleTitleHeader, icon }) => {
     const { color: _ignorado, ...tituloSinColor } = styleTitleHeader ?? {};
     return (
         <View style={[s.container, styleBody, s.containerModerno]}>
             {title ? (
-                <View style={[s.header, styleHeader, s.headerModerno]}>
-                    <Text style={[s.title, tituloSinColor, s.titleModerno]}>
+                <LinearGradient
+                    colors={gradient.brand}
+                    start={gradient.brandStart}
+                    end={gradient.brandEnd}
+                    style={[s.header, styleHeader, s.headerModerno]}
+                >
+                    <View style={s.icono}>
+                        <Ionicons
+                            name={icon ?? iconoPara(title)}
+                            size={normalize(16)}
+                            color="#FFFFFF"
+                        />
+                    </View>
+                    <Text style={[s.title, tituloSinColor, s.titleModerno]} numberOfLines={1}>
                         {tituloOracion(title)}
                     </Text>
-                </View>
+                </LinearGradient>
             ) : null}
             {children}
         </View>

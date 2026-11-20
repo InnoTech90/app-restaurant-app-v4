@@ -10,19 +10,23 @@ const ANCHO_UTIL = Math.min(wp(100), CONTENT_MAX_WIDTH) - normalize(isTablet ? 4
 const CELDA = Math.floor((ANCHO_UTIL - GAP * (COLUMNAS - 1)) / COLUMNAS) - 1;
 const SILLA_OFFSET = normalize(isTablet ? 8 : 7);
 const SILLA_GRUESO = normalize(isTablet ? 7 : 6);
-const MESA_SIZE = Math.min(CELDA - SILLA_OFFSET * 2, normalize(isTablet ? 200 : 175));
+// Ocupa toda la celda (antes se limitaba y en tablet quedaba chica).
+const MESA_SIZE = CELDA - SILLA_OFFSET * 2;
 const SILLA_LARGO = Math.round(MESA_SIZE * 0.6);
 
 export const s = StyleSheet.create({
     mesaContainer: {
         width: CELDA,
-        height: CELDA,
+        paddingVertical: SILLA_OFFSET,
         justifyContent: "center",
         alignItems: "center",
     },
+    // Cuadrada como mínimo; si el contenido (folio, "Cuenta impresa", nota)
+    // no cabe, crece hacia abajo en vez de encimarse con las sillas.
     mesa: {
         width: MESA_SIZE,
-        height: MESA_SIZE,
+        minHeight: MESA_SIZE,
+        paddingVertical: space.lg,
         borderRadius: radius.md,
         borderWidth: 1.5,
         borderColor: color.border,

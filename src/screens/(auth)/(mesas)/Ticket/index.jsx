@@ -26,6 +26,7 @@ import { normalize } from "../../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../../globalStyles";
 import Database from "./database";
 import { s } from "./styles";
+import { color as tema } from "../../../../utils/theme";
 import { imprimirComanda } from "./ticketTemplate";
 
 const Ticket = () => {
@@ -77,6 +78,9 @@ const Ticket = () => {
     cerrarNipEdicion,
     solicitarEdicion,
     confirmarNipEdicion,
+    enfocarCampo,
+    cerrarCampo,
+    notaDesbloqueada,
   } = useEdicionTicket(config);
 
   useEffect(() => {
@@ -534,8 +538,8 @@ const Ticket = () => {
         >
           <Ionicons
             name="trash-outline"
-            size={normalize(15)}
-            color={soloLectura ? gb.gray300 : gb.gray50}
+            size={normalize(18)}
+            color={soloLectura ? gb.gray400 : tema.danger}
           />
         </Button>
       </HeaderBar>
@@ -681,7 +685,8 @@ const Ticket = () => {
         renderItem={renderArticulo}
       />
 
-      <View style={{ paddingBottom: keyboardHeight }}>
+      {/* En Android el teclado ya lo maneja TecladoSeguro (layout raíz). */}
+      <View style={{ paddingBottom: Platform.OS === "ios" ? keyboardHeight : 0 }}>
         <View style={s.footer}>
           <TextInput
             style={s.notasInput}
@@ -691,8 +696,14 @@ const Ticket = () => {
             placeholderTextColor={gb.gray400}
             value={nota}
             onChangeText={handleNotaChange}
+            onFocus={enfocarCampo}
+            onBlur={cerrarCampo}
             textAlignVertical="top"
-            editable={!soloLectura}
+            // Con "Restringir edición" activo, la nota pide NIP al enfocarla.
+            editable={!soloLectura && (puedeEditar || notaDesbloqueada)}
+            onPressIn={() => {
+              if (!soloLectura && !puedeEditar && !notaDesbloqueada) enfocarCampo();
+            }}
           />
 
           {keyboardHeight === 0 &&

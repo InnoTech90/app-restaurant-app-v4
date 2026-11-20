@@ -109,7 +109,7 @@ const Mesa = ({
                 Folio #{ficha ?? id ?? "—"}
               </Text>
               {impresa ? (
-                <Text style={s.estadoImpresa}>Cuenta impresa</Text>
+                <Text style={s.estadoImpresa} numberOfLines={1}>Cuenta impresa</Text>
               ) : null}
               <View style={s.filaAcciones}>
               <TextInput

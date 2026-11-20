@@ -385,4 +385,25 @@ export const s = StyleSheet.create({
     color: gb.gray400,
     fontSize: normalize(14),
   },
+  // Botón de confirmar bloqueado (falta capturar datos): gris suave con
+  // candado en vez del color fuerte con opacidad, que se veía "lavado".
+  botonBloqueado: {
+    backgroundColor: tema.surfaceAlt,
+    borderWidth: 1,
+    borderColor: tema.borderStrong,
+  },
+  botonContenido: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  botonTexto: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    fontSize: normalize(12),
+  },
+  botonTextoBloqueado: {
+    color: tema.textMuted,
+  },
 });

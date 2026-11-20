@@ -31,14 +31,18 @@ export const s = StyleSheet.create({
         color: tema.textMuted,
         marginTop: normalize(2),
     },
+    // Mismo tamaño y forma que el botón de regresar, en rojo suave.
     btnCancelarContainer: {
-        borderRadius: normalize(20),
+        borderRadius: normalize(12),
         overflow: "hidden",
     },
     btnCancelar: {
         width: normalize(40),
         height: normalize(40),
-        backgroundColor: gb.red600 + "CC",
+        borderRadius: normalize(12),
+        backgroundColor: tema.dangerSoft,
+        borderWidth: 1,
+        borderColor: tema.danger + "33",
         alignItems: "center",
         justifyContent: "center",
     },
@@ -249,13 +253,14 @@ export const s = StyleSheet.create({
         textAlign: "right",
     },
     btnEliminarContainer: {
-        borderRadius: normalize(18),
+        borderRadius: normalize(10),
         overflow: "hidden",
     },
     btnEliminar: {
         width: normalize(34),
         height: normalize(34),
-        backgroundColor: gb.red50,
+        borderRadius: normalize(10),
+        backgroundColor: tema.dangerSoft,
         alignItems: "center",
         justifyContent: "center",
     },

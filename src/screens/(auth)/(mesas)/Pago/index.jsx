@@ -43,6 +43,7 @@ import { integracionVentas } from "../../Ventas/integracion";
 import ConfiguracionesDatabase from "../../Configuraciones/database";
 import Database from "./database";
 import { s } from "./styles";
+import { color as tema } from "../../../../utils/theme";
 import { imprimirCuenta } from "./ticket";
 
 const Pago = () => {
@@ -223,16 +224,25 @@ const Pago = () => {
     setConfiguraciones(configuracionesDb);
     setClientes(clientesDb);
 
-    // Adicional de pago: siempre inicia en 0 (el usuario digita al enfocar).
+    // Adicional de pago: inicia con los valores de Configuraciones → Finanzas
+    // (costo de envío, impuestos y descuento predeterminados). El usuario
+    // puede cambiarlos en esta pantalla. La propina siempre inicia en 0.
     let metodoInicial = configuracionesDb?.ID_FORMATO_PAGO ?? null;
-    setImpuestosPct("0");
+    const num = (v) => {
+      const n = parseFloat(v);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    const impuestosCfg = num(configuracionesDb?.IMPUESTOS);
+    // La pantalla de pago maneja impuestos solo en porcentaje.
+    const impuestosEnPct = Number(configuracionesDb?.IMPUESTOS_ES_PCT ?? 1) === 1;
+    setImpuestosPct(impuestosEnPct ? String(impuestosCfg) : "0");
+    setDesglosarImpuestos(impuestosEnPct && impuestosCfg > 0);
     setPropina("0");
     setPropinaEsPct(true);
-    setDescuento("0");
-    setDescuentoEsPct(true);
-    setCostoEnvio("0");
-    setCostoEnvioEsPct(false);
-    setDesglosarImpuestos(false);
+    setDescuento(String(num(configuracionesDb?.DESCUENTOS)));
+    setDescuentoEsPct(Number(configuracionesDb?.DESCUENTOS_ES_PCT ?? 0) === 1);
+    setCostoEnvio(String(num(configuracionesDb?.COSTO_ENVIO)));
+    setCostoEnvioEsPct(Number(configuracionesDb?.COSTO_ENVIO_ES_PCT ?? 0) === 1);
 
     // Restaurar estado de bloqueo si la comanda ya fue impresa
     const yaImpresa = comandaData?.ESTATUS === 4;
@@ -666,8 +676,8 @@ const Pago = () => {
         >
           <Ionicons
             name="trash-outline"
-            size={normalize(15)}
-            color="#4F5FE0"
+            size={normalize(18)}
+            color={tema.danger}
           />
         </Button>
       </HeaderBar>
@@ -714,7 +724,7 @@ const Pago = () => {
       {/* ── SCROLL PRINCIPAL ──────────────────────────────── */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
         <ScrollView

@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
-import { color, font, radius, space } from "../../../utils/theme";
+import { color, font, radius, shadow, space } from "../../../utils/theme";
+import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
 export const s = StyleSheet.create({
     container: {
@@ -14,6 +15,7 @@ export const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: color.border,
         overflow: "hidden",
+        ...shadow.card,
     },
     header: {
         flexDirection: "row",
@@ -21,19 +23,30 @@ export const s = StyleSheet.create({
         alignItems: "center",
         width: "100%",
     },
+    // Encabezado: ícono en cuadro suave + título fuerte + línea divisoria.
     headerModerno: {
-        backgroundColor: "transparent",
+        justifyContent: "flex-start",
+        gap: space.sm,
         paddingHorizontal: space.lg,
-        paddingTop: space.md,
-        paddingBottom: space.sm,
+        paddingVertical: space.md,
+        marginBottom: space.xs,
+    },
+    icono: {
+        width: normalize(30),
+        height: normalize(30),
+        borderRadius: radius.sm,
+        backgroundColor: "rgba(255, 255, 255, 0.22)",
+        alignItems: "center",
+        justifyContent: "center",
     },
     title: {
         fontSize: font.sm,
     },
     titleModerno: {
-        fontSize: font.sm,
-        fontWeight: font.semibold,
-        color: color.textMuted,
+        flex: 1,
+        fontSize: font.md,
+        fontWeight: font.bold,
+        color: "#FFFFFF",
         letterSpacing: 0.2,
         textTransform: "none",
     },

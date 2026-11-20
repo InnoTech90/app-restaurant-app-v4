@@ -10,7 +10,7 @@
  * Al cambiar la preferencia se reinicia la interfaz para aplicarla.
  */
 import * as SQLite from "expo-sqlite";
-import { Appearance, DevSettings } from "react-native";
+import { Appearance, DevSettings, NativeModules } from "react-native";
 
 export const PREFERENCIAS_APARIENCIA = ["sistema", "claro", "oscuro"];
 
@@ -49,5 +49,11 @@ export const cambiarApariencia = (valor) => {
     "INSERT OR REPLACE INTO PREFERENCIAS (CLAVE, VALOR) VALUES ('apariencia', ?)",
     [valor],
   );
-  setTimeout(() => DevSettings.reload(), 150);
+  // En el APK de producción DevSettings.reload no hace nada: se usa el
+  // módulo nativo ReiniciarApp (android/app/.../ReiniciarAppModule.kt).
+  setTimeout(() => {
+    const nativo = NativeModules.ReiniciarApp;
+    if (!__DEV__ && nativo?.reiniciar) nativo.reiniciar();
+    else DevSettings.reload();
+  }, 150);
 };

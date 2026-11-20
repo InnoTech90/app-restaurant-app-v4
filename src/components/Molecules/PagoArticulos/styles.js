@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { color as tema } from "../../../utils/theme";
 import { gb } from "../../../screens/globalStyles";
 import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 
@@ -77,13 +78,14 @@ export const s = StyleSheet.create({
     textAlign: "right",
   },
   btnEliminarContainer: {
-    borderRadius: normalize(18),
+    borderRadius: normalize(10),
     overflow: "hidden",
   },
   btnEliminar: {
     width: normalize(34),
     height: normalize(34),
-    backgroundColor: gb.red50,
+    borderRadius: normalize(10),
+    backgroundColor: tema.dangerSoft,
     alignItems: "center",
     justifyContent: "center",
   },

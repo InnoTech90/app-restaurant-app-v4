@@ -41,6 +41,7 @@ import { normalize } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { gb } from "../../globalStyles";
 import { integracionPantallaDeCarga } from "../PantallaDeCarga/integracion";
 import Database from "./database";
+import { deviceApi, getDeviceAuthHeaders } from "../../../utils/http/deviceApi";
 import { s } from "./styles";
 import { cambiarApariencia, preferenciaApariencia } from "../../../utils/apariencia";
 import { color as tema } from "../../../utils/theme";
@@ -146,6 +147,57 @@ export default function Configuraciones() {
       cargar();
     }, []),
   );
+
+  // ── Abierto a pedidos: igual que "Recibe pedidos" del panel (User) ───────
+  // Lo confirma el servidor; solo un dispositivo por sucursal puede recibir
+  // pedidos en línea. Si no se puede, se explica en un mensaje.
+  const [cambiandoPedidos, setCambiandoPedidos] = useState(false);
+  const cambiarAbiertoPedidos = async (abrir) => {
+    if (cambiandoPedidos) return;
+    if (!(await verificarConexionInternet())) {
+      mostrarAviso("warning", "Sin conexión", "Para abrir o cerrar los pedidos en línea se necesita internet.");
+      return;
+    }
+    setCambiandoPedidos(true);
+    try {
+      const headers = await getDeviceAuthHeaders();
+      const res = await deviceApi.patch(
+        "/devices/receives-orders",
+        { flagReceivesOrders: abrir },
+        { headers },
+      );
+      const confirmado = !!res?.data?.device?.flagReceivesOrders;
+      await Database.setAbiertoPedidos(confirmado);
+      setConfig((prev) => ({ ...prev, ABIERTO_PEDIDOS: confirmado ? 1 : 0 }));
+      notifyDigitalOrdersCapabilityChanged();
+      mostrarAviso(
+        "info",
+        confirmado ? "Pedidos en línea abiertos" : "Pedidos en línea cerrados",
+        confirmado
+          ? "Este dispositivo recibirá los pedidos en línea de la sucursal."
+          : "Este dispositivo ya no recibirá pedidos en línea.",
+      );
+    } catch (error) {
+      const raw = String(error?.response?.data?.message ?? "");
+      const status = error?.response?.status;
+      if (status === 409 || raw.includes("Only one device per branch")) {
+        const otro = raw.match(/configured: "([^"]+)"/)?.[1];
+        mostrarAviso(
+          "warning",
+          "No se pueden abrir los pedidos aquí",
+          `Solo un dispositivo por sucursal puede recibir pedidos en línea${
+            otro ? ` y ahora los recibe "${otro}"` : ""
+          }. Desactívalo en ese dispositivo o en el panel (Dispositivos asociados) y vuelve a intentar.`,
+        );
+      } else if (status === 404 && raw.includes("Cannot PATCH")) {
+        mostrarAviso("warning", "Servidor sin actualizar", "El servidor todavía no tiene esta función. Inténtalo cuando se actualice.");
+      } else {
+        mostrarAviso("danger", "No se pudo cambiar", obtenerMensajeErrorRed(error, "No se pudo cambiar la recepción de pedidos. Inténtalo de nuevo."));
+      }
+    } finally {
+      setCambiandoPedidos(false);
+    }
+  };
 
   const pedirNip = (titulo, accion) => {
     setNipModal({ visible: true, titulo, accion });
@@ -360,15 +412,23 @@ export default function Configuraciones() {
           <ConfigItem
             icon="storefront-outline"
             titulo="Abierto a pedidos"
-            subtitulo="Se actualiza al sincronizar desde el servidor"
+            subtitulo="Recibir los pedidos en línea de la sucursal en este dispositivo"
             border={false}
           >
-            <Switch
-              value={Number(config.ABIERTO_PEDIDOS) === 1}
-              disabled
-              trackColor={{ false: gb.gray200, true: gb.blue550 }}
-              thumbColor="#FFFFFF"
-            />
+            {cambiandoPedidos ? (
+              <ActivityIndicator color={gb.blue550} />
+            ) : (
+              <Switch
+                value={Number(config.ABIERTO_PEDIDOS) === 1}
+                onValueChange={(v) =>
+                  pedirNip(v ? "Abrir pedidos en línea" : "Cerrar pedidos en línea", () =>
+                    cambiarAbiertoPedidos(v),
+                  )
+                }
+                trackColor={{ false: gb.gray200, true: gb.blue550 }}
+                thumbColor="#FFFFFF"
+              />
+            )}
           </ConfigItem>
         </View>
 

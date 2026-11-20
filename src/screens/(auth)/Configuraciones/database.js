@@ -97,6 +97,15 @@ export default class Database {
   }
 
   /** Actualiza un campo de la fila única de CONFIGURACIONES */
+  /** Guarda en local el estado de "recibe pedidos" que confirmó el servidor. */
+  static async setAbiertoPedidos(abierto) {
+    const v = abierto ? 1 : 0;
+    return withDb("Configuraciones.setAbiertoPedidos", async (db) => {
+      await db.runAsync(`UPDATE DEVICE SET RECIBE_PEDIDOS = ? WHERE ACTIVO = 1`, [v]);
+      await db.runAsync(`UPDATE CONFIGURACIONES SET ABIERTO_PEDIDOS = ?`, [v]);
+    });
+  }
+
   static async updateConfiguracion(campo, valor) {
     return withDb("Configuraciones.updateConfiguracion", async (db) => {
       await db.runAsync(`UPDATE CONFIGURACIONES SET ${campo} = ?`, [valor]);

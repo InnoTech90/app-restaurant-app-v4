@@ -26,6 +26,7 @@ import { Database } from "./dataBase";
 import { integracionCaja } from "./integracion";
 import { s } from "./styles";
 
+import { color as tema } from "../../../utils/theme";
 /** SQLite CURRENT_TIMESTAMP guarda UTC sin zona; convertir a hora local para mostrar. */
 const formatearFechaHoraLocal = (fechaStr) => {
   if (!fechaStr) return "—";
@@ -335,8 +336,8 @@ const Caja = () => {
   };
 
   const coloresCaja = cajaAbierta
-    ? ["#FFFFFF", "#FFFFFF"]
-    : ["#FFFFFF", "#FFFFFF"];
+    ? [tema.surface, tema.surface]
+    : [tema.surface, tema.surface];
 
   return (
     <SafeAreaView
@@ -711,23 +712,25 @@ const Caja = () => {
               </Text>
             </Button>
             <Button
-              style={[
-                s.buttonModalAccept,
-                !conceptoAperturaValido && { opacity: 0.45 },
-              ]}
+              style={s.buttonModalAccept}
+              disabledStyle={s.botonBloqueado}
               styleContainer={s.buttonModalAcceptContainer}
               onPress={abrirCaja}
               disabled={!conceptoAperturaValido}
             >
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontWeight: "bold",
-                  fontSize: normalize(12),
-                }}
-              >
-                Confirmar
-              </Text>
+              <View style={s.botonContenido}>
+                {!conceptoAperturaValido ? (
+                  <Ionicons name="lock-closed-outline" size={normalize(13)} color={tema.textMuted} />
+                ) : null}
+                <Text
+                  style={[
+                    s.botonTexto,
+                    !conceptoAperturaValido && s.botonTextoBloqueado,
+                  ]}
+                >
+                  Confirmar
+                </Text>
+              </View>
             </Button>
           </View>
         </View>
@@ -800,21 +803,25 @@ const Caja = () => {
               style={[
                 s.buttonModalAccept,
                 { backgroundColor: "#E5484D" },
-                !fondoCierreValido && { opacity: 0.45 },
               ]}
+              disabledStyle={s.botonBloqueado}
               styleContainer={s.buttonModalAcceptContainer}
               onPress={cerrarCaja}
               disabled={!fondoCierreValido}
             >
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontWeight: "bold",
-                  fontSize: normalize(12),
-                }}
-              >
-                Confirmar cierre
-              </Text>
+              <View style={s.botonContenido}>
+                {!fondoCierreValido ? (
+                  <Ionicons name="lock-closed-outline" size={normalize(13)} color={tema.textMuted} />
+                ) : null}
+                <Text
+                  style={[
+                    s.botonTexto,
+                    !fondoCierreValido && s.botonTextoBloqueado,
+                  ]}
+                >
+                  Confirmar cierre
+                </Text>
+              </View>
             </Button>
           </View>
         </View>
@@ -904,21 +911,25 @@ const Caja = () => {
               style={[
                 s.buttonModalAccept,
                 tipoMovimiento === "retiro" && { backgroundColor: "#E5484D" },
-                !conceptoValido && { opacity: 0.45 },
               ]}
+              disabledStyle={s.botonBloqueado}
               styleContainer={s.buttonModalAcceptContainer}
               onPress={registrarMovimiento}
               disabled={!conceptoValido}
             >
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontWeight: "bold",
-                  fontSize: normalize(12),
-                }}
-              >
-                Confirmar
-              </Text>
+              <View style={s.botonContenido}>
+                {!conceptoValido ? (
+                  <Ionicons name="lock-closed-outline" size={normalize(13)} color={tema.textMuted} />
+                ) : null}
+                <Text
+                  style={[
+                    s.botonTexto,
+                    !conceptoValido && s.botonTextoBloqueado,
+                  ]}
+                >
+                  Confirmar
+                </Text>
+              </View>
             </Button>
           </View>
         </View>

@@ -14,6 +14,9 @@ const Button = ({
     gradient = false,
     styleContainer,
     disabled = false,
+    // Estilo propio para el estado bloqueado; si se manda, no se aplica la
+    // opacidad genérica (que con colores fuertes se veía "lavado").
+    disabledStyle,
 }) => {
     const fondoSolido =
         Array.isArray(gradient) && gradient.length > 0
@@ -26,7 +29,7 @@ const Button = ({
                 s.buttonContainer,
                 fondoSolido,
                 styleContainer,
-                disabled && s.disabled,
+                disabled && !disabledStyle && s.disabled,
             ]}
         >
             <Pressable
@@ -34,6 +37,7 @@ const Button = ({
                 style={({ pressed }) => [
                     fondoSolido ? s.buttonGRADIENT : s.button,
                     style,
+                    disabled && disabledStyle,
                     pressed && !disabled && s.pressed,
                 ]}
                 disabled={disabled}

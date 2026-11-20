@@ -6,19 +6,32 @@ import Button from "../../atoms/Button/Button";
 import Card from "../Card/Card";
 import { s } from "./styles";
 
-const ICONO_METODO = {
-    efectivo: "cash-outline",
-    tarjeta: "card-outline",
-    transferencia: "swap-horizontal-outline",
-    "mercado pago": "phone-portrait-outline",
-    clip: "tablet-portrait-outline",
-    izettle: "tablet-landscape-outline",
-    pendiente: "time-outline",
+// El servidor puede mandar en ICONO un nombre que no existe en Ionicons
+// (se mostraba "?"): solo se usa si existe; si no, se elige por el nombre.
+const ICONO_POR_PALABRA = [
+    ["efectivo", "cash-outline"],
+    ["debito", "card-outline"],
+    ["débito", "card-outline"],
+    ["credito", "card-outline"],
+    ["crédito", "card-outline"],
+    ["tarjeta", "card-outline"],
+    ["transfer", "swap-horizontal-outline"],
+    ["spei", "swap-horizontal-outline"],
+    ["mercado", "phone-portrait-outline"],
+    ["paypal", "logo-paypal"],
+    ["clip", "tablet-portrait-outline"],
+    ["terminal", "tablet-portrait-outline"],
+    ["vale", "ticket-outline"],
+    ["cheque", "document-text-outline"],
+    ["pendiente", "time-outline"],
+];
+
+const iconoMetodo = (icono, nombre = "") => {
+    if (icono && Ionicons.glyphMap?.[icono]) return icono;
+    const n = String(nombre).toLowerCase();
+    return ICONO_POR_PALABRA.find(([p]) => n.includes(p))?.[1] ?? "wallet-outline";
 };
 
-const iconoMetodo = (nombre = "") =>
-    ICONO_METODO[nombre.toLowerCase()] ?? "wallet-outline";
-    
 const PagoMetodosPago = ({ formatosPago, metodoPagoId, onSeleccionar, disabled }) => (
    
     
@@ -45,7 +58,7 @@ const PagoMetodosPago = ({ formatosPago, metodoPagoId, onSeleccionar, disabled }
                                 disabled={disabled}
                             >
                                 <Ionicons
-                                     name={formato.ICONO || iconoMetodo(formato.NOMBRE)}
+                                     name={iconoMetodo(formato.ICONO, formato.NOMBRE)}
                                     size={normalize(22)}
                                     color={activo ? gb.blue550 : gb.gray500}
                                 />

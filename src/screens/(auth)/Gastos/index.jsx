@@ -168,7 +168,7 @@ const CategoriaAccordion = ({
       <Pressable onPress={onToggleCategoria}>
         <LinearGradient
           style={s.seccionHeader}
-          colors={tienePendientes ? [tema.warningSoft, tema.warningSoft] : ["#FFFFFF", "#FFFFFF"]}
+          colors={tienePendientes ? [tema.warningSoft, tema.warningSoft] : [tema.surface, tema.surface]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >

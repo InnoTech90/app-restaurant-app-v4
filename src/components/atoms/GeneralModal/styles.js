@@ -1,13 +1,14 @@
 import { Dimensions, StyleSheet } from "react-native";
 import {
   CONTENT_MAX_WIDTH,
+  hp,
   isTablet,
   normalize,
 } from "../../../utils/funcionesMaquetado/responsiveWH";
 import { color, font, radius, shadow } from "../../../utils/theme";
 
 const MODAL_WIDTH = isTablet ? Math.min(CONTENT_MAX_WIDTH * 0.72, 560) : "90%";
-const SCROLL_MAX_HEIGHT = Dimensions.get("window").height * (isTablet ? 0.68 : 0.74);
+const SCROLL_MAX_HEIGHT = hp(isTablet ? 68 : 74);
 
 const s = StyleSheet.create({
   background: {

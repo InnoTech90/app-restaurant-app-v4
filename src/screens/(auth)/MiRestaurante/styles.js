@@ -31,7 +31,11 @@ export const s = StyleSheet.create({
         width: "100%",
         padding: normalize(20),
         alignItems: "center",
-        backgroundColor: "#EEF1FF",
+        // Claro: fondo azul pálido (el logo trae texto azul marino).
+        // Oscuro: tarjeta oscura y el logo se pinta en blanco (tintColor).
+        backgroundColor: tema.primarySoft,
+        borderWidth: 1,
+        borderColor: tema.border,
         borderRadius: normalize(15),
         
     },
