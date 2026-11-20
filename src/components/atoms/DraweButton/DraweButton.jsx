@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DeviceEventEmitter, Pressable, Text, View } from "react-native";
 import { SUCURSAL_INFO_UPDATED_EVENT } from "../../../screens/(auth)/PantallaDeCarga/database";
 import { getDb } from "../../../utils/db";
+import { logoUsable } from "../../../utils/logoSucursal";
 import { useDigitalOrdersBadge } from "../../../utils/digitalOrders/badgeStore";
 import { s } from "./styles";
 
@@ -14,8 +15,7 @@ const DrawerButton = ({ onPress, style }) => {
     try {
       const db = await getDb();
       const row = await db.getFirstAsync(`SELECT LOGO FROM SUCURSAL LIMIT 1`);
-      const uri = typeof row?.LOGO === "string" ? row.LOGO.trim() : "";
-      setLogoUri(uri);
+      setLogoUri(logoUsable(row?.LOGO));
     } catch {
       setLogoUri("");
     }
@@ -30,7 +30,7 @@ const DrawerButton = ({ onPress, style }) => {
       SUCURSAL_INFO_UPDATED_EVENT,
       (payload) => {
         if (typeof payload?.logo === "string") {
-          setLogoUri(payload.logo.trim());
+          setLogoUri(logoUsable(payload.logo));
           return;
         }
         cargarLogo();
@@ -52,6 +52,7 @@ const DrawerButton = ({ onPress, style }) => {
           style={s.drawerIcon}
           contentFit="cover"
           cachePolicy="none"
+          onError={() => setLogoUri("")}
         />
         {pendingCount > 0 ? (
           <View style={s.badge}>

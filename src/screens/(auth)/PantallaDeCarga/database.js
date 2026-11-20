@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from "expo-device";
 import { DeviceEventEmitter } from "react-native";
 import { getDb } from "../../../utils/db";
+import { guardarLogoLocal } from "../../../utils/logoSucursal";
 
 export const SUCURSAL_INFO_UPDATED_EVENT = "sucursal-info-updated";
 
@@ -201,6 +202,12 @@ export class Database {
       await AsyncStorage.setItem("branchId", String(branch.id));
     }
 
+    // Logo: guardar copia local (el enlace del servidor caduca).
+    const logoAnterior = (
+      await db.getFirstAsync(`SELECT LOGO FROM SUCURSAL WHERE UUID = ?`, [branch.id]).catch(() => null)
+    )?.LOGO ?? null;
+    const logoLocal = await guardarLogoLocal(branch.logo, logoAnterior);
+
     // Insertar / actualizar sucursal
     await db.runAsync(
       `INSERT INTO SUCURSAL (UUID, NOMBRE, DESCRIPCION, CODIGO_QR, DIRECCION, LAT, LNG, TELEFONO, WHATSAPP, FACEBOK, INSTAGRAM, TIKTOK, TWITTER, WEBSITE, LOGO)
@@ -235,13 +242,13 @@ export class Database {
         branch.socialMedia?.tiktok ?? null,
         branch.socialMedia?.twitter ?? null,
         branch.socialMedia?.website ?? null,
-        branch.logo ?? null,
+        logoLocal,
       ],
     );
 
     DeviceEventEmitter.emit(SUCURSAL_INFO_UPDATED_EVENT, {
       nombre: branch.name ?? null,
-      logo: branch.logo ?? null,
+      logo: logoLocal ?? "",
     });
 
     // Insertar negocio

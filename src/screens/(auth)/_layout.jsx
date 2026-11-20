@@ -31,6 +31,7 @@ import { dataBase } from "../../components/Molecules/NipModal/database";
 import { AuthContext } from "../../utils/AuthContext/AuthContext";
 import { mostrarAviso } from "../../utils/avisoModal";
 import { getDb } from "../../utils/db";
+import { logoUsable } from "../../utils/logoSucursal";
 import {
   DIGITAL_ORDERS_CAPABILITY_EVENT,
   refreshDigitalOrdersBadge,
@@ -187,7 +188,9 @@ function CustomDrawerContent({
     return () => sub.remove();
   }, [cargarSucursal]);
 
-  const logoUri = typeof sucursal?.LOGO === "string" ? sucursal.LOGO.trim() : "";
+  const [logoFallo, setLogoFallo] = useState(false);
+  const logoUri = logoFallo ? "" : logoUsable(sucursal?.LOGO);
+  useEffect(() => setLogoFallo(false), [sucursal?.LOGO]);
 
   return (
     <DrawerContentScrollView
@@ -214,6 +217,7 @@ function CustomDrawerContent({
           contentFit="contain"
           cachePolicy="none"
           transition={200}
+          onError={() => setLogoFallo(true)}
         />
         {sucursal?.NOMBRE ? (
           <Text style={drawerStyles.nombre} numberOfLines={2}>

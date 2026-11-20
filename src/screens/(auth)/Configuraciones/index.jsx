@@ -189,7 +189,9 @@ export default function Configuraciones() {
             otro ? ` y ahora los recibe "${otro}"` : ""
           }. Desactívalo en ese dispositivo o en el panel (Dispositivos asociados) y vuelve a intentar.`,
         );
-      } else if (status === 404 && raw.includes("Cannot PATCH")) {
+      } else if (status === 404 || status === 401) {
+        // Un servidor sin esta función manda la petición a otra ruta
+        // (PATCH /devices/:id, solo para el panel) y responde 401 o 404.
         mostrarAviso("warning", "Servidor sin actualizar", "El servidor todavía no tiene esta función. Inténtalo cuando se actualice.");
       } else {
         mostrarAviso("danger", "No se pudo cambiar", obtenerMensajeErrorRed(error, "No se pudo cambiar la recepción de pedidos. Inténtalo de nuevo."));
