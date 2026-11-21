@@ -237,6 +237,8 @@ const Gastos = () => {
     configFlag: "MODO_RESTRICTIVO",
     tituloModal: "Gastos",
     keywords: ["expenses"],
+    // El NIP se pide una vez al entrar a Gastos, no en cada gasto.
+    siempreNip: true,
   });
 
   const [categorias, setCategorias] = useState([]);
@@ -245,8 +247,6 @@ const Gastos = () => {
   const [sincronizando, setSincronizando] = useState(false);
   const [catsExpandidas, setCatsExpandidas] = useState({});
   const [conceptosExpandidos, setConceptosExpandidos] = useState({});
-  const [modalNipCrud, setModalNipCrud] = useState(false);
-  const [accionPendiente, setAccionPendiente] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -286,38 +286,17 @@ const Gastos = () => {
   const toggleConcepto = (uuid) =>
     setConceptosExpandidos((prev) => ({ ...prev, [uuid]: !prev[uuid] }));
 
-  const irAAgregarGasto = (concepto, categoria) => {
-    setAccionPendiente({
-      tipo: "agregar",
-      titulo: "Nuevo gasto",
-      concepto,
-      categoria,
-    });
-    setModalNipCrud(true);
-  };
+  // Ya se pidió el NIP al entrar a Gastos: las acciones van directo.
+  const irAAgregarGasto = (concepto, categoria) =>
+    ejecutarAccion({ tipo: "agregar", concepto, categoria });
 
-  const irAEditarGasto = (registro) => {
-    setAccionPendiente({
-      tipo: "editar",
-      titulo: "Editar gasto",
-      registro,
-    });
-    setModalNipCrud(true);
-  };
+  const irAEditarGasto = (registro) =>
+    ejecutarAccion({ tipo: "editar", registro });
 
-  const eliminarGasto = (registro) => {
-    setAccionPendiente({
-      tipo: "eliminar",
-      titulo: "Eliminar gasto",
-      registro,
-    });
-    setModalNipCrud(true);
-  };
+  const eliminarGasto = (registro) =>
+    ejecutarAccion({ tipo: "eliminar", registro });
 
-  const onNipCrudCorrecto = async () => {
-    const accion = accionPendiente;
-    setModalNipCrud(false);
-    setAccionPendiente(null);
+  const ejecutarAccion = async (accion) => {
     if (!accion) return;
 
     if (accion.tipo === "agregar") {
@@ -557,17 +536,6 @@ const Gastos = () => {
         onClose={onAccesoCancelado}
       />
 
-      <NipModal
-        visible={modalNipCrud}
-        modo="acceso"
-        keywords={["expenses"]}
-        titulo={accionPendiente?.titulo ?? "Gastos"}
-        onClose={() => {
-          setModalNipCrud(false);
-          setAccionPendiente(null);
-        }}
-        onSubmit={onNipCrudCorrecto}
-      />
     </SafeAreaView>
   );
 };

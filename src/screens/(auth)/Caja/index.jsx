@@ -155,18 +155,13 @@ const Caja = () => {
     }
   };
 
-  const conceptoAperturaValido =
-    String(conceptoApertura ?? "").trim().length > 0;
+  // El concepto es opcional: sin texto se guarda uno por defecto (el
+  // servidor y la base local lo piden no vacío).
+  const CONCEPTO_APERTURA_DEFAULT = "Apertura de caja";
 
   const abrirCaja = async () => {
-    const concepto = String(conceptoApertura ?? "").trim();
-    if (!concepto) {
-      mostrarAviso(
-        "Concepto requerido",
-        "Indica el concepto de apertura de caja.",
-      );
-      return;
-    }
+    const concepto =
+      String(conceptoApertura ?? "").trim() || CONCEPTO_APERTURA_DEFAULT;
     const qrData = await AsyncStorage.getItem("qrCode");
     const nombreDispositivo = await Database.getNombreDispocitivo();
     try {
@@ -678,7 +673,7 @@ const Caja = () => {
               </Pressable>
             ))}
           </View>
-          <Text style={s.conceptoLabel}>Concepto</Text>
+          <Text style={s.conceptoLabel}>Concepto (opcional)</Text>
           <TextInput
             style={s.conceptoInput}
             value={conceptoApertura}
@@ -716,20 +711,9 @@ const Caja = () => {
               disabledStyle={s.botonBloqueado}
               styleContainer={s.buttonModalAcceptContainer}
               onPress={abrirCaja}
-              disabled={!conceptoAperturaValido}
             >
               <View style={s.botonContenido}>
-                {!conceptoAperturaValido ? (
-                  <Ionicons name="lock-closed-outline" size={normalize(13)} color={tema.textMuted} />
-                ) : null}
-                <Text
-                  style={[
-                    s.botonTexto,
-                    !conceptoAperturaValido && s.botonTextoBloqueado,
-                  ]}
-                >
-                  Confirmar
-                </Text>
+                <Text style={s.botonTexto}>Confirmar</Text>
               </View>
             </Button>
           </View>

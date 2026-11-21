@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import DrawerButton from "../../../components/atoms/DraweButton/DraweButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { space } from "../../../utils/theme";
@@ -21,8 +22,8 @@ import ButtonMesas from "../../atoms/ButtonMesas/ButtonMesas";
 import { s } from "./styles";
 import { getDb } from "../../../utils/db";
 
-import { esOscuro } from "../../../utils/apariencia";
-import { color as tema } from "../../../utils/theme";
+const HEADER_GRADIENT = ["#6C78CE", "#7284FD", "#93D9F4"];
+
 const esListaMesas = (pathname = "") => {
   const p = pathname.toLowerCase();
   return (
@@ -107,8 +108,15 @@ const AuthHeader = ({ navigation, route, options }) => {
   }, [navigation, actualizarTitulo]);
 
   return (
-    <View style={[s.header, { paddingTop: insets.top + space.sm }]}>
-      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor={tema.surface} />
+    // Encabezado con el degradado de marca (igual en claro y oscuro) para
+    // que no se confunda con el contenido de la pantalla.
+    <LinearGradient
+      colors={HEADER_GRADIENT}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[s.header, { paddingTop: insets.top + space.sm }]}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <View style={s.containerHeader}>
         <DrawerButton onPress={() => navigation.openDrawer()} />
 
@@ -135,10 +143,10 @@ const AuthHeader = ({ navigation, route, options }) => {
               </Text>
             </Pressable>
           ) : null}
-          <ButtonMesas />
+          <ButtonMesas variante="sobreColor" />
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 

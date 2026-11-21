@@ -8,6 +8,14 @@ export const s = StyleSheet.create({
         backgroundColor: color.primarySoft,
         borderRadius: radius.pill,
     },
+    buttonContainerSobreColor: {
+        backgroundColor: "rgba(255,255,255,0.22)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.45)",
+    },
+    buttonTextSobreColor: {
+        color: "#FFFFFF",
+    },
     button: {
         flexDirection: "row",
         gap: space.xs + 2,

@@ -74,8 +74,10 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
       onPress={onPress}
     >
       <View style={s.cardBody}>
-        {/* Nombre + avatar */}
-        <View style={s.cardNameRow}>
+        {/* Fila superior: avatar a la izquierda y acciones a la derecha.
+            El nombre va debajo a todo lo ancho para que no se parta en
+            columnas angostas (tablet con 2 columnas). */}
+        <View style={s.cardTopRow}>
           <LinearGradient
             style={s.cardAvatar}
             colors={coloresAccent}
@@ -91,44 +93,48 @@ const ClienteCard = ({ cliente, onPress, onInactivar }) => {
               {iniciales}
             </Text>
           </LinearGradient>
-          <View style={s.cardNameBlock}>
-            <Text style={s.cardName}>{cliente.NOMBRE}</Text>
-            <View style={s.cardBadges}>
-              <View style={s.cardKey}>
-                <Text style={s.cardKeyText}>Clave #{cliente.DINNER_KEY}</Text>
-              </View>
-              {pendienteSync && (
-                <View style={s.cardPendienteBadge}>
-                  <Text style={s.cardPendienteBadgeText}>Por sincronizar</Text>
-                </View>
-              )}
-              {inactivo && (
-                <View style={s.cardInactivoBadge}>
-                  <Text style={s.cardInactivoBadgeText}>Inactivo</Text>
-                </View>
-              )}
-            </View>
+          <View style={s.cardActions}>
+            <EstatusSincronizado sincronizado={!!cliente.SINCRONIZADO} />
+            {!inactivo && (
+              <Pressable
+                style={({ pressed }) => [
+                  s.cardDeleteBtn,
+                  pressed && { opacity: 0.75 },
+                ]}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  onInactivar?.(cliente);
+                }}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="person-remove-outline"
+                  size={normalize(15)}
+                  color="#E5484D"
+                />
+              </Pressable>
+            )}
           </View>
-          <EstatusSincronizado sincronizado={!!cliente.SINCRONIZADO} />
-          {!inactivo && (
-            <Pressable
-              style={({ pressed }) => [
-                s.cardDeleteBtn,
-                pressed && { opacity: 0.75 },
-              ]}
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                onInactivar?.(cliente);
-              }}
-              hitSlop={8}
-            >
-              <Ionicons
-                name="person-remove-outline"
-                size={normalize(15)}
-                color="#E5484D"
-              />
-            </Pressable>
-          )}
+        </View>
+        <View style={s.cardNameBlock}>
+          <Text style={s.cardName} numberOfLines={2}>
+            {cliente.NOMBRE}
+          </Text>
+          <View style={s.cardBadges}>
+            <View style={s.cardKey}>
+              <Text style={s.cardKeyText}>Clave #{cliente.DINNER_KEY}</Text>
+            </View>
+            {pendienteSync && (
+              <View style={s.cardPendienteBadge}>
+                <Text style={s.cardPendienteBadgeText}>Por sincronizar</Text>
+              </View>
+            )}
+            {inactivo && (
+              <View style={s.cardInactivoBadge}>
+                <Text style={s.cardInactivoBadgeText}>Inactivo</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {(!!cliente.TELEFONO || !!cliente.CORREO || !!cliente.DIRECCION) && (
@@ -352,6 +358,9 @@ const Clientes = () => {
           keyExtractor={(item) => String(item.ID)}
           numColumns={listColumns}
           key={`clientes-${listColumns}`}
+          // En Android, recortar celdas fuera de pantalla dejaba tarjetas en
+          // blanco al hacer scroll (reporte en tablet, 2026-11-21).
+          removeClippedSubviews={false}
           columnWrapperStyle={
             listColumns > 1
               ? {

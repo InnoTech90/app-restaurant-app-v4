@@ -76,7 +76,6 @@ const Pago = () => {
   const [imprimiendo, setImprimiendo] = useState(false);
   const [cuentaImpresa, setCuentaImpresa] = useState(false);
   const [openNipEditarModal, setOpenNipEditarModal] = useState(false);
-  const [openNipAdicional, setOpenNipAdicional] = useState(false);
   const [openNipDescuento, setOpenNipDescuento] = useState(false);
   const [articuloAEliminar, setArticuloAEliminar] = useState(null);
   const [openNipEliminar, setOpenNipEliminar] = useState(false);
@@ -86,9 +85,7 @@ const Pago = () => {
   const [mostrarCajaCerrada, setMostrarCajaCerrada] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const router = useRouter();
-  const campoAdicionalAbierto = useRef(false);
   const campoDescuentoAbierto = useRef(false);
-  const accionAdicionalRef = useRef(null);
   const accionDescuentoRef = useRef(null);
 
   const {
@@ -104,21 +101,11 @@ const Pago = () => {
     confirmarNipEdicion,
   } = useEdicionTicket(configuraciones);
 
-  const aplicarAdicional = async (accion, { campo = false } = {}) => {
+  // Impuestos y desglose: no piden NIP aunque el modo restrictivo esté
+  // activo (es un dato fiscal, no un descuento). Solo se valida el permiso
+  // del gerente en sesión.
+  const aplicarAdicional = async (accion) => {
     if (cuentaImpresa) return;
-
-    if (configuraciones?.MODO_RESTRICTIVO) {
-      if (campo && campoAdicionalAbierto.current) {
-        accion();
-        return;
-      }
-      accionAdicionalRef.current = () => {
-        if (campo) campoAdicionalAbierto.current = true;
-        accion();
-      };
-      setOpenNipAdicional(true);
-      return;
-    }
 
     const permitido = await sesionPuedeEntrar({ keywords: ["sales"] });
     if (!permitido) {
@@ -146,7 +133,6 @@ const Pago = () => {
   };
 
   const cerrarAdicional = () => {
-    campoAdicionalAbierto.current = false;
     campoDescuentoAbierto.current = false;
   };
 
@@ -771,7 +757,7 @@ const Pago = () => {
               cuentaImpresa
                 ? undefined
                 : (v) =>
-                    aplicarAdicional(() => setImpuestosPct(v), { campo: true })
+                    aplicarAdicional(() => setImpuestosPct(v))
             }
             desglosarImpuestos={desglosarImpuestos}
             onToggleDesglosar={
@@ -1063,22 +1049,6 @@ const Pago = () => {
         }}
       />
 
-      <NipModal
-        visible={openNipAdicional}
-        onClose={() => {
-          setOpenNipAdicional(false);
-          accionAdicionalRef.current = null;
-        }}
-        titulo="Adicional de pago"
-        modo="acceso"
-        keywords={["sales"]}
-        onSubmit={async () => {
-          setOpenNipAdicional(false);
-          const accion = accionAdicionalRef.current;
-          accionAdicionalRef.current = null;
-          await accion?.();
-        }}
-      />
 
       <NipModal
         visible={openNipDescuento}

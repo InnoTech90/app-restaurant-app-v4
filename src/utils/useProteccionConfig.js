@@ -10,6 +10,8 @@ export function useProteccionConfig({
   configFlag,
   tituloModal,
   keywords = [],
+  // true: pide NIP al entrar aunque el modo restrictivo esté apagado
+  siempreNip = false,
 }) {
   const [accesoPermitido, setAccesoPermitido] = useState(false);
   const [modalAcceso, setModalAcceso] = useState(false);
@@ -23,7 +25,7 @@ export function useProteccionConfig({
       const verificarAcceso = async () => {
         const configuraciones = await dataBase.getConfiguracionesModel();
         const config = configuraciones?.[0];
-        const modoRestrictivo = !!config?.[configFlag];
+        const modoRestrictivo = siempreNip || !!config?.[configFlag];
         const pantalla = { keywords: keywordsClave ? keywordsClave.split(",") : [] };
 
         if (!modoRestrictivo) {
@@ -67,7 +69,7 @@ export function useProteccionConfig({
       return () => {
         activo = false;
       };
-    }, [seccion, configFlag, keywords.join(",")]),
+    }, [seccion, configFlag, siempreNip, keywords.join(",")]),
   );
 
   const onAccesoCorrecto = useCallback(async () => {

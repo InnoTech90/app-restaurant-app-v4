@@ -71,9 +71,7 @@ const CardVenta = ({
                     {mesa}
                 </Text>
                 <Text style={[s.meta, !sincronizado && s.metaPendiente]} numberOfLines={1}>
-                    {!sincronizado
-                        ? "Por sincronizar"
-                        : `${productos} ${Number(productos) === 1 ? "producto" : "productos"} · ${hora}`}
+                    {`${productos} ${Number(productos) === 1 ? "producto" : "productos"} · ${hora}`}
                 </Text>
                 {(Number(descuento) > 0 || cuentaDividida || esPedidoEnLinea) && (
                     <View style={s.badges}>
@@ -93,6 +91,17 @@ const CardVenta = ({
                 <View style={[s.estatus, { backgroundColor: est.fondo }]}>
                     <Ionicons name={est.icono} size={11} color={est.texto} />
                     <Text style={[s.estatusTexto, { color: est.texto }]}>{status}</Text>
+                </View>
+                {/* Estado de sincronización, siempre visible */}
+                <View style={[s.sync, sincronizado ? s.syncOk : s.syncPend]}>
+                    <Ionicons
+                        name={sincronizado ? "cloud-done-outline" : "cloud-upload-outline"}
+                        size={12}
+                        color={sincronizado ? color.success : "#C97700"}
+                    />
+                    <Text style={[s.syncTexto, { color: sincronizado ? color.success : "#C97700" }]}>
+                        {sincronizado ? "Sincronizada" : "Por sincronizar"}
+                    </Text>
                 </View>
                 {dia ? <Text style={s.dia}>{dia}</Text> : null}
             </View>

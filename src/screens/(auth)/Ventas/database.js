@@ -407,6 +407,21 @@ export default class VentasDatabase {
     });
   }
 
+  /**
+   * IDs de todas las ventas del dispositivo que se pueden limpiar: ya
+   * sincronizadas y finalizadas (pagadas o canceladas). Las pendientes de
+   * pago o de sincronizar nunca entran.
+   */
+  static async getIdsLimpiables() {
+    return withDb("Ventas.getIdsLimpiables", async (db) => {
+      const rows = await db.getAllAsync(
+        `SELECT ID FROM COMANDA
+          WHERE ACTIVO = 0 AND ESTATUS IN (1, 2) AND SINCRONIZADO = 1`,
+      );
+      return rows.map((r) => r.ID);
+    });
+  }
+
   /** Elimina ventas finalizadas y sus registros relacionados. */
   static async eliminarVentas(ids) {
     if (!ids?.length) return;

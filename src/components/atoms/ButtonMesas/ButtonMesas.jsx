@@ -5,10 +5,12 @@ import { Pressable, Text, View } from "react-native";
 import { clearAuthHeaderTitulo } from "../../../utils/authHeaderTitle";
 import { s } from "./styles";
 
-const ButtonMesas = ({ style }) => {
+// variante "sobreColor": para fondos con degradado de marca (encabezado).
+const ButtonMesas = ({ style, variante }) => {
+  const sobreColor = variante === "sobreColor";
   const router = useRouter();
   return (
-    <View style={s.buttonContainer}>
+    <View style={[s.buttonContainer, sobreColor && s.buttonContainerSobreColor]}>
       <Pressable
         onPress={async () => {
           await AsyncStorage.multiRemove([
@@ -20,8 +22,8 @@ const ButtonMesas = ({ style }) => {
         }}
         style={[s.button, style]}
       >
-        <Ionicons name="grid-outline" size={16} color="#4F5FE0" />
-        <Text style={s.buttonText}>Mesas</Text>
+        <Ionicons name="grid-outline" size={16} color={sobreColor ? "#FFFFFF" : "#4F5FE0"} />
+        <Text style={[s.buttonText, sobreColor && s.buttonTextSobreColor]}>Mesas</Text>
       </Pressable>
     </View>
   );

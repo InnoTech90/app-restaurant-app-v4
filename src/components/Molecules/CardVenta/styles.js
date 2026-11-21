@@ -58,4 +58,15 @@ export const s = StyleSheet.create({
     },
     estatusTexto: { fontSize: font.xs, fontWeight: font.semibold },
     dia: { color: color.textMuted, fontSize: normalize(10) },
+    sync: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        borderRadius: radius.pill,
+        paddingHorizontal: space.sm,
+        paddingVertical: 2,
+    },
+    syncOk: { backgroundColor: color.successSoft },
+    syncPend: { backgroundColor: "rgba(229,138,0,0.14)" },
+    syncTexto: { fontSize: normalize(10), fontWeight: font.semibold },
 });

@@ -129,7 +129,7 @@ export const s = StyleSheet.create({
     btnLimpiar: {
         backgroundColor: 'transparent', // Agrega opacidad al color de fondo
         borderWidth: 1,
-        borderColor: "#F5B5B7",
+        borderColor: "#C9D2FF",
         paddingHorizontal: normalize(10),
         paddingVertical: normalize(5),
         height: normalize(35),
@@ -138,7 +138,7 @@ export const s = StyleSheet.create({
     },
     btnLimpiarText:
     {
-        color: "#E5484D",
+        color: "#4F5FE0",
         fontSize: normalize(14),
         marginLeft: normalize(5),
 

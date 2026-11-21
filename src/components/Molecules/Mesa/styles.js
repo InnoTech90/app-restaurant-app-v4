@@ -2,9 +2,10 @@ import { StyleSheet } from "react-native";
 import { color, font, radius, space } from "../../../utils/theme";
 import { CONTENT_MAX_WIDTH, isTablet, normalize, wp } from "../../../utils/funcionesMaquetado/responsiveWH";
 
-// Mesa cuadrada con sillas (diseño original): 2 columnas en teléfono,
-// 3 en tablet; el tamaño sale del ancho disponible para que siempre quepan.
-const COLUMNAS = isTablet ? 3 : 2;
+// Mesa cuadrada con sillas (diseño original): 2 columnas en teléfono y
+// en tablet (con 3 se veían muy chicas en tablet); el tamaño sale del ancho
+// disponible para que siempre quepan.
+const COLUMNAS = 2;
 const GAP = normalize(isTablet ? 14 : 10);
 const ANCHO_UTIL = Math.min(wp(100), CONTENT_MAX_WIDTH) - normalize(isTablet ? 48 : 32);
 const CELDA = Math.floor((ANCHO_UTIL - GAP * (COLUMNAS - 1)) / COLUMNAS) - 1;

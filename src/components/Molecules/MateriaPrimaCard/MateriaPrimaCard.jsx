@@ -15,10 +15,16 @@ const bajoPorcentaje = (actual, minimo) => {
 };
 
 const MateriaPrimaCard = ({ item, onPress }) => {
-    const bajo = bajoPorcentaje(item.STOCK_ACTUAL, item.STOCK_MINIMO);
+    // Agotado: stock en cero o menos. Va en rojo y gana a "Stock bajo".
+    const agotado = !(parseFloat(item.STOCK_ACTUAL) > 0);
+    const bajo = !agotado && bajoPorcentaje(item.STOCK_ACTUAL, item.STOCK_MINIMO);
     return (
         <Pressable
-            style={({ pressed }) => [s.card, { opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [
+                s.card,
+                agotado && s.cardAgotado,
+                { opacity: pressed ? 0.85 : 1 },
+            ]}
             onPress={onPress}
         >
             <View style={s.cardBody}>
@@ -36,7 +42,7 @@ const MateriaPrimaCard = ({ item, onPress }) => {
                 </View>
                 <View style={s.cardStockRow}>
                     <Text style={s.cardStock}>Stock: </Text>
-                    <Text style={s.cardStockDestacado}>
+                    <Text style={[s.cardStockDestacado, agotado && s.textoAgotado]}>
                         {fmtStock(item.STOCK_ACTUAL)}
                     </Text>
                     <Text style={s.cardStock}>
@@ -45,6 +51,12 @@ const MateriaPrimaCard = ({ item, onPress }) => {
                     {item.UNIDAD_ABREVIACION ? (
                         <Text style={s.cardUnidad}>{item.UNIDAD_ABREVIACION}</Text>
                     ) : null}
+                    {agotado && (
+                        <View style={s.cardAgotadoTagRow}>
+                            <Ionicons name="close-circle" size={13} color={tema.danger} />
+                            <Text style={s.cardAgotadoTag}>Agotado</Text>
+                        </View>
+                    )}
                     {bajo && (
                         <View style={s.cardStockMinTagRow}>
                             <Ionicons name="alert-circle-outline" size={13} color={gb.yellow500} />
@@ -58,6 +70,28 @@ const MateriaPrimaCard = ({ item, onPress }) => {
 };
 
 const s = StyleSheet.create({
+    cardAgotado: {
+        borderWidth: 1.5,
+        borderColor: tema.danger,
+    },
+    textoAgotado: {
+        color: tema.danger,
+    },
+    cardAgotadoTagRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginLeft: normalize(8),
+        paddingHorizontal: normalize(8),
+        paddingVertical: normalize(2),
+        borderRadius: 999,
+        backgroundColor: tema.dangerSoft,
+    },
+    cardAgotadoTag: {
+        color: tema.danger,
+        fontSize: normalize(11),
+        fontWeight: "700",
+    },
     card: {
         backgroundColor: tema.surface,
         borderRadius: normalize(14),

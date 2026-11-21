@@ -4,7 +4,13 @@ import { isTablet, normalize } from "../../../utils/funcionesMaquetado/responsiv
 
 export const s = StyleSheet.create({
     header: {
-        backgroundColor: color.surface,
+        // el degradado lo pone LinearGradient; sombra para separarlo del contenido
+        shadowColor: "#273568",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+        elevation: 6,
+        zIndex: 2,
     },
     containerHeader: {
         flexDirection: "row",
@@ -20,13 +26,13 @@ export const s = StyleSheet.create({
         minWidth: 0,
     },
     title: {
-        color: color.text,
+        color: "#FFFFFF",
         fontSize: font.lg,
         fontWeight: font.bold,
     },
     subtitle: {
         marginTop: 1,
-        color: color.textMuted,
+        color: "rgba(255,255,255,0.85)",
         fontSize: font.xs,
     },
     rightActions: {
@@ -45,7 +51,7 @@ export const s = StyleSheet.create({
         justifyContent: "center",
         paddingHorizontal: space.xs,
         borderWidth: 2,
-        borderColor: color.surface,
+        borderColor: "#FFFFFF",
     },
     ordersBadgeText: {
         color: color.textOnPrimary,

@@ -326,22 +326,17 @@ const Ventas = () => {
     );
   };
 
-  const solicitarLimpiarVentas = () => {
-    const seleccionadas = ventas.filter((v) => v.seleccionado);
-    if (seleccionadas.length === 0) {
-      setAviso({
-        type: "warning",
-        title: "Sin selección",
-        message: "Selecciona al menos una venta para limpiar.",
-      });
-      return;
+  // Limpiar no depende de la selección: borra del dispositivo todas las
+  // ventas ya sincronizadas y finalizadas; las pendientes se quedan.
+  const solicitarLimpiarVentas = async () => {
+    let idsAEliminar = [];
+    try {
+      idsAEliminar = await VentasDatabase.getIdsLimpiables();
+    } catch (e) {
+      console.error("Error buscando ventas para limpiar:", e);
     }
 
-    const idsAEliminar = seleccionadas
-      .filter((v) => ventaEsLimpiable(v))
-      .map((v) => v.ID);
-
-    if (idsAEliminar.length === 0) {
+    if (!idsAEliminar.length) {
       setModalNoBorrar(true);
       return;
     }
@@ -443,8 +438,8 @@ const Ventas = () => {
         )}
 
         <Button style={s.btnLimpiar} onPress={solicitarLimpiarVentas}>
-          <Ionicons name="trash-outline" size={normalize(14)} color="#E5484D" />
-          <Text style={s.btnLimpiarText}>Limpiar ventas</Text>
+          <Ionicons name="cloud-done-outline" size={normalize(14)} color="#4F5FE0" />
+          <Text style={s.btnLimpiarText}>Limpiar sincronizadas</Text>
         </Button>
       </HeaderBar>
 
@@ -850,8 +845,8 @@ const Ventas = () => {
             <Ionicons name="warning" size={normalize(40)} color="#FFFFFF" />
           </LinearGradient>
           <Text style={s.modalTitle}>
-            Solo se pueden limpiar ventas ya sincronizadas que estén pagadas o
-            canceladas. Las pendientes de pago o de sincronizar no se eliminan.
+            No hay ventas sincronizadas para limpiar. Las ventas pendientes de
+            pago o de sincronizar se quedan en la tablet hasta subirlas.
           </Text>
           <Button onPress={() => setModalNoBorrar(false)} style={s.modalButton}>
             <Text style={s.modalButtonText}>Aceptar</Text>
@@ -861,12 +856,12 @@ const Ventas = () => {
 
       <ModalWarning
         visible={modalConfirmLimpiar}
-        type="danger"
-        title="¿Limpiar ventas?"
+        type="warning"
+        title="¿Limpiar ventas sincronizadas?"
         message={
           cantidadALimpiar === 1
-            ? "Se eliminará 1 venta sincronizada de este dispositivo. Esta acción no se puede deshacer."
-            : `Se eliminarán ${cantidadALimpiar} ventas sincronizadas de este dispositivo. Esta acción no se puede deshacer.`
+            ? "Se quitará de esta tablet 1 venta que ya está guardada en el servidor. Sigue disponible en el panel web. Las ventas pendientes de sincronizar no se tocan."
+            : `Se quitarán de esta tablet ${cantidadALimpiar} ventas que ya están guardadas en el servidor. Siguen disponibles en el panel web. Las ventas pendientes de sincronizar no se tocan.`
         }
         confirmText="Continuar"
         cancelText="Cancelar"

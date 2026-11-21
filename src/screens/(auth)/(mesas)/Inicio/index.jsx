@@ -22,6 +22,7 @@ import {
 import { initializeSchema } from "../../../../utils/db";
 import { gb } from "../../../globalStyles";
 import { Database } from "./database";
+import MenuDatabase from "../Menu Principal/database";
 import { s } from "./styles";
 
 import { color as tema } from "../../../../utils/theme";
@@ -124,6 +125,23 @@ const Inicio = () => {
       "MesaSeleccionadaNombre",
       mesa.NOMBRE ?? "",
     );
+    // Si ya se pidió (imprimió) la cuenta, abrir directo en Pagar: es lo
+    // siguiente que se hace con esa mesa.
+    if (Number(mesa.ESTATUS_COMANDA) === 4) {
+      try {
+        const comanda = await MenuDatabase.getComandaCompleta(mesa.UUID);
+        if (comanda?.comanda?.ID) {
+          await setAuthHeaderTitulo("Pagar");
+          router.push({
+            pathname: "/Pago",
+            params: { comanda: JSON.stringify(comanda), id_mesa: mesa.UUID },
+          });
+          return;
+        }
+      } catch (e) {
+        console.error("No se pudo abrir Pagar de la mesa:", e);
+      }
+    }
     await setAuthHeaderTitulo("Menu");
     router.push(`/Menu Principal?id_mesa=${mesa.UUID}`);
   };

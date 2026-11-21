@@ -205,8 +205,18 @@ export const s = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: normalize(10),
+  },
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: normalize(8),
+  },
   cardNameBlock: {
-    flex: 1,
     gap: normalize(6),
   },
   cardName: {

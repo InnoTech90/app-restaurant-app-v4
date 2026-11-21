@@ -105,16 +105,8 @@ function PedidoEnLineaDrawerLabel({ color, label }) {
         paddingRight: 8,
       }}
     >
-      <Text
-        style={{
-          color,
-          fontWeight: Platform.OS === "ios" ? "600" : undefined,
-          fontFamily: Platform.select({
-            ios: undefined,
-            default: "sans-serif-medium",
-          }),
-        }}
-      >
+      {/* Mismo tamaño y peso que las demás opciones del menú */}
+      <Text style={{ color, fontSize: tf.md, fontWeight: tf.medium }}>
         {label}
       </Text>
       {pendingCount > 0 ? (
@@ -555,6 +547,7 @@ export default function AuthLayout() {
       title: "Gastos",
       keywords: ["expenses"],
       restringeConModo: true,
+      siempreNip: true, // NIP al entrar; ya no en cada gasto
       seccionAcceso: "gastos",
     },
     {
@@ -658,7 +651,8 @@ export default function AuthLayout() {
 
     if (screen.restringeConModo) {
       const configuraciones = await dataBase.getConfiguracionesModel();
-      const modoRestrictivo = !!configuraciones?.[0]?.MODO_RESTRICTIVO;
+      const modoRestrictivo =
+        !!screen.siempreNip || !!configuraciones?.[0]?.MODO_RESTRICTIVO;
 
       if (modoRestrictivo) {
         if (screen.seccionAcceso && tieneAccesoSeccion(screen.seccionAcceso)) {
