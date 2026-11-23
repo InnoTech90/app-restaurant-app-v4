@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -32,6 +33,8 @@ import {
 import { mostrarAviso } from "../../../../utils/avisoModal";
 import { gb } from "../../../globalStyles";
 import Database from "./database";
+import { integracionPantallaDeCarga } from "../../PantallaDeCarga/integracion";
+import { verificarConexionInternet } from "../../../../utils/ConeccionAInternet/ConeccionAInternet";
 import { s } from "./styles";
 
 const MenuPrincipal = () => {
@@ -124,6 +127,40 @@ const MenuPrincipal = () => {
       console.error("Error cargando menú:", e);
     } finally {
       setCargando(false);
+    }
+  };
+
+  // Deslizar hacia abajo: baja el menú del servidor (nombres, precios,
+  // orden y grupos tal como están en "Editar menú") y lo vuelve a pintar.
+  const [refrescandoMenu, setRefrescandoMenu] = useState(false);
+  const refrescarMenu = async () => {
+    if (refrescandoMenu) return;
+    setRefrescandoMenu(true);
+    try {
+      if (!(await verificarConexionInternet())) {
+        mostrarAviso({
+          type: "warning",
+          title: "Sin internet",
+          message: "Conéctate a internet para traer el menú actualizado.",
+        });
+        return;
+      }
+      await integracionPantallaDeCarga.menu();
+      const { grupos: nuevos, articulos: nuevosArt } = await Database.getMenu();
+      setGrupos(nuevos);
+      setArticulos(nuevosArt);
+      if (grupoSeleccionado !== null && !nuevos.some((g) => g.UUID === grupoSeleccionado)) {
+        setGrupoSeleccionado(null);
+      }
+    } catch (e) {
+      console.error("Error actualizando menú:", e);
+      mostrarAviso({
+        type: "warning",
+        title: "No se pudo actualizar",
+        message: "No se pudo traer el menú del servidor. Intenta de nuevo.",
+      });
+    } finally {
+      setRefrescandoMenu(false);
     }
   };
 
@@ -468,6 +505,14 @@ const MenuPrincipal = () => {
         maxToRenderPerBatch={3}
         windowSize={5}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refrescandoMenu}
+            onRefresh={refrescarMenu}
+            colors={[gb.purple550]}
+            tintColor={gb.purple550}
+          />
+        }
         ListEmptyComponent={
           <Text style={s.textoVacio}>No se encontraron artículos</Text>
         }
