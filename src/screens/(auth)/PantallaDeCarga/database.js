@@ -438,7 +438,12 @@ export class Database {
   static async menuModel(data) {
     const db = await getDb();
 
-    const { menuId, menuGroups } = data.data;
+    const { menuId, menuGroups } = data?.data ?? {};
+    if (!menuId || !Array.isArray(menuGroups)) return;
+
+    // UUIDs que manda el servidor: lo que no esté aquí se dio de baja, se movió
+    // de menú o es de otra sucursal y debe salir de la tablet.
+    const vivos = { grupos: [], articulos: [], gruposComp: [], complementos: [] };
 
     // Insertar menú
     await db.runAsync(`INSERT OR IGNORE INTO MENU (UUID) VALUES (?)`, [menuId]);
@@ -449,7 +454,13 @@ export class Database {
     // Insertar grupos de artículos
     for (const grupo of menuGroups) {
       await db.runAsync(
-        `INSERT OR IGNORE INTO GRUPO_ARTICULOS (UUID, ID_MENU, NOMBRE, DESCRIPCION, POSICION) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO GRUPO_ARTICULOS (UUID, ID_MENU, NOMBRE, DESCRIPCION, POSICION)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(UUID) DO UPDATE SET
+           ID_MENU = excluded.ID_MENU,
+           NOMBRE = excluded.NOMBRE,
+           DESCRIPCION = excluded.DESCRIPCION,
+           POSICION = excluded.POSICION`,
         [
           grupo.id,
           menuId,
@@ -459,8 +470,11 @@ export class Database {
         ],
       );
 
+      vivos.grupos.push(grupo.id);
+
       // Insertar artículos
       for (const articulo of grupo.articles || []) {
+        vivos.articulos.push(articulo.id);
         await db.runAsync(
           `INSERT OR REPLACE INTO ARTICULO
                         (UUID, ID_GRUPO, NOMBRE, NOMBRE_CORTO, DESCRIPCION, PRECIO,
@@ -487,10 +501,19 @@ export class Database {
         // Insertar grupos de complementos
         for (const grupoComp of articulo.complementGroups || []) {
           await db.runAsync(
-            `INSERT OR IGNORE INTO GRUPO_COMPLEMENTOS
+            `INSERT INTO GRUPO_COMPLEMENTOS
                             (UUID, ID_ARTICULO, NOMBRE, DESCRIPCION, MULTIPLE,
                              MIN_SELECCION, MAX_SELECCION, REQUERIDO, POSICION)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(UUID) DO UPDATE SET
+                           ID_ARTICULO = excluded.ID_ARTICULO,
+                           NOMBRE = excluded.NOMBRE,
+                           DESCRIPCION = excluded.DESCRIPCION,
+                           MULTIPLE = excluded.MULTIPLE,
+                           MIN_SELECCION = excluded.MIN_SELECCION,
+                           MAX_SELECCION = excluded.MAX_SELECCION,
+                           REQUERIDO = excluded.REQUERIDO,
+                           POSICION = excluded.POSICION`,
             [
               grupoComp.id,
               articulo.id,
@@ -504,8 +527,11 @@ export class Database {
             ],
           );
 
+          vivos.gruposComp.push(grupoComp.id);
+
           // Insertar complementos
           for (const complemento of grupoComp.complements || []) {
+            vivos.complementos.push(complemento.id);
             await db.runAsync(
               `INSERT OR REPLACE INTO COMPLEMENTO
                                 (UUID, ID_GRUPO_COMP, NOMBRE, DESCRIPCION, PRECIO,
@@ -532,6 +558,57 @@ export class Database {
       }
     }
 
+    await Database.limpiarMenuObsoleto(db, vivos);
+  }
+
+  /**
+   * Quita de la tablet lo que el servidor ya no manda. Los artículos y
+   * complementos que una cuenta abierta (abiertas o del historial) usan no se borran: solo se
+   * desligan de su grupo para que no aparezcan en el menú.
+   */
+  static async limpiarMenuObsoleto(db, vivos) {
+    const fuera = (lista) =>
+      lista.length
+        ? { sql: `UUID NOT IN (${lista.map(() => "?").join(",")})`, args: lista }
+        : { sql: "1 = 1", args: [] };
+
+    const enUso = `
+      SELECT ID_ARTICULO FROM COMANDA_ARTICULO WHERE ID_ARTICULO IS NOT NULL`;
+    const compEnUso = `
+      SELECT ID_COMPLEMENTO FROM COMANDA_COMPLEMENTO WHERE ID_COMPLEMENTO IS NOT NULL`;
+
+    const g = fuera(vivos.grupos);
+    await db.runAsync(`DELETE FROM GRUPO_ARTICULOS WHERE ${g.sql}`, g.args);
+
+    const a = fuera(vivos.articulos);
+    await db.runAsync(
+      `UPDATE ARTICULO SET ID_GRUPO = NULL
+        WHERE ${a.sql}
+          AND (UUID IN (${enUso}) OR CAST(ID AS TEXT) IN (${enUso}))`,
+      a.args,
+    );
+    await db.runAsync(
+      `DELETE FROM ARTICULO
+        WHERE ${a.sql}
+          AND UUID NOT IN (${enUso})
+          AND CAST(ID AS TEXT) NOT IN (${enUso})`,
+      a.args,
+    );
+
+    const gc = fuera(vivos.gruposComp);
+    await db.runAsync(`DELETE FROM GRUPO_COMPLEMENTOS WHERE ${gc.sql}`, gc.args);
+
+    const c = fuera(vivos.complementos);
+    await db.runAsync(
+      `UPDATE COMPLEMENTO SET ID_GRUPO_COMP = NULL
+        WHERE ${c.sql} AND UUID IN (${compEnUso})`,
+      c.args,
+    );
+    await db.runAsync(
+      `DELETE FROM COMPLEMENTO
+        WHERE ${c.sql} AND UUID NOT IN (${compEnUso})`,
+      c.args,
+    );
   }
 
   /**

@@ -4,21 +4,42 @@ import { runDatabaseMigrations } from "../../../utils/databaseMigrations";
 
 const esEfectivo = (nombre) => /efectivo/i.test(String(nombre ?? ""));
 
+// Cortes que el usuario limpió de esta tablet. El servidor los sigue
+// teniendo; aquí se recuerdan para no volver a descargarlos ni mostrarlos.
+const OCULTOS_KEY = "caja_historial_ocultos";
+const leerOcultos = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(OCULTOS_KEY);
+    const lista = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(lista) ? lista : []);
+  } catch {
+    return new Set();
+  }
+};
+const guardarOcultos = async (set) => {
+  // Solo los más recientes, para no crecer sin límite.
+  const lista = [...set].slice(-1000);
+  await AsyncStorage.setItem(OCULTOS_KEY, JSON.stringify(lista));
+};
+
 export class Database {
   static async getHistorial() {
     const qrData = await AsyncStorage.getItem("qrCode");
+    const ocultos = await leerOcultos();
 
     return withDb("Caja.getHistorial", async (db) => {
       await runDatabaseMigrations(db);
-      const sesiones = await db.getAllAsync(
-        `
+      const sesiones = (
+        await db.getAllAsync(
+          `
                 SELECT *
                 FROM HISTORIAL_CAJA
                 WHERE ID_SUCURSAL = ?
                 ORDER BY FECHA DESC
                 `,
-        [qrData],
-      );
+          [qrData],
+        )
+      ).filter((sesion) => !sesion.UUID || !ocultos.has(sesion.UUID));
 
       if (!sesiones.length) return [];
 
@@ -28,7 +49,7 @@ export class Database {
       const placeholders = ids.map(() => "?").join(",");
       const movimientos = await db.getAllAsync(
         `
-                SELECT ID, ID_CAJA, TIPO, MONTO, CONCEPTO, FECHA
+                SELECT ID, ID_CAJA, TIPO, MONTO, CONCEPTO, FECHA, UUID, SINCRONIZADO
                 FROM MOVIMIENTO_CAJA
                 WHERE ID_CAJA IN (${placeholders})
                 ORDER BY FECHA DESC, ID DESC
@@ -74,6 +95,40 @@ export class Database {
           const nombre = venta.METODO || "Otro";
           totales.set(nombre, (totales.get(nombre) ?? 0) + Number(venta.TOTAL ?? 0));
         }
+        // Dinero físico: apertura + ventas en efectivo + depósitos - retiros.
+        const ventasEfectivo = ventasSesion
+          .filter((v) => Number(v.ES_EFECTIVO) === 1 || esEfectivo(v.METODO))
+          .reduce((sum, v) => sum + Number(v.TOTAL ?? 0), 0);
+        const movimientosEfectivo = [
+          {
+            clave: "apertura",
+            tipo: "apertura",
+            concepto: sesion.CONCEPTO || "Apertura",
+            monto: Number(sesion.MONTO ?? 0),
+            fecha: sesion.FECHA,
+          },
+          ...(ventasEfectivo > 0
+            ? [
+                {
+                  clave: "ventas",
+                  tipo: "ventas",
+                  concepto: "Pagos en efectivo",
+                  monto: ventasEfectivo,
+                  fecha: null,
+                },
+              ]
+            : []),
+          ...[...lista]
+            .sort((a, b) => String(a.FECHA).localeCompare(String(b.FECHA)) || a.ID - b.ID)
+            .map((m) => ({
+              clave: `mov-${m.ID}`,
+              id: m.ID,
+              tipo: m.TIPO,
+              concepto: m.CONCEPTO || (m.TIPO === "retiro" ? "Retiro" : "Depósito"),
+              monto: Number(m.MONTO ?? 0),
+              fecha: m.FECHA,
+            })),
+        ];
         const ventasPorMetodo = [...totales.entries()]
           .map(([nombre, total]) => ({
             nombre,
@@ -89,7 +144,9 @@ export class Database {
           ...sesion,
           movimientos: lista,
           ventasPorMetodo,
-          SALDO: Number(sesion.MONTO ?? 0) + depositos - retiros,
+          movimientosEfectivo,
+          VENTAS_EFECTIVO: ventasEfectivo,
+          SALDO: Number(sesion.MONTO ?? 0) + ventasEfectivo + depositos - retiros,
         };
       });
     });
@@ -331,38 +388,68 @@ export class Database {
     });
   }
 
+  /**
+   * Limpia de esta tablet los cortes ya cerrados y sincronizados. La caja
+   * abierta y lo pendiente de subir no se tocan. En el servidor (panel web)
+   * el historial se conserva.
+   */
   static async eliminarHistorial() {
     const idSucursal = await AsyncStorage.getItem("qrCode");
     if (!idSucursal) {
       return { ok: false, message: "No se encontró la sucursal." };
     }
+    const ocultos = await leerOcultos();
 
-    return withDb("Caja.eliminarHistorial", async (db) => {
+    const resultado = await withDb("Caja.eliminarHistorial", async (db) => {
       await runDatabaseMigrations(db);
       const sesiones = await db.getAllAsync(
-        `SELECT ID FROM HISTORIAL_CAJA WHERE ID_SUCURSAL = ?`,
+        `SELECT ID, UUID FROM HISTORIAL_CAJA
+          WHERE ID_SUCURSAL = ?
+            AND COALESCE(ESTATUS, 0) = 0
+            AND FECHA_CIERRE IS NOT NULL
+            AND COALESCE(SINCRONIZADO, 0) = 1
+            AND COALESCE(CIERRE_SINCRONIZADO, 1) = 1`,
         [idSucursal],
       );
-      if (!sesiones.length) {
-        return { ok: true };
-      }
+      if (!sesiones.length) return { ok: true, eliminados: 0 };
 
       const ids = sesiones.map((s) => s.ID);
       const placeholders = ids.map(() => "?").join(",");
+      await db.runAsync(`DELETE FROM CAJA_VENTA WHERE ID_CAJA IN (${placeholders})`, ids);
+      await db.runAsync(`DELETE FROM MOVIMIENTO_CAJA WHERE ID_CAJA IN (${placeholders})`, ids);
+      await db.runAsync(`DELETE FROM HISTORIAL_CAJA WHERE ID IN (${placeholders})`, ids);
+      sesiones.forEach((s) => s.UUID && ocultos.add(s.UUID));
+      return { ok: true, eliminados: ids.length };
+    });
 
-      await db.runAsync(
-        `DELETE FROM CAJA_VENTA WHERE ID_CAJA IN (${placeholders})`,
-        ids,
-      );
-      await db.runAsync(
-        `DELETE FROM MOVIMIENTO_CAJA WHERE ID_CAJA IN (${placeholders})`,
-        ids,
-      );
-      await db.runAsync(
-        `DELETE FROM HISTORIAL_CAJA WHERE ID_SUCURSAL = ?`,
-        [idSucursal],
-      );
+    if (resultado?.eliminados) await guardarOcultos(ocultos);
+    return resultado;
+  }
 
+  /**
+   * Corrige un corte en la tablet: apertura (monto/concepto), fondo de cierre
+   * y monto/concepto de sus depósitos y retiros.
+   */
+  static async actualizarCorte(idCaja, { monto, concepto, fondo, movimientos = [] }) {
+    return withDb("Caja.actualizarCorte", async (db) => {
+      await runDatabaseMigrations(db);
+      await db.runAsync(
+        `UPDATE HISTORIAL_CAJA
+            SET MONTO = COALESCE(?, MONTO),
+                CONCEPTO = COALESCE(?, CONCEPTO),
+                FONDO = CASE WHEN ESTATUS = 0 THEN COALESCE(?, FONDO) ELSE FONDO END
+          WHERE ID = ?`,
+        [monto ?? null, concepto ?? null, fondo ?? null, idCaja],
+      );
+      for (const mov of movimientos) {
+        await db.runAsync(
+          `UPDATE MOVIMIENTO_CAJA
+              SET MONTO = COALESCE(?, MONTO),
+                  CONCEPTO = COALESCE(?, CONCEPTO)
+            WHERE ID = ? AND ID_CAJA = ?`,
+          [mov.monto ?? null, mov.concepto ?? null, mov.id, idCaja],
+        );
+      }
       return { ok: true };
     });
   }
@@ -455,12 +542,13 @@ export class Database {
   }
 
   static async upsertDesdeApi(registros, idSucursal) {
+    const ocultos = await leerOcultos();
     return withDb("Caja.upsertDesdeApi", async (db) => {
       await runDatabaseMigrations(db);
 
       for (const registro of registros ?? []) {
         const uuid = registro.id;
-        if (!uuid) continue;
+        if (!uuid || ocultos.has(uuid)) continue;
 
         let local = await db.getFirstAsync(
           `SELECT ID FROM HISTORIAL_CAJA WHERE UUID = ?`,

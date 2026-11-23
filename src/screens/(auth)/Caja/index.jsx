@@ -69,6 +69,9 @@ const Caja = () => {
   const [openConfirmEliminarHistorial, setOpenConfirmEliminarHistorial] =
     useState(false);
   const [historial, setHistorial] = useState([]);
+  const [corteEnEdicion, setCorteEnEdicion] = useState(null);
+  const [formCorte, setFormCorte] = useState(null);
+  const [guardandoCorte, setGuardandoCorte] = useState(false);
   const [refrescando, setRefrescando] = useState(false);
 
   const ultimaSesion = historial[0] ?? null;
@@ -83,9 +86,7 @@ const Caja = () => {
     : Number.isFinite(fondoCerrado)
       ? fondoCerrado
       : 0;
-  const ventasSesionActual = (sesionActual?.ventasPorMetodo ?? []).filter(
-    (metodo) => Number(metodo.total) > 0,
-  );
+  const movimientosCaja = sesionActual?.movimientosEfectivo ?? [];
   const fondoCierreValido = (() => {
     const valor = Number(String(fondoCierre).replace(",", "."));
     return Number.isFinite(valor) && valor >= 0 && String(fondoCierre).trim() !== "";
@@ -226,7 +227,9 @@ const Caja = () => {
         ? "Retiro"
         : nipAccion === "eliminarHistorial"
           ? "Eliminar historial"
-          : "Depósito";
+          : nipAccion === "editarCorte"
+            ? "Editar corte"
+            : "Depósito";
 
   const eliminarHistorial = async () => {
     try {
@@ -239,6 +242,13 @@ const Caja = () => {
         return;
       }
       await getData();
+      mostrarAviso(
+        resultado?.eliminados ? "Historial limpio" : "Nada que limpiar",
+        resultado?.eliminados
+          ? `Se quitaron ${resultado.eliminados} ${resultado.eliminados === 1 ? "corte" : "cortes"} de esta tablet. Siguen guardados en el panel web.`
+          : "Solo se limpian cortes cerrados y ya sincronizados. La caja abierta no se toca.",
+        resultado?.eliminados ? "info" : "warning",
+      );
     } catch (error) {
       console.error("Error al eliminar historial de caja:", error);
       mostrarAviso(
@@ -261,12 +271,112 @@ const Caja = () => {
       eliminarHistorial();
       return;
     }
+    if (accion === "editarCorte" && corteEnEdicion) {
+      const c = corteEnEdicion;
+      setFormCorte({
+        monto: String(Number(c.MONTO ?? 0)),
+        concepto: String(c.CONCEPTO ?? ""),
+        fondo: c.FONDO == null ? "" : String(Number(c.FONDO)),
+        movimientos: (c.movimientos ?? []).map((m) => ({
+          id: m.ID,
+          uuid: m.UUID ?? null,
+          tipo: m.TIPO,
+          monto: String(Number(m.MONTO ?? 0)),
+          concepto: String(m.CONCEPTO ?? ""),
+        })),
+      });
+      return;
+    }
     if (accion === "deposito" || accion === "retiro") {
       setMontoMovimiento("");
       setConceptoMovimiento("");
       setTipoMovimiento(accion);
     }
   };
+
+  const pedirEditarCorte = (item) => {
+    setCorteEnEdicion(item);
+    setNipAccion("editarCorte");
+  };
+
+  const cerrarEditarCorte = () => {
+    if (guardandoCorte) return;
+    setFormCorte(null);
+    setCorteEnEdicion(null);
+  };
+
+  const aNumero = (v) => Number(String(v ?? "").replace(",", "."));
+
+  const guardarCorte = async () => {
+    const c = corteEnEdicion;
+    if (!c || !formCorte) return;
+    const monto = aNumero(formCorte.monto);
+    if (!Number.isFinite(monto) || monto < 0 || !String(formCorte.monto).trim()) {
+      mostrarAviso("Monto inválido", "El monto de apertura no puede ser negativo.");
+      return;
+    }
+    const cerrada = Number(c.ESTATUS) === 0;
+    const fondo = aNumero(formCorte.fondo);
+    if (cerrada && (!Number.isFinite(fondo) || fondo < 0 || !String(formCorte.fondo).trim())) {
+      mostrarAviso("Fondo inválido", "Ingresa el fondo que quedó en caja.");
+      return;
+    }
+    const cambios = {};
+    if (monto !== Number(c.MONTO ?? 0)) cambios.monto = monto;
+    const concepto = String(formCorte.concepto ?? "").trim() || CONCEPTO_APERTURA_DEFAULT;
+    if (concepto !== String(c.CONCEPTO ?? "").trim()) cambios.concepto = concepto;
+    if (cerrada && fondo !== Number(c.FONDO ?? 0)) cambios.fondo = fondo;
+
+    const movimientos = [];
+    for (const m of formCorte.movimientos) {
+      const original = (c.movimientos ?? []).find((o) => o.ID === m.id);
+      const montoMov = aNumero(m.monto);
+      const conceptoMov = String(m.concepto ?? "").trim();
+      if (!Number.isFinite(montoMov) || montoMov <= 0) {
+        mostrarAviso("Monto inválido", "Cada depósito o retiro debe ser mayor a cero.");
+        return;
+      }
+      if (!conceptoMov) {
+        mostrarAviso("Falta concepto", "Cada depósito o retiro necesita un concepto.");
+        return;
+      }
+      const cambio = { id: m.id, uuid: m.uuid };
+      if (montoMov !== Number(original?.MONTO ?? 0)) cambio.monto = montoMov;
+      if (conceptoMov !== String(original?.CONCEPTO ?? "").trim()) cambio.concepto = conceptoMov;
+      if (cambio.monto !== undefined || cambio.concepto !== undefined) movimientos.push(cambio);
+    }
+    if (movimientos.length) cambios.movimientos = movimientos;
+
+    if (!Object.keys(cambios).length) {
+      setFormCorte(null);
+      setCorteEnEdicion(null);
+      return;
+    }
+
+    setGuardandoCorte(true);
+    try {
+      const res = await integracionCaja.editarCorte(c, cambios);
+      if (res && res.ok === false) {
+        mostrarAviso("No se pudo editar", res.message || "Intenta de nuevo.");
+        return;
+      }
+      setFormCorte(null);
+      setCorteEnEdicion(null);
+      await getData();
+      mostrarAviso("Corte actualizado", "Los cambios se guardaron.", "info");
+    } catch (error) {
+      console.error("Error al editar corte:", error);
+      mostrarAviso("No se pudo editar", "Ocurrió un problema. Intenta de nuevo.");
+    } finally {
+      setGuardandoCorte(false);
+    }
+  };
+
+  const actualizarMovForm = (id, campo, valor) =>
+    setFormCorte((f) => ({
+      ...f,
+      movimientos: f.movimientos.map((m) => (m.id === id ? { ...m, [campo]: valor } : m)),
+    }));
 
   const cerrarModalMovimiento = () => {
     setTipoMovimiento(null);
@@ -382,15 +492,33 @@ const Caja = () => {
                 {fmtMonto(saldoActual)}
               </Text>
             </View>
-            {cajaAbierta && ventasSesionActual.length > 0 && (
+            {/* Solo dinero físico: apertura, pagos en efectivo, depósitos
+                y retiros. Tarjeta, transferencia, etc. no entran. */}
+            {cajaAbierta && movimientosCaja.length > 0 && (
               <View style={s.metodosCaja}>
-                <Text style={s.metodosTitulo}>Ventas por pago</Text>
-                {ventasSesionActual.map((metodo) => (
-                  <View key={metodo.nombre} style={s.metodoFila}>
-                    <Text style={s.metodoNombre}>{metodo.nombre}</Text>
-                    <Text style={s.metodoMonto}>{fmtMonto(metodo.total)}</Text>
-                  </View>
-                ))}
+                <Text style={s.metodosTitulo}>Movimientos</Text>
+                {movimientosCaja.map((mov) => {
+                  const esRetiro = mov.tipo === "retiro";
+                  return (
+                    <View key={mov.clave} style={s.metodoFila}>
+                      <Text style={s.metodoNombre} numberOfLines={1}>
+                        {mov.tipo === "apertura"
+                          ? "Apertura"
+                          : mov.tipo === "ventas"
+                            ? "Pagos en efectivo"
+                            : `${esRetiro ? "Retiro" : "Depósito"}${mov.concepto ? ` · ${mov.concepto}` : ""}`}
+                      </Text>
+                      <Text style={[s.metodoMonto, esRetiro && s.montoRetiro]}>
+                        {esRetiro ? "-" : ""}
+                        {fmtMonto(mov.monto)}
+                      </Text>
+                    </View>
+                  );
+                })}
+                <View style={[s.metodoFila, s.movTotalFila]}>
+                  <Text style={s.movTotalTexto}>Total en caja</Text>
+                  <Text style={s.movTotalTexto}>{fmtMonto(saldoActual)}</Text>
+                </View>
               </View>
             )}
             <View style={s.containerButtons}>
@@ -614,6 +742,21 @@ const Caja = () => {
                       })}
                     </View>
                   )}
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      s.historialEditarBtn,
+                      pressed && { opacity: 0.75 },
+                    ]}
+                    onPress={() => pedirEditarCorte(item)}
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={normalize(14)}
+                      color={gb.purple550}
+                    />
+                    <Text style={s.historialEditarTexto}>Editar</Text>
+                  </Pressable>
                 </View>
               );
             })}
@@ -919,6 +1062,134 @@ const Caja = () => {
         </View>
       </GeneralModal>
 
+      <GeneralModal
+        visible={!!formCorte}
+        onRequestClose={cerrarEditarCorte}
+        headerColorGrandien={gb.gradient_blue}
+        iconCloseColor={gb.gray50}
+        headerColorText={gb.gray50}
+        headerTitle={"Editar corte"}
+      >
+        {!!formCorte && (
+          <ScrollView
+            style={{ maxHeight: normalize(460) }}
+            contentContainerStyle={s.contenidoModal}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={s.modalDescripcion}>
+              Corrige los montos y conceptos de este corte.
+            </Text>
+            <Text style={s.editarSeccionTitulo}>Apertura</Text>
+            <View style={s.editarFila}>
+              <TextInput
+                style={s.editarMonto}
+                value={formCorte.monto}
+                onChangeText={(v) => setFormCorte((f) => ({ ...f, monto: v }))}
+                keyboardType="numeric"
+                placeholder="Monto"
+                placeholderTextColor={gb.gray400}
+              />
+              <TextInput
+                style={s.editarConcepto}
+                value={formCorte.concepto}
+                onChangeText={(v) => setFormCorte((f) => ({ ...f, concepto: v }))}
+                placeholder="Concepto (opcional)"
+                placeholderTextColor={gb.gray400}
+              />
+            </View>
+
+            {Number(corteEnEdicion?.ESTATUS) === 0 && (
+              <View style={s.editarSeccion}>
+                <Text style={s.editarSeccionTitulo}>Fondo al cerrar</Text>
+                <TextInput
+                  style={s.editarMonto}
+                  value={formCorte.fondo}
+                  onChangeText={(v) => setFormCorte((f) => ({ ...f, fondo: v }))}
+                  keyboardType="numeric"
+                  placeholder="Fondo"
+                  placeholderTextColor={gb.gray400}
+                />
+              </View>
+            )}
+
+            {formCorte.movimientos.length > 0 && (
+              <View style={s.editarSeccion}>
+                <Text style={s.editarSeccionTitulo}>Depósitos y retiros</Text>
+                {formCorte.movimientos.map((m) => {
+                  const esDeposito = m.tipo === "deposito";
+                  return (
+                    <View key={m.id} style={{ gap: normalize(4) }}>
+                      <Text
+                        style={[
+                          s.movimientoTipo,
+                          { color: esDeposito ? gb.green700 : "#E5484D" },
+                        ]}
+                      >
+                        {esDeposito ? "Depósito" : "Retiro"}
+                      </Text>
+                      <View style={s.editarFila}>
+                        <TextInput
+                          style={s.editarMonto}
+                          value={m.monto}
+                          onChangeText={(v) => actualizarMovForm(m.id, "monto", v)}
+                          keyboardType="numeric"
+                          placeholder="Monto"
+                          placeholderTextColor={gb.gray400}
+                        />
+                        <TextInput
+                          style={s.editarConcepto}
+                          value={m.concepto}
+                          onChangeText={(v) => actualizarMovForm(m.id, "concepto", v)}
+                          placeholder="Concepto"
+                          placeholderTextColor={gb.gray400}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: normalize(20),
+                marginTop: normalize(20),
+              }}
+            >
+              <Button
+                style={s.buttonModalCancel}
+                styleContainer={s.buttonModalCancelContainer}
+                onPress={cerrarEditarCorte}
+              >
+                <Text
+                  style={{
+                    color: gb.gray500,
+                    fontWeight: "bold",
+                    fontSize: normalize(12),
+                  }}
+                >
+                  Cancelar
+                </Text>
+              </Button>
+              <Button
+                style={s.buttonModalAccept}
+                disabledStyle={s.botonBloqueado}
+                styleContainer={s.buttonModalAcceptContainer}
+                onPress={guardarCorte}
+                disabled={guardandoCorte}
+              >
+                <View style={s.botonContenido}>
+                  <Text style={s.botonTexto}>
+                    {guardandoCorte ? "Guardando..." : "Guardar"}
+                  </Text>
+                </View>
+              </Button>
+            </View>
+          </ScrollView>
+        )}
+      </GeneralModal>
+
       <ModalWarning
         visible={!!aviso}
         type={aviso?.type ?? "warning"}
@@ -934,7 +1205,7 @@ const Caja = () => {
         visible={openConfirmEliminarHistorial && nipAccion !== "eliminarHistorial"}
         type="danger"
         title="Eliminar historial"
-        message="Se eliminará todo el historial de caja, incluidos depósitos, retiros y ventas ligadas. Esta acción no se puede deshacer."
+        message="Se quitarán de esta tablet los cortes de caja cerrados y ya sincronizados. Siguen guardados en el panel web. La caja abierta y lo pendiente de subir no se tocan."
         confirmText="Eliminar"
         cancelText="Cancelar"
         onCancel={() => setOpenConfirmEliminarHistorial(false)}

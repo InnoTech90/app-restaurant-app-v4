@@ -212,6 +212,61 @@ export class integracionCaja {
     }
   };
 
+  /**
+   * Edita un corte del historial. Si ya está en el servidor se corrige allá
+   * primero (requiere internet); si aún no se sube, basta con la tablet y la
+   * sincronización enviará los valores corregidos.
+   * cambios: { monto?, concepto?, fondo?, movimientos?: [{ id, uuid?, monto?, concepto? }] }
+   */
+  static editarCorte = async (sesion, cambios) => {
+    const enServidor = !!sesion?.UUID && Number(sesion?.SINCRONIZADO) === 1;
+    if (enServidor) {
+      if (!(await verificarConexionInternet())) {
+        return {
+          ok: false,
+          message:
+            "Este corte ya está en el servidor. Conéctate a internet para editarlo.",
+        };
+      }
+      const payload = {};
+      if (cambios.monto !== undefined) payload.openingAmount = Number(cambios.monto);
+      if (cambios.concepto !== undefined) payload.openingConcept = String(cambios.concepto).trim();
+      if (
+        cambios.fondo !== undefined &&
+        Number(sesion.ESTATUS) === 0 &&
+        Number(sesion.CIERRE_SINCRONIZADO ?? 1) === 1
+      ) {
+        payload.closingFund = Number(cambios.fondo);
+      }
+      const movimientosServidor = (cambios.movimientos ?? [])
+        .filter((m) => m.uuid)
+        .map((m) => ({
+          id: m.uuid,
+          ...(m.monto !== undefined ? { amount: Number(m.monto) } : {}),
+          ...(m.concepto !== undefined ? { concept: String(m.concepto).trim() } : {}),
+        }));
+      if (movimientosServidor.length) payload.movements = movimientosServidor;
+
+      if (Object.keys(payload).length) {
+        try {
+          const headers = await getDeviceAuthHeaders();
+          await deviceApi.patch(`/devices/cash/${sesion.UUID}`, payload, { headers });
+        } catch (error) {
+          const status = error?.response?.status;
+          return {
+            ok: false,
+            message:
+              status === 404 && !error?.response?.data?.message
+                ? "El servidor aún no tiene la edición de caja. Actualiza el backend."
+                : mensajeErrorApi(error) ||
+                  obtenerMensajeErrorRed(error, "No se pudo editar el corte."),
+          };
+        }
+      }
+    }
+    return Database.actualizarCorte(sesion.ID, cambios);
+  };
+
   static cerrarCaja = async (id, fondo) => {
     const local = await Database.cerrarCaja(id, fondo);
     if (local && local.ok === false) return local;
